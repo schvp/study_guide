@@ -1,0 +1,56 @@
+:root {
+  color-scheme: light;
+  font-family: "Segoe UI", Arial, sans-serif;
+  color: #172033;
+  background: #f3f6fb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+.page {
+  display: grid;
+  min-height: 100vh;
+  padding: 24px;
+  place-items: center;
+}
+
+.card {
+  width: min(100%, 720px);
+  padding: clamp(28px, 7vw, 64px);
+  border: 1px solid #e1e7f0;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 18px 50px rgb(28 48 82 / 8%);
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: #4263c7;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+h1 {
+  max-width: 560px;
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  line-height: 1.1;
+}
+
+.description {
+  max-width: 520px;
+  margin: 20px 0 0;
+  color: #596579;
+  font-size: 1.1rem;
+  line-height: 1.7;
+}

@@ -1,0 +1,150 @@
+[1mdiff --git a/.gitignore b/.gitignore[m
+[1mnew file mode 100644[m
+[1mindex 0000000..ec32927[m
+[1m--- /dev/null[m
+[1m+++ b/.gitignore[m
+[36m@@ -0,0 +1,8 @@[m
+[32m+[m[32m__pycache__/[m
+[32m+[m[32m*.py[cod][m
+[32m+[m[32m*.pyo[m
+[32m+[m[32m.venv/[m
+[32m+[m[32mvenv/[m
+[32m+[m[32m.env[m
+[32m+[m[32m.idea/[m
+[32m+[m[32m.vscode/[m
+[1mdiff --git a/README.md b/README.md[m
+[1mindex 19b884d..168576d 100644[m
+[1m--- a/README.md[m
+[1m+++ b/README.md[m
+[36m@@ -1,2 +1,17 @@[m
+ # study_guide[m
+ Учебное пособие по дисциплине «Схемотехника цифровых систем»[m
+[32m+[m
+[32m+[m[32m## Запуск[m
+[32m+[m
+[32m+[m[32m```bash[m
+[32m+[m[32mpython -m venv .venv[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32mАктивируйте виртуальное окружение, установите зависимости и запустите приложение:[m
+[32m+[m
+[32m+[m[32m```bash[m
+[32m+[m[32mpip install -r requirements.txt[m
+[32m+[m[32mpython app.py[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32mОткройте <http://127.0.0.1:5000> в браузере.[m
+[1mdiff --git a/app.py b/app.py[m
+[1mnew file mode 100644[m
+[1mindex 0000000..f2c2628[m
+[1m--- /dev/null[m
+[1m+++ b/app.py[m
+[36m@@ -0,0 +1,12 @@[m
+[32m+[m[32mfrom flask import Flask, render_template[m
+[32m+[m
+[32m+[m[32mapp = Flask(__name__)[m
+[32m+[m
+[32m+[m
+[32m+[m[32m@app.route("/")[m
+[32m+[m[32mdef index():[m
+[32m+[m[32m    return render_template("index.html")[m
+[32m+[m
+[32m+[m
+[32m+[m[32mif __name__ == "__main__":[m
+[32m+[m[32m    app.run(debug=True)[m
+[1mdiff --git a/requirements.txt b/requirements.txt[m
+[1mnew file mode 100644[m
+[1mindex 0000000..840d434[m
+[1m--- /dev/null[m
+[1m+++ b/requirements.txt[m
+[36m@@ -0,0 +1 @@[m
+[32m+[m[32mFlask>=3.0,<4.0[m
+[1mdiff --git a/static/style.css b/static/style.css[m
+[1mnew file mode 100644[m
+[1mindex 0000000..dc50d65[m
+[1m--- /dev/null[m
+[1m+++ b/static/style.css[m
+[36m@@ -0,0 +1,56 @@[m
+[32m+[m[32m:root {[m
+[32m+[m[32m  color-scheme: light;[m
+[32m+[m[32m  font-family: "Segoe UI", Arial, sans-serif;[m
+[32m+[m[32m  color: #172033;[m
+[32m+[m[32m  background: #f3f6fb;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m* {[m
+[32m+[m[32m  box-sizing: border-box;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mbody {[m
+[32m+[m[32m  min-width: 320px;[m
+[32m+[m[32m  min-height: 100vh;[m
+[32m+[m[32m  margin: 0;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m.page {[m
+[32m+[m[32m  display: grid;[m
+[32m+[m[32m  min-height: 100vh;[m
+[32m+[m[32m  padding: 24px;[m
+[32m+[m[32m  place-items: center;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m.card {[m
+[32m+[m[32m  width: min(100%, 720px);[m
+[32m+[m[32m  padding: clamp(28px, 7vw, 64px);[m
+[32m+[m[32m  border: 1px solid #e1e7f0;[m
+[32m+[m[32m  border-radius: 20px;[m
+[32m+[m[32m  background: #fff;[m
+[32m+[m[32m  box-shadow: 0 18px 50px rgb(28 48 82 / 8%);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m.eyebrow {[m
+[32m+[m[32m  margin: 0 0 12px;[m
+[32m+[m[32m  color: #4263c7;[m
+[32m+[m[32m  font-size: 0.8rem;[m
+[32m+[m[32m  font-weight: 700;[m
+[32m+[m[32m  letter-spacing: 0.12em;[m
+[32m+[m[32m  text-transform: uppercase;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mh1 {[m
+[32m+[m[32m  max-width: 560px;[m
+[32m+[m[32m  margin: 0;[m
+[32m+[m[32m  font-size: clamp(2rem, 5vw, 3.5rem);[m
+[32m+[m[32m  line-height: 1.1;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m.description {[m
+[32m+[m[32m  max-width: 520px;[m
+[32m+[m[32m  margin: 20px 0 0;[m
+[32m+[m[32m  color: #596579;[m
+[32m+[m[32m  font-size: 1.1rem;[m
+[32m+[m[32m  line-height: 1.7;[m
+[32m+[m[32m}[m
+\ No newline at end of file[m
+[1mdiff --git a/templates/index.html b/templates/index.html[m
+[1mnew file mode 100644[m
+[1mindex 0000000..249997e[m
+[1m--- /dev/null[m
+[1m+++ b/templates/index.html[m
+[36m@@ -0,0 +1,20 @@[m
+[32m+[m[32m<!doctype html>[m
+[32m+[m[32m<html lang="ru">[m
+[32m+[m[32m  <head>[m
+[32m+[m[32m    <meta charset="utf-8">[m
+[32m+[m[32m    <meta name="viewport" content="width=device-width, initial-scale=1">[m
+[32m+[m[32m    <title>Учебное пособие — Схемотехника цифровых систем</title>[m
+[32m+[m[32m    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">[m
+[32m+[m[32m  </head>[m
+[32m+[m[32m  <body>[m
+[32m+[m[32m    <main class="page">[m
+[32m+[m[32m      <section class="card">[m
+[32m+[m[32m        <p class="eyebrow">Учебное пособие</p>[m
+[32m+[m[32m        <h1>Схемотехника цифровых систем</h1>[m
+[32m+[m[32m        <p class="description">[m
+[32m+[m[32m          Материалы для изучения основ цифровых систем и схемотехники.[m
+[32m+[m[32m        </p>[m
+[32m+[m[32m      </section>[m
+[32m+[m[32m    </main>[m
+[32m+[m[32m  </body>[m
+[32m+[m[32m</html>[m
