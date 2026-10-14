@@ -1,20 +1,34 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="ru">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Учебное пособие — Схемотехника цифровых систем</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  </head>
-  <body>
-    <main class="page">
-      <section class="card">
-        <p class="eyebrow">Учебное пособие</p>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Схемотехника цифровых систем</title>
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
         <h1>Схемотехника цифровых систем</h1>
-        <p class="description">
-          Материалы для изучения основ цифровых систем и схемотехники.
-        </p>
-      </section>
+        <p>Интерактивное учебное пособие</p>
+    </header>
+
+    <main>
+        <h2>Содержание учебного пособия</h2>
+
+        <div class="chapters">
+            {% for chapter in chapters %}
+                <div class="chapter">
+                    <span class="number">{{ loop.index }}</span>
+                    <span>{{ chapter }}</span>
+                </div>
+            {% endfor %}
+        </div>
     </main>
-  </body>
+
+    <footer>
+        <p>Учебное пособие по цифровой схемотехнике</p>
+    </footer>
+</body>
 </html>
