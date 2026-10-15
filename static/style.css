@@ -865,6 +865,68 @@ p {
     display: none;
 }
 
+.chapter-search {
+    display: flex;
+    width: min(100%, 420px);
+    min-height: 44px;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 15px;
+    padding: 0 13px;
+    border: 1px solid #cbd4c8;
+    border-radius: 3px;
+    background: #fbfbf7;
+    color: #7d8c81;
+}
+
+.chapter-search:focus-within {
+    border-color: #587b68;
+    box-shadow: 0 0 0 3px rgb(88 123 104 / 13%);
+}
+
+.search-icon {
+    font-size: 23px;
+    line-height: 1;
+    transform: rotate(-20deg);
+}
+
+.chapter-search input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-size: 12px;
+}
+
+.chapter-search input::placeholder {
+    color: #9aa69b;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    clip-path: inset(50%);
+}
+
+.search-results {
+    margin: -5px 0 13px;
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.search-results[hidden],
+.chapter[hidden] {
+    display: none;
+}
+
 .chapters {
     margin: 0;
     padding: 0;

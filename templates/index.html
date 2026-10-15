@@ -179,9 +179,22 @@
                 <p class="progress-prompt">Новые разделы открываются по очереди: после прохождения текущего становится доступен следующий.</p>
             {% endif %}
 
-            <ol class="chapters">
+            <label class="chapter-search">
+                <span class="search-icon" aria-hidden="true">⌕</span>
+                <span class="visually-hidden">Поиск по названиям разделов</span>
+                <input
+                    type="search"
+                    data-chapter-search
+                    placeholder="Найти раздел курса"
+                    autocomplete="off"
+                    aria-controls="chapter-list"
+                >
+            </label>
+            <p class="search-results" data-search-results aria-live="polite" hidden></p>
+
+            <ol class="chapters" id="chapter-list">
                 {% for chapter in chapters %}
-                    <li class="chapter">
+                    <li class="chapter" data-chapter-title="{{ chapter|lower }}">
                         <span class="number">{{ "%02d"|format(loop.index) }}</span>
                         {% if loop.index in accessible_chapters %}
                             <a class="chapter-link{% if loop.index in completed_chapters %} is-complete{% endif %}" href="{{ url_for('course_chapter', chapter_id=loop.index) }}">

@@ -141,6 +141,34 @@ if (logoutButton) {
     });
 }
 
+const chapterSearch = document.querySelector("[data-chapter-search]");
+if (chapterSearch) {
+    const chapters = Array.from(document.querySelectorAll(".chapter[data-chapter-title]"));
+    const searchResults = document.querySelector("[data-search-results]");
+
+    chapterSearch.addEventListener("input", () => {
+        const query = chapterSearch.value.trim().toLocaleLowerCase("ru");
+        let visibleCount = 0;
+
+        chapters.forEach((chapter) => {
+            const matches = chapter.dataset.chapterTitle.includes(query);
+            chapter.hidden = !matches;
+            if (matches) {
+                visibleCount += 1;
+            }
+        });
+
+        searchResults.hidden = query.length === 0;
+        if (query.length > 0) {
+            searchResults.textContent = visibleCount === 0
+                ? "Разделы не найдены. Попробуйте изменить запрос."
+                : `Найдено разделов: ${visibleCount}`;
+        } else {
+            searchResults.textContent = "";
+        }
+    });
+}
+
 const completeChapterButton = document.querySelector("[data-complete-chapter]");
 if (completeChapterButton) {
     completeChapterButton.addEventListener("click", async () => {
