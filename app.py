@@ -8,7 +8,13 @@ from flask import Flask, g, jsonify, render_template, request, session
 from werkzeug.security import check_password_hash, generate_password_hash
 
 
-CHAPTERS = [
+COURSE_SLUG = "digital-circuits"
+COURSE_TITLE = "Схемотехника цифровых систем"
+COURSE_DESCRIPTION = (
+    "Пособие знакомит с принципами построения цифровых устройств "
+    "и помогает увидеть связь между математической логикой и аппаратной реализацией."
+)
+INITIAL_CHAPTERS = [
     "Введение в цифровую схемотехнику",
     "Системы счисления и кодирование информации",
     "Основы булевой алгебры",
@@ -94,6 +100,28 @@ def create_app(test_config=None):
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (user_id, chapter_id)
             );
+
+            CREATE TABLE IF NOT EXISTS courses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                slug TEXT NOT NULL UNIQUE,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS chapters (
+                id INTEGER PRIMARY KEY,
+                course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+                position INTEGER NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL DEFAULT '',
+                content TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (course_id, position),
+                UNIQUE (course_id, title)
+            );
             """
         )
         user_columns = {
@@ -117,7 +145,52 @@ def create_app(test_config=None):
                     generate_password_hash(DEMO_PASSWORD),
                 ),
             )
+        course = database.execute(
+            "SELECT id FROM courses WHERE slug = ?",
+            (COURSE_SLUG,),
+        ).fetchone()
+        if course is None:
+            cursor = database.execute(
+                "INSERT INTO courses (slug, title, description) VALUES (?, ?, ?)",
+                (COURSE_SLUG, COURSE_TITLE, COURSE_DESCRIPTION),
+            )
+            course_id = cursor.lastrowid
+        else:
+            course_id = course["id"]
+
+        chapter_count = database.execute(
+            "SELECT COUNT(*) FROM chapters WHERE course_id = ?",
+            (course_id,),
+        ).fetchone()[0]
+        if chapter_count == 0:
+            database.executemany(
+                """
+                INSERT INTO chapters (id, course_id, position, title)
+                VALUES (?, ?, ?, ?)
+                """,
+                [
+                    (chapter_id, course_id, chapter_id, title)
+                    for chapter_id, title in enumerate(INITIAL_CHAPTERS, 1)
+                ],
+            )
         database.commit()
+
+    def get_course():
+        return get_db().execute(
+            "SELECT id, slug, title, description FROM courses WHERE slug = ?",
+            (COURSE_SLUG,),
+        ).fetchone()
+
+    def get_course_chapters(course_id):
+        return get_db().execute(
+            """
+            SELECT id, course_id, position, title, description, content
+            FROM chapters
+            WHERE course_id = ?
+            ORDER BY position, id
+            """,
+            (course_id,),
+        ).fetchall()
 
     def current_user():
         user_id = session.get("user_id")
@@ -163,6 +236,8 @@ def create_app(test_config=None):
     @app.get("/")
     def home():
         user = current_user()
+        course = get_course()
+        chapters = get_course_chapters(course["id"])
         completed_chapters = set()
         accessible_chapters = set()
         if user is not None:
@@ -171,16 +246,18 @@ def create_app(test_config=None):
                 (user["id"],),
             ).fetchall()
             completed_chapters = {row["chapter_id"] for row in rows}
-            for chapter_id in range(1, len(CHAPTERS) + 1):
+            for chapter in chapters:
                 if all(
-                    previous_id in completed_chapters
-                    for previous_id in range(1, chapter_id)
+                    previous["id"] in completed_chapters
+                    for previous in chapters
+                    if previous["position"] < chapter["position"]
                 ):
-                    accessible_chapters.add(chapter_id)
+                    accessible_chapters.add(chapter["id"])
 
         return render_template(
             "index.html",
-            chapters=CHAPTERS,
+            course=course,
+            chapters=chapters,
             current_user=user,
             completed_chapters=completed_chapters,
             accessible_chapters=accessible_chapters,
@@ -200,15 +277,22 @@ def create_app(test_config=None):
                     "status": None,
                 },
                 current_user=user,
-                chapters_count=len(CHAPTERS),
+                chapters_count=get_db().execute(
+                    "SELECT COUNT(*) FROM chapters WHERE course_id = ?",
+                    (get_course()["id"],),
+                ).fetchone()[0],
                 completed_count=(
                     get_db()
                     .execute(
                         """
-                        SELECT COUNT(*) FROM chapter_progress
-                        WHERE user_id = ? AND completed = 1
+                        SELECT COUNT(*)
+                        FROM chapter_progress AS progress
+                        JOIN chapters ON chapters.id = progress.chapter_id
+                        WHERE progress.user_id = ?
+                            AND progress.completed = 1
+                            AND chapters.course_id = ?
                         """,
-                        (user["id"],),
+                        (user["id"], get_course()["id"]),
                     )
                     .fetchone()[0]
                     if user
@@ -221,7 +305,10 @@ def create_app(test_config=None):
             active_nav=active_nav,
             section=APP_SECTIONS[active_nav],
             current_user=user,
-            chapters_count=len(CHAPTERS),
+            chapters_count=get_db().execute(
+                "SELECT COUNT(*) FROM chapters WHERE course_id = ?",
+                (get_course()["id"],),
+            ).fetchone()[0],
             completed_count=0,
             csrf_token=session["csrf_token"],
         )
@@ -251,7 +338,13 @@ def create_app(test_config=None):
 
     @app.get("/course/<int:chapter_id>")
     def course_chapter(chapter_id):
-        if chapter_id < 1 or chapter_id > len(CHAPTERS):
+        course = get_course()
+        chapters = get_course_chapters(course["id"])
+        chapter_by_id = next(
+            (chapter for chapter in chapters if chapter["id"] == chapter_id),
+            None,
+        )
+        if chapter_by_id is None:
             return render_template(
                 "404.html",
                 current_user=current_user(),
@@ -261,7 +354,7 @@ def create_app(test_config=None):
         if user is None:
             return render_template(
                 "chapter.html",
-                chapter=CHAPTERS[chapter_id - 1],
+                chapter=chapter_by_id,
                 chapter_id=chapter_id,
                 current_user=None,
                 access_state="login_required",
@@ -278,34 +371,44 @@ def create_app(test_config=None):
         ).fetchall()
         completed_chapters = {row["chapter_id"] for row in completed_rows}
         if any(
-            previous_id not in completed_chapters
-            for previous_id in range(1, chapter_id)
+            previous["id"] not in completed_chapters
+            for previous in chapters
+            if previous["position"] < chapter_by_id["position"]
         ):
             return render_template(
                 "chapter.html",
-                chapter=CHAPTERS[chapter_id - 1],
+                chapter=chapter_by_id,
                 chapter_id=chapter_id,
                 current_user=user,
                 access_state="locked",
                 csrf_token=session["csrf_token"],
             ), 403
 
-        next_chapter_id = chapter_id + 1 if chapter_id < len(CHAPTERS) else None
+        next_chapter = next(
+            (
+                chapter
+                for chapter in chapters
+                if chapter["position"] > chapter_by_id["position"]
+            ),
+            None,
+        )
         return render_template(
             "chapter.html",
-            chapter=CHAPTERS[chapter_id - 1],
+            chapter=chapter_by_id,
             chapter_id=chapter_id,
             current_user=user,
             access_state="available",
             completed=chapter_id in completed_chapters,
-            next_chapter_id=next_chapter_id,
+            next_chapter_id=next_chapter["id"] if next_chapter else None,
             next_chapter_accessible=(
-                next_chapter_id is not None
+                next_chapter is not None
                 and all(
-                    previous_id in completed_chapters
-                    for previous_id in range(1, next_chapter_id)
+                    previous["id"] in completed_chapters
+                    for previous in chapters
+                    if previous["position"] < next_chapter["position"]
                 )
             ),
+            course=course,
             csrf_token=session["csrf_token"],
         )
 
@@ -397,7 +500,13 @@ def create_app(test_config=None):
         user = current_user()
         if user is None:
             return jsonify(error="Войдите, чтобы сохранять прогресс обучения."), 401
-        if chapter_id < 1 or chapter_id > len(CHAPTERS):
+        course = get_course()
+        chapters = get_course_chapters(course["id"])
+        chapter = next(
+            (chapter for chapter in chapters if chapter["id"] == chapter_id),
+            None,
+        )
+        if chapter is None:
             return jsonify(error="Такого раздела не существует."), 404
 
         payload = json_payload()
@@ -415,8 +524,9 @@ def create_app(test_config=None):
             ).fetchall()
         }
         if any(
-            previous_id not in completed_chapters
-            for previous_id in range(1, chapter_id)
+            previous["id"] not in completed_chapters
+            for previous in chapters
+            if previous["position"] < chapter["position"]
         ):
             return jsonify(error="Сначала завершите предыдущие разделы курса."), 403
 

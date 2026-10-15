@@ -116,6 +116,38 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(page.count(b'class="chapter-link'), 8)
         self.assertIn(b'is-locked', page)
 
+    def test_homepage_and_chapter_page_use_course_data_from_database(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            database.execute(
+                "UPDATE courses SET title = ? WHERE slug = ?",
+                ("Курс из базы", "digital-circuits"),
+            )
+            database.execute(
+                """
+                UPDATE chapters
+                SET title = ?, description = ?, content = ?
+                WHERE id = 1
+                """,
+                ("Глава из базы", "Описание из базы", "Текст материала из базы"),
+            )
+            database.commit()
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+
+        home_page = self.client.get("/").data
+        chapter_page = self.client.get("/course/1").data
+        self.assertIn("Курс из базы".encode(), home_page)
+        self.assertIn("Глава из базы".encode(), home_page)
+        self.assertIn("Курс из базы".encode(), chapter_page)
+        self.assertIn("Описание из базы".encode(), chapter_page)
+        self.assertIn("Текст материала из базы".encode(), chapter_page)
+
     def test_header_and_sidebar_navigation_routes_are_available(self):
         page = self.client.get("/").data
         for label in ["Главная", "Обучение", "Библиотека", "Лаборатория", "Тестирование", "Профиль"]:
@@ -229,6 +261,15 @@ class AuthenticationTests(unittest.TestCase):
                 );
                 INSERT INTO users (email, password_hash)
                 VALUES ('legacy@example.com', 'legacy-hash');
+                CREATE TABLE chapter_progress (
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    chapter_id INTEGER NOT NULL,
+                    completed INTEGER NOT NULL DEFAULT 0 CHECK (completed IN (0, 1)),
+                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (user_id, chapter_id)
+                );
+                INSERT INTO chapter_progress (user_id, chapter_id, completed)
+                VALUES (1, 1, 1);
                 """
             )
 
@@ -249,9 +290,44 @@ class AuthenticationTests(unittest.TestCase):
                 "SELECT email, password_hash FROM users WHERE email = ?",
                 ("legacy@example.com",),
             ).fetchone()
+            seeded_course = database.execute(
+                "SELECT title FROM courses WHERE slug = ?",
+                ("digital-circuits",),
+            ).fetchone()
+            seeded_chapters = database.execute(
+                """
+                SELECT id, position, title FROM chapters
+                ORDER BY position
+                """
+            ).fetchall()
+            legacy_progress = database.execute(
+                "SELECT chapter_id, completed FROM chapter_progress WHERE user_id = 1"
+            ).fetchone()
 
         self.assertIn("username", columns)
         self.assertEqual(legacy_user, ("legacy@example.com", "legacy-hash"))
+        self.assertEqual(seeded_course, ("Схемотехника цифровых систем",))
+        self.assertEqual(len(seeded_chapters), 8)
+        self.assertEqual(seeded_chapters[0], (1, 1, "Введение в цифровую схемотехнику"))
+        self.assertEqual(legacy_progress, (1, 1))
+
+        create_app(
+            {
+                "TESTING": True,
+                "SECRET_KEY": "migration-secret",
+                "DATABASE": database_path,
+                "SEED_DEMO_USER": False,
+            }
+        )
+        with closing(sqlite3.connect(database_path)) as database:
+            self.assertEqual(
+                database.execute("SELECT COUNT(*) FROM courses").fetchone()[0],
+                1,
+            )
+            self.assertEqual(
+                database.execute("SELECT COUNT(*) FROM chapters").fetchone()[0],
+                8,
+            )
 
     def test_duplicate_email_is_rejected_without_case_sensitivity(self):
         self.assertEqual(self._register().status_code, 201)

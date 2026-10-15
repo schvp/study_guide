@@ -1087,6 +1087,11 @@ a.chapter-link:hover {
     letter-spacing: 0.1em;
 }
 
+.lesson-body-text {
+    margin: 0;
+    white-space: pre-wrap;
+}
+
 .lesson-actions {
     display: flex;
     min-height: 52px;

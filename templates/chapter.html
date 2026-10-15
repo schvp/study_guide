@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {% if csrf_token %}<meta name="csrf-token" content="{{ csrf_token }}">{% endif %}
-    <meta name="description" content="{% if chapter %}Раздел {{ chapter_id }}: {{ chapter }}{% else %}Раздел курса не найден{% endif %}">
-    <title>{% if chapter %}{{ chapter }} — Мой курс{% else %}Раздел не найден — Мой курс{% endif %}</title>
+    <meta name="description" content="{% if chapter %}Раздел {{ chapter.position }}: {{ chapter.title }}{% else %}Раздел курса не найден{% endif %}">
+    <title>{% if chapter %}{{ chapter.title }} — Мой курс{% else %}Раздел не найден — Мой курс{% endif %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body class="app-layout">
@@ -42,30 +42,34 @@
         {% elif access_state == "login_required" %}
             <section class="lesson-card lesson-message">
                 <p class="eyebrow">Нужен вход в аккаунт</p>
-                <h1>{{ chapter }}</h1>
+                <h1>{{ chapter.title }}</h1>
                 <p>Войдите, чтобы открыть раздел и сохранять прогресс обучения.</p>
                 <a class="primary-link" href="{{ url_for('home') }}">Перейти ко входу <span aria-hidden="true">→</span></a>
             </section>
         {% elif access_state == "locked" %}
             <section class="lesson-card lesson-message">
                 <p class="eyebrow">Раздел пока закрыт</p>
-                <span class="lesson-number">{{ "%02d"|format(chapter_id) }}</span>
-                <h1>{{ chapter }}</h1>
+                <span class="lesson-number">{{ "%02d"|format(chapter.position) }}</span>
+                <h1>{{ chapter.title }}</h1>
                 <p>Чтобы открыть этот раздел, завершите предыдущие разделы курса по порядку.</p>
                 <a class="primary-link" href="{{ url_for('home', _anchor='my-course') }}">Вернуться к содержанию <span aria-hidden="true">→</span></a>
             </section>
         {% else %}
             <article class="lesson-card">
                 <div class="lesson-heading">
-                    <p class="eyebrow">Схемотехника цифровых систем <span class="lesson-divider">/</span> Раздел {{ "%02d"|format(chapter_id) }}</p>
-                    <span class="lesson-number">{{ "%02d"|format(chapter_id) }}</span>
-                    <h1>{{ chapter }}</h1>
-                    <p class="lesson-lead">Материалы раздела курса. Изучайте темы последовательно — следующий раздел откроется после завершения этого.</p>
+                    <p class="eyebrow">{{ course.title }} <span class="lesson-divider">/</span> Раздел {{ "%02d"|format(chapter.position) }}</p>
+                    <span class="lesson-number">{{ "%02d"|format(chapter.position) }}</span>
+                    <h1>{{ chapter.title }}</h1>
+                    <p class="lesson-lead">{{ chapter.description or "Изучайте темы последовательно — следующий раздел откроется после завершения этого." }}</p>
                 </div>
 
                 <div class="lesson-content">
                     <p class="lesson-content-label">УЧЕБНЫЙ МАТЕРИАЛ</p>
-                    <p>Учебный материал для этого раздела будет добавлен отдельно.</p>
+                    {% if chapter.content %}
+                        <p class="lesson-body-text">{{ chapter.content }}</p>
+                    {% else %}
+                        <p>Учебный материал для этого раздела будет добавлен отдельно.</p>
+                    {% endif %}
                 </div>
 
                 <div class="lesson-actions">

@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token }}">
-    <meta name="description" content="Интерактивное учебное пособие по схемотехнике цифровых систем: от систем счисления до запоминающих устройств.">
-    <title>Схемотехника цифровых систем — учебное пособие</title>
+    <meta name="description" content="{{ course.description }}">
+    <title>{{ course.title }} — учебное пособие</title>
     <link rel="stylesheet"
           href="{{ url_for('static', filename='style.css') }}">
 </head>
@@ -84,11 +84,8 @@
         <section class="hero" aria-labelledby="course-title">
             <div class="hero-copy">
                 <p class="eyebrow"><span class="eyebrow-dot"></span> Интерактивное учебное пособие</p>
-                <h1 id="course-title">Схемотехника<br>цифровых систем</h1>
-                <p class="hero-description">
-                    Разберитесь, как простые логические операции превращаются
-                    в устройства, которые хранят и обрабатывают информацию.
-                </p>
+                <h1 id="course-title">{{ course.title }}</h1>
+                <p class="hero-description">{{ course.description }}</p>
                 <a class="primary-link" href="#contents">
                     Исследовать содержание <span aria-hidden="true">↓</span>
                 </a>
@@ -162,8 +159,8 @@
                     <span class="course-card-mark" aria-hidden="true">Σ</span>
                     <div>
                         <p class="course-card-label">ИНТЕРАКТИВНОЕ УЧЕБНОЕ ПОСОБИЕ</p>
-                        <h3>Схемотехника цифровых систем</h3>
-                        <p>Последовательно изучайте цифровую логику и устройства — ваш прогресс сохраняется в аккаунте.</p>
+                        <h3>{{ course.title }}</h3>
+                        <p>{{ course.description }}</p>
                     </div>
                 </div>
                 <h3 class="course-outline-title">Содержание курса</h3>
@@ -194,16 +191,16 @@
 
             <ol class="chapters" id="chapter-list">
                 {% for chapter in chapters %}
-                    <li class="chapter" data-chapter-title="{{ chapter|lower }}">
-                        <span class="number">{{ "%02d"|format(loop.index) }}</span>
-                        {% if loop.index in accessible_chapters %}
-                            <a class="chapter-link{% if loop.index in completed_chapters %} is-complete{% endif %}" href="{{ url_for('course_chapter', chapter_id=loop.index) }}">
-                                <span class="chapter-title">{{ chapter }}</span>
-                                <span class="chapter-state">{% if loop.index in completed_chapters %}Пройдено{% else %}Начать{% endif %}</span>
+                    <li class="chapter" data-chapter-title="{{ chapter.title|lower }}">
+                        <span class="number">{{ "%02d"|format(chapter.position) }}</span>
+                        {% if chapter.id in accessible_chapters %}
+                            <a class="chapter-link{% if chapter.id in completed_chapters %} is-complete{% endif %}" href="{{ url_for('course_chapter', chapter_id=chapter.id) }}">
+                                <span class="chapter-title">{{ chapter.title }}</span>
+                                <span class="chapter-state">{% if chapter.id in completed_chapters %}Пройдено{% else %}Начать{% endif %}</span>
                             </a>
                         {% else %}
                             <span class="chapter-link is-locked" aria-disabled="true">
-                                <span class="chapter-title">{{ chapter }}</span>
+                                <span class="chapter-title">{{ chapter.title }}</span>
                                 <span class="chapter-state"><span aria-hidden="true">▣</span> Закрыт</span>
                             </span>
                         {% endif %}
