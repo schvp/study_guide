@@ -399,6 +399,9 @@ class AuthenticationTests(unittest.TestCase):
             legacy_progress = database.execute(
                 "SELECT chapter_id, completed FROM chapter_progress WHERE user_id = 1"
             ).fetchone()
+            migration_history = database.execute(
+                "SELECT version FROM schema_migrations ORDER BY version"
+            ).fetchall()
 
         self.assertIn("username", columns)
         self.assertEqual(legacy_user, ("legacy@example.com", "legacy-hash"))
@@ -406,6 +409,7 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(len(seeded_chapters), 8)
         self.assertEqual(seeded_chapters[0], (1, 1, "Введение в цифровую схемотехнику"))
         self.assertEqual(legacy_progress, (1, 1))
+        self.assertEqual(migration_history, [(1,), (2,), (3,)])
 
         create_app(
             {

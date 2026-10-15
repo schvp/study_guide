@@ -6,6 +6,7 @@ from functools import wraps
 
 from flask import Flask, g, jsonify, render_template, request, session
 from werkzeug.security import check_password_hash, generate_password_hash
+from migrations import migrate_database
 
 
 COURSE_SLUG = "digital-circuits"
@@ -152,56 +153,7 @@ def create_app(test_config=None):
 
     def init_db():
         database = get_db()
-        database.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                email TEXT NOT NULL UNIQUE COLLATE NOCASE,
-                username TEXT UNIQUE COLLATE NOCASE,
-                password_hash TEXT NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
-
-            CREATE TABLE IF NOT EXISTS chapter_progress (
-                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                chapter_id INTEGER NOT NULL,
-                completed INTEGER NOT NULL DEFAULT 0 CHECK (completed IN (0, 1)),
-                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (user_id, chapter_id)
-            );
-
-            CREATE TABLE IF NOT EXISTS courses (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                slug TEXT NOT NULL UNIQUE,
-                title TEXT NOT NULL,
-                description TEXT NOT NULL DEFAULT '',
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
-
-            CREATE TABLE IF NOT EXISTS chapters (
-                id INTEGER PRIMARY KEY,
-                course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-                position INTEGER NOT NULL,
-                title TEXT NOT NULL,
-                description TEXT NOT NULL DEFAULT '',
-                content TEXT NOT NULL DEFAULT '',
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE (course_id, position),
-                UNIQUE (course_id, title)
-            );
-            """
-        )
-        user_columns = {
-            row["name"] for row in database.execute("PRAGMA table_info(users)")
-        }
-        if "username" not in user_columns:
-            database.execute("ALTER TABLE users ADD COLUMN username TEXT")
-        database.execute(
-            "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_nocase "
-            "ON users(username COLLATE NOCASE)"
-        )
+        migrate_database(database)
         if app.config["SEED_DEMO_USER"]:
             database.execute(
                 """
