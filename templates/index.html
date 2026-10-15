@@ -1,34 +1,119 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Схемотехника цифровых систем</title>
+    <meta name="description" content="Интерактивное учебное пособие по схемотехнике цифровых систем: от систем счисления до запоминающих устройств.">
+    <title>Схемотехника цифровых систем — учебное пособие</title>
     <link rel="stylesheet"
           href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <header>
-        <h1>Схемотехника цифровых систем</h1>
-        <p>Интерактивное учебное пособие</p>
+    <header class="site-header">
+        <a class="brand" href="#" aria-label="На главную">
+            <span class="brand-mark" aria-hidden="true">Σ</span>
+            <span>Учебный навигатор</span>
+        </a>
+        <a class="header-link" href="#contents">К содержанию <span aria-hidden="true">↘</span></a>
     </header>
 
     <main>
-        <h2>Содержание учебного пособия</h2>
+        <section class="hero" aria-labelledby="course-title">
+            <div class="hero-copy">
+                <p class="eyebrow"><span class="eyebrow-dot"></span> Интерактивное учебное пособие</p>
+                <h1 id="course-title">Схемотехника<br>цифровых систем</h1>
+                <p class="hero-description">
+                    Разберитесь, как простые логические операции превращаются
+                    в устройства, которые хранят и обрабатывают информацию.
+                </p>
+                <a class="primary-link" href="#contents">
+                    Исследовать содержание <span aria-hidden="true">↓</span>
+                </a>
+            </div>
 
-        <div class="chapters">
-            {% for chapter in chapters %}
-                <div class="chapter">
-                    <span class="number">{{ loop.index }}</span>
-                    <span>{{ chapter }}</span>
+            <div class="circuit-card" aria-hidden="true">
+                <div class="circuit-label">DIGITAL SYSTEMS <span>01—{{ "%02d"|format(chapters|length) }}</span></div>
+                <div class="circuit-art">
+                    <span class="circuit-line line-one"></span>
+                    <span class="circuit-line line-two"></span>
+                    <span class="circuit-line line-three"></span>
+                    <span class="circuit-node node-one"></span>
+                    <span class="circuit-node node-two"></span>
+                    <span class="circuit-node node-three"></span>
+                    <span class="circuit-chip">∧<small>LOGIC</small></span>
                 </div>
-            {% endfor %}
-        </div>
+                <div class="circuit-footer"><span>ЛОГИКА</span><span>СИГНАЛ</span><span>СИСТЕМА</span></div>
+            </div>
+
+            <div class="hero-index" aria-hidden="true">01 <span>/</span> {{ "%02d"|format(chapters|length) }}</div>
+        </section>
+
+        <section class="overview" aria-labelledby="overview-title">
+            <div class="section-heading">
+                <p class="eyebrow">О дисциплине</p>
+                <h2 id="overview-title">От отдельных битов<br>к целым системам</h2>
+            </div>
+            <div class="overview-content">
+                <p class="overview-lead">
+                    Пособие знакомит с принципами построения цифровых устройств
+                    и помогает увидеть связь между математической логикой и
+                    аппаратной реализацией.
+                </p>
+                <div class="course-facts">
+                    <article class="fact">
+                        <span class="fact-number">01</span>
+                        <div>
+                            <h3>Основа</h3>
+                            <p>Системы счисления, кодирование и булева алгебра</p>
+                        </div>
+                    </article>
+                    <article class="fact">
+                        <span class="fact-number">02</span>
+                        <div>
+                            <h3>Устройства</h3>
+                            <p>Логические элементы и комбинационные схемы</p>
+                        </div>
+                    </article>
+                    <article class="fact">
+                        <span class="fact-number">03</span>
+                        <div>
+                            <h3>Память и состояние</h3>
+                            <p>Триггеры, регистры, счётчики и запоминающие устройства</p>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="contents" id="contents" aria-labelledby="contents-title">
+            <div class="contents-heading">
+                <div>
+                    <p class="eyebrow">Маршрут обучения</p>
+                    <h2 id="contents-title">Содержание пособия</h2>
+                </div>
+                <p class="contents-count"><span>{{ "%02d"|format(chapters|length) }}</span> разделов</p>
+            </div>
+
+            <ol class="chapters">
+                {% for chapter in chapters %}
+                    <li class="chapter">
+                        <span class="number">{{ "%02d"|format(loop.index) }}</span>
+                        <span class="chapter-title">{{ chapter }}</span>
+                    </li>
+                {% endfor %}
+            </ol>
+        </section>
+
+        <aside class="learning-note">
+            <span class="note-mark" aria-hidden="true">↗</span>
+            <p><strong>Как устроен маршрут</strong>Начните с представления информации в цифровой форме, затем переходите к логическим узлам и устройствам с памятью.</p>
+            <a href="#contents">Перейти к разделам <span aria-hidden="true">→</span></a>
+        </aside>
     </main>
 
-    <footer>
-        <p>Учебное пособие по цифровой схемотехнике</p>
+    <footer class="site-footer">
+        <span>Схемотехника цифровых систем</span>
+        <span>Учебное пособие <span aria-hidden="true">·</span> Учитесь видеть логику</span>
     </footer>
 </body>
 </html>

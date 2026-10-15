@@ -1,57 +1,656 @@
+:root {
+    color-scheme: light;
+    --ink: #183b37;
+    --muted: #63736e;
+    --paper: #f5f5ef;
+    --line: #dce2d8;
+    --lime: #d8f078;
+    --orange: #ef845c;
+}
 
 * {
     box-sizing: border-box;
 }
 
+html {
+    scroll-behavior: smooth;
+}
+
 body {
     margin: 0;
-    font-family: Arial, sans-serif;
-    background: #f5f7fb;
-    color: #1f2937;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Manrope", "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
 }
 
-header {
-    background: #1e3a8a;
-    color: white;
-    text-align: center;
-    padding: 50px 20px;
+a {
+    color: inherit;
+    text-decoration: none;
 }
 
-header h1 {
-    margin: 0 0 15px;
+.site-header,
+main,
+.site-footer {
+    width: min(1120px, calc(100% - 64px));
+    margin: 0 auto;
 }
 
-main {
-    max-width: 900px;
-    margin: 40px auto;
-    padding: 0 20px;
+.site-header {
+    min-height: 82px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 11px;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.brand-mark {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    place-items: center;
+    border-radius: 9px;
+    background: var(--lime);
+    font-size: 18px;
+}
+
+.header-link,
+.primary-link,
+.learning-note a {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.header-link span {
+    margin-left: 7px;
+    color: #78877e;
+}
+
+.hero {
+    position: relative;
+    display: grid;
+    min-height: 445px;
+    grid-template-columns: 1.1fr 0.9fr;
+    align-items: center;
+    gap: 28px;
+    overflow: hidden;
+    padding: 58px 68px 64px;
+    border-radius: 7px;
+    background:
+        radial-gradient(ellipse at 80% 15%, rgb(90 137 105 / 18%), transparent 35%),
+        #183b37;
+    color: #f5f5ef;
+}
+
+.hero-copy {
+    position: relative;
+    z-index: 1;
+    max-width: 560px;
+}
+
+.eyebrow {
+    margin: 0 0 18px;
+    color: #77877e;
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 10px;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+}
+
+.hero .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: #b7c5b4;
+}
+
+.eyebrow-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--lime);
+}
+
+h1,
+h2,
+h3,
+p {
+    margin-top: 0;
+}
+
+.hero h1 {
+    margin-bottom: 19px;
+    font-size: clamp(36px, 5vw, 58px);
+    font-weight: 600;
+    letter-spacing: -0.065em;
+    line-height: 1.08;
+}
+
+.hero-description {
+    max-width: 445px;
+    margin-bottom: 28px;
+    color: #c4d0c7;
+    font-size: 14px;
+    line-height: 1.8;
+}
+
+.primary-link {
+    display: inline-flex;
+    min-height: 46px;
+    align-items: center;
+    gap: 22px;
+    padding: 0 17px;
+    border-radius: 3px;
+    background: var(--lime);
+    color: var(--ink);
+    transition: background 160ms ease, transform 160ms ease;
+}
+
+.primary-link:hover {
+    transform: translateY(-2px);
+    background: #e5ff91;
+}
+
+.primary-link span {
+    font-size: 16px;
+}
+
+.circuit-card {
+    position: relative;
+    width: 100%;
+    max-width: 345px;
+    height: 275px;
+    justify-self: end;
+    padding: 17px;
+    border: 1px solid rgb(224 237 216 / 20%);
+    border-radius: 4px;
+    background:
+        linear-gradient(rgb(220 240 215 / 5%) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(220 240 215 / 5%) 1px, transparent 1px),
+        rgb(255 255 255 / 3%);
+    background-size: 24px 24px;
+}
+
+.circuit-label,
+.circuit-footer {
+    display: flex;
+    justify-content: space-between;
+    color: #a9b9ae;
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 8px;
+    letter-spacing: 0.08em;
+}
+
+.circuit-label span {
+    color: var(--lime);
+}
+
+.circuit-art {
+    position: absolute;
+    inset: 45px 17px 35px;
+}
+
+.circuit-chip {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: flex;
+    width: 87px;
+    height: 87px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--lime);
+    border-radius: 5px;
+    background: #264d44;
+    color: var(--lime);
+    font-size: 36px;
+    line-height: 1;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 32px rgb(216 240 120 / 10%);
+}
+
+.circuit-chip small {
+    margin-top: 8px;
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 8px;
+    letter-spacing: 0.15em;
+}
+
+.circuit-line {
+    position: absolute;
+    display: block;
+    background: #8ba487;
+    opacity: 0.85;
+}
+
+.line-one {
+    top: 50%;
+    left: 0;
+    width: calc(50% - 44px);
+    height: 1px;
+}
+
+.line-one::before,
+.line-two::before,
+.line-three::before {
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--lime);
+    content: "";
+}
+
+.line-one::before {
+    top: -2px;
+    left: 0;
+}
+
+.line-two {
+    top: 27%;
+    right: 0;
+    width: calc(50% - 44px);
+    height: 1px;
+}
+
+.line-two::after {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 1px;
+    height: 65px;
+    background: #8ba487;
+    content: "";
+}
+
+.line-two::before {
+    top: -2px;
+    right: 0;
+}
+
+.line-three {
+    right: 0;
+    bottom: 27%;
+    width: calc(50% - 44px);
+    height: 1px;
+}
+
+.line-three::after {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 1px;
+    height: 65px;
+    background: #8ba487;
+    content: "";
+}
+
+.line-three::before {
+    top: -2px;
+    right: 0;
+}
+
+.circuit-node {
+    position: absolute;
+    right: -2px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--orange);
+}
+
+.node-one {
+    top: calc(27% + 63px);
+}
+
+.node-two {
+    top: calc(50% - 2px);
+    right: calc(50% - 44px);
+}
+
+.node-three {
+    bottom: calc(27% + 63px);
+}
+
+.circuit-footer {
+    position: absolute;
+    right: 17px;
+    bottom: 17px;
+    left: 17px;
+    color: #73877b;
+}
+
+.hero-index {
+    position: absolute;
+    right: 68px;
+    bottom: 24px;
+    color: #b8c7b8;
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 9px;
+}
+
+.hero-index span {
+    padding: 0 4px;
+    color: #71887d;
+}
+
+.overview {
+    display: grid;
+    grid-template-columns: 0.85fr 1.15fr;
+    gap: 80px;
+    padding: 103px 6.1% 96px;
+    border-bottom: 1px solid var(--line);
+}
+
+.section-heading h2,
+.contents-heading h2 {
+    margin-bottom: 0;
+    font-size: clamp(27px, 3vw, 36px);
+    font-weight: 600;
+    letter-spacing: -0.055em;
+    line-height: 1.2;
+}
+
+.overview-content {
+    padding-top: 3px;
+}
+
+.overview-lead {
+    max-width: 570px;
+    margin-bottom: 30px;
+    color: #4c6058;
+    font-size: 15px;
+    line-height: 1.8;
+}
+
+.course-facts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.fact {
+    padding-top: 14px;
+    border-top: 1px solid #bfc9bd;
+}
+
+.fact-number {
+    display: block;
+    margin-bottom: 22px;
+    color: #87968a;
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 10px;
+}
+
+.fact h3 {
+    margin-bottom: 7px;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.fact p {
+    margin-bottom: 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.65;
+}
+
+.contents {
+    padding: 77px 6.1% 72px;
+    scroll-margin-top: 24px;
+}
+
+.contents-heading {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    margin-bottom: 29px;
+}
+
+.contents-heading .eyebrow {
+    margin-bottom: 12px;
+}
+
+.contents-count {
+    margin-bottom: 5px;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.contents-count span {
+    margin-right: 5px;
+    color: var(--ink);
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 15px;
 }
 
 .chapters {
-    display: grid;
-    gap: 15px;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid #bdc8bd;
+    list-style: none;
+    counter-reset: chapters;
 }
 
 .chapter {
-    display: flex;
+    display: grid;
+    min-height: 70px;
+    grid-template-columns: 58px 1fr;
     align-items: center;
-    gap: 20px;
-    background: white;
-    padding: 20px;
-    border-radius: 12px;
-    border: 1px solid #e5e7eb;
+    gap: 15px;
+    border-bottom: 1px solid var(--line);
 }
 
 .number {
-    background: #2563eb;
-    color: white;
-    padding: 10px 15px;
-    border-radius: 8px;
-    font-weight: bold;
+    color: #89968a;
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 11px;
 }
 
-footer {
-    text-align: center;
-    padding: 30px;
-    color: #6b7280;
+.chapter-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+}
+
+.learning-note {
+    display: grid;
+    grid-template-columns: 44px 1fr auto;
+    align-items: center;
+    gap: 20px;
+    margin: 0 6.1% 80px;
+    padding: 23px 25px;
+    border-radius: 4px;
+    background: #e9eee3;
+}
+
+.note-mark {
+    display: grid;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--lime);
+    font-size: 17px;
+}
+
+.learning-note p {
+    max-width: 560px;
+    margin-bottom: 0;
+    color: #5b6a60;
+    font-size: 11px;
+    line-height: 1.7;
+}
+
+.learning-note strong {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--ink);
+    font-size: 12px;
+}
+
+.learning-note a {
+    white-space: nowrap;
+}
+
+.learning-note a span {
+    margin-left: 7px;
+}
+
+.site-footer {
+    display: flex;
+    min-height: 72px;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid var(--line);
+    color: #75827a;
+    font-size: 10px;
+}
+
+.site-footer span span {
+    padding: 0 4px;
+    color: #a9b3a7;
+}
+
+a:focus-visible {
+    outline: 2px solid var(--orange);
+    outline-offset: 4px;
+}
+
+@media (max-width: 760px) {
+    .site-header,
+    main,
+    .site-footer {
+        width: min(100% - 36px, 560px);
+    }
+
+    .site-header {
+        min-height: 68px;
+    }
+
+    .hero {
+        min-height: 0;
+        grid-template-columns: 1fr;
+        gap: 36px;
+        padding: 45px 30px 54px;
+    }
+
+    .hero h1 {
+        font-size: clamp(37px, 9vw, 54px);
+    }
+
+    .circuit-card {
+        width: min(100%, 345px);
+        height: 230px;
+        justify-self: center;
+    }
+
+    .hero-index {
+        right: 30px;
+        bottom: 19px;
+    }
+
+    .overview {
+        grid-template-columns: 1fr;
+        gap: 30px;
+        padding: 72px 0;
+    }
+
+    .course-facts {
+        gap: 14px;
+    }
+
+    .contents {
+        padding: 64px 0;
+    }
+
+    .learning-note {
+        grid-template-columns: 38px 1fr;
+        gap: 13px;
+        margin: 0 0 55px;
+        padding: 19px;
+    }
+
+    .learning-note a {
+        grid-column: 2;
+    }
+}
+
+@media (max-width: 460px) {
+    .header-link {
+        font-size: 11px;
+    }
+
+    .hero {
+        padding-right: 22px;
+        padding-left: 22px;
+    }
+
+    .hero-description {
+        font-size: 13px;
+    }
+
+    .course-facts {
+        grid-template-columns: 1fr;
+        gap: 17px;
+    }
+
+    .fact {
+        display: grid;
+        grid-template-columns: 35px 1fr;
+        gap: 8px;
+    }
+
+    .fact-number {
+        margin-bottom: 0;
+    }
+
+    .contents-heading {
+        align-items: start;
+        gap: 15px;
+    }
+
+    .contents-count {
+        padding-top: 25px;
+        white-space: nowrap;
+    }
+
+    .chapter {
+        min-height: 68px;
+        grid-template-columns: 34px 1fr;
+        gap: 10px;
+    }
+
+    .chapter-title {
+        font-size: 12px;
+        line-height: 1.55;
+    }
+
+    .site-footer {
+        align-items: flex-start;
+        flex-direction: column;
+        justify-content: center;
+        gap: 6px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        transition-duration: 0.01ms !important;
+    }
 }
