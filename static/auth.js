@@ -35,6 +35,10 @@ if (authOpenButton) {
     });
 }
 
+if (authDialog && new URLSearchParams(window.location.search).get("login") === "1") {
+    authDialog.showModal();
+}
+
 if (authCloseButton) {
     authCloseButton.addEventListener("click", () => {
         authDialog.close();

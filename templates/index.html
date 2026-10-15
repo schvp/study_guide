@@ -1,3 +1,4 @@
+{% from "_navigation.html" import header_navigation, side_navigation %}
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -9,21 +10,23 @@
     <link rel="stylesheet"
           href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
+<body class="app-layout">
     <header class="site-header">
-        <a class="brand" href="#" aria-label="На главную">
+        <a class="brand" href="{{ url_for('home') }}" aria-label="На главную">
             <span class="brand-mark" aria-hidden="true">Σ</span>
             <span>Учебный навигатор</span>
         </a>
-        {% if current_user %}
-            <a class="header-link" href="#my-course">Мой курс <span aria-hidden="true">↘</span></a>
-            <span class="header-user">{{ current_user.email }}</span>
-            <button class="header-auth" type="button" data-auth-logout>Выйти</button>
-        {% else %}
-            <a class="header-link" href="#contents">К содержанию <span aria-hidden="true">↘</span></a>
+        {{ header_navigation("home", current_user) }}
+        <div class="header-account">
+            {% if current_user %}
+                <span class="header-user">{{ current_user.email }}</span>
+                <button class="header-auth" type="button" data-auth-logout>Выйти</button>
+            {% else %}
             <button class="header-auth" type="button" data-auth-open>Войти</button>
-        {% endif %}
+            {% endif %}
+        </div>
     </header>
+    {{ side_navigation("home", current_user) }}
 
     {% if not current_user %}
     <dialog class="auth-dialog" id="auth-dialog" aria-labelledby="auth-title">

@@ -19,6 +19,24 @@ CHAPTERS = [
     "Запоминающие устройства",
 ]
 
+APP_SECTIONS = {
+    "library": {
+        "title": "Библиотека",
+        "description": "Дополнительные материалы и справочные ресурсы по цифровой схемотехнике.",
+        "status": "Подборка материалов появится здесь.",
+    },
+    "laboratory": {
+        "title": "Лаборатория",
+        "description": "Практические задания для закрепления тем курса.",
+        "status": "Интерактивные лабораторные работы готовятся.",
+    },
+    "testing": {
+        "title": "Тестирование",
+        "description": "Проверяйте знания по мере прохождения курса.",
+        "status": "Тесты по разделам курса появятся здесь.",
+    },
+}
+
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 USERNAME_PATTERN = re.compile(r"^[a-zA-Z0-9_.-]{3,32}$")
 MIN_PASSWORD_LENGTH = 8
@@ -106,7 +124,7 @@ def create_app(test_config=None):
         if user_id is None:
             return None
         return get_db().execute(
-            "SELECT id, email FROM users WHERE id = ?",
+            "SELECT id, email, username FROM users WHERE id = ?",
             (user_id,),
         ).fetchone()
 
@@ -169,6 +187,60 @@ def create_app(test_config=None):
             csrf_token=session["csrf_token"],
             demo_user_enabled=app.config["SEED_DEMO_USER"],
         )
+
+    def render_app_section(active_nav):
+        user = current_user()
+        if active_nav == "profile":
+            return render_template(
+                "section.html",
+                active_nav=active_nav,
+                section={
+                    "title": "Профиль",
+                    "description": "Учётная запись и прогресс обучения.",
+                    "status": None,
+                },
+                current_user=user,
+                chapters_count=len(CHAPTERS),
+                completed_count=(
+                    get_db()
+                    .execute(
+                        """
+                        SELECT COUNT(*) FROM chapter_progress
+                        WHERE user_id = ? AND completed = 1
+                        """,
+                        (user["id"],),
+                    )
+                    .fetchone()[0]
+                    if user
+                    else 0
+                ),
+                csrf_token=session["csrf_token"],
+            )
+        return render_template(
+            "section.html",
+            active_nav=active_nav,
+            section=APP_SECTIONS[active_nav],
+            current_user=user,
+            chapters_count=len(CHAPTERS),
+            completed_count=0,
+            csrf_token=session["csrf_token"],
+        )
+
+    @app.get("/library")
+    def library():
+        return render_app_section("library")
+
+    @app.get("/laboratory")
+    def laboratory():
+        return render_app_section("laboratory")
+
+    @app.get("/testing")
+    def testing():
+        return render_app_section("testing")
+
+    @app.get("/profile")
+    def profile():
+        return render_app_section("profile")
 
     @app.get("/course/<int:chapter_id>")
     def course_chapter(chapter_id):

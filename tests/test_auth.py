@@ -103,7 +103,7 @@ class AuthenticationTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         page = self.client.get("/").data
-        self.assertIn(b'href="#my-course"', page)
+        self.assertIn(b"#my-course", page)
         self.assertIn(b'id="my-course"', page)
         self.assertIn("Мой курс".encode(), page)
         self.assertIn("Схемотехника цифровых систем".encode(), page)
@@ -112,6 +112,37 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn(b'href="/course/1"', page)
         self.assertEqual(page.count(b'class="chapter-link'), 8)
         self.assertIn(b'is-locked', page)
+
+    def test_header_and_sidebar_navigation_routes_are_available(self):
+        page = self.client.get("/").data
+        for label in ["Главная", "Обучение", "Библиотека", "Лаборатория", "Тестирование", "Профиль"]:
+            self.assertGreaterEqual(page.count(label.encode()), 2)
+
+        for path, title in [
+            ("/library", "Библиотека"),
+            ("/laboratory", "Лаборатория"),
+            ("/testing", "Тестирование"),
+            ("/profile", "Профиль"),
+        ]:
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(title.encode(), response.data)
+
+    def test_profile_navigation_shows_account_after_login(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+
+        response = self.client.get("/profile")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"test@example.com", response.data)
+        self.assertIn("разделов пройдено".encode(), response.data)
+        self.assertIn(b'aria-current="page">', response.data)
 
     def test_chapter_pages_are_locked_in_sequence_until_previous_is_completed(self):
         anonymous_response = self.client.get("/course/1")

@@ -1,0 +1,30 @@
+{% macro header_navigation(active_nav, current_user) -%}
+    <nav class="header-nav" aria-label="Основная навигация">
+        <a class="nav-link{% if active_nav == 'home' %} is-active{% endif %}" href="{{ url_for('home') }}"{% if active_nav == 'home' %} aria-current="page"{% endif %}>Главная</a>
+        <a class="nav-link{% if active_nav == 'learning' %} is-active{% endif %}" href="{{ url_for('home', _anchor='my-course' if current_user else 'contents') }}"{% if active_nav == 'learning' %} aria-current="page"{% endif %}>Обучение</a>
+        <a class="nav-link{% if active_nav == 'library' %} is-active{% endif %}" href="{{ url_for('library') }}"{% if active_nav == 'library' %} aria-current="page"{% endif %}>Библиотека</a>
+        <a class="nav-link{% if active_nav == 'laboratory' %} is-active{% endif %}" href="{{ url_for('laboratory') }}"{% if active_nav == 'laboratory' %} aria-current="page"{% endif %}>Лаборатория</a>
+        <a class="nav-link{% if active_nav == 'testing' %} is-active{% endif %}" href="{{ url_for('testing') }}"{% if active_nav == 'testing' %} aria-current="page"{% endif %}>Тестирование</a>
+        <a class="nav-link{% if active_nav == 'profile' %} is-active{% endif %}" href="{{ url_for('profile') }}"{% if active_nav == 'profile' %} aria-current="page"{% endif %}>Профиль</a>
+    </nav>
+{%- endmacro %}
+
+{% macro side_navigation(active_nav, current_user) -%}
+    <aside class="sidebar">
+        <p class="sidebar-label">РАЗДЕЛЫ</p>
+        <nav class="sidebar-nav" aria-label="Разделы приложения">
+            <a class="side-link{% if active_nav == 'home' %} is-active{% endif %}" href="{{ url_for('home') }}"{% if active_nav == 'home' %} aria-current="page"{% endif %}><span class="side-icon" aria-hidden="true">⌂</span>Главная</a>
+            <a class="side-link{% if active_nav == 'learning' %} is-active{% endif %}" href="{{ url_for('home', _anchor='my-course' if current_user else 'contents') }}"{% if active_nav == 'learning' %} aria-current="page"{% endif %}><span class="side-icon" aria-hidden="true">▤</span>Обучение</a>
+            <a class="side-link{% if active_nav == 'library' %} is-active{% endif %}" href="{{ url_for('library') }}"{% if active_nav == 'library' %} aria-current="page"{% endif %}><span class="side-icon" aria-hidden="true">▥</span>Библиотека</a>
+            <a class="side-link{% if active_nav == 'laboratory' %} is-active{% endif %}" href="{{ url_for('laboratory') }}"{% if active_nav == 'laboratory' %} aria-current="page"{% endif %}><span class="side-icon" aria-hidden="true">⌬</span>Лаборатория</a>
+            <a class="side-link{% if active_nav == 'testing' %} is-active{% endif %}" href="{{ url_for('testing') }}"{% if active_nav == 'testing' %} aria-current="page"{% endif %}><span class="side-icon" aria-hidden="true">✓</span>Тестирование</a>
+            <a class="side-link{% if active_nav == 'profile' %} is-active{% endif %}" href="{{ url_for('profile') }}"{% if active_nav == 'profile' %} aria-current="page"{% endif %}><span class="side-icon" aria-hidden="true">◉</span>Профиль</a>
+        </nav>
+        {% if current_user %}
+            <div class="sidebar-account">
+                <span class="sidebar-account-mark" aria-hidden="true">{{ current_user.username[0]|upper if current_user.username else current_user.email[0]|upper }}</span>
+                <span class="sidebar-account-name">{{ current_user.username or current_user.email }}</span>
+            </div>
+        {% endif %}
+    </aside>
+{%- endmacro %}
