@@ -1492,6 +1492,66 @@ a.chapter-link:hover {
     margin: 18px 0 0;
 }
 
+.library-materials {
+    margin-top: 35px;
+}
+
+.library-material-list {
+    display: grid;
+    gap: 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.library-material,
+.library-empty-state {
+    padding: clamp(22px, 4vw, 32px);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+}
+
+.library-material-type {
+    color: #859188;
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.library-material h2 {
+    margin: 9px 0 7px;
+    font-size: 18px;
+    letter-spacing: -0.04em;
+}
+
+.library-material > p,
+.library-material-content,
+.library-empty-state {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+.library-material > p {
+    margin: 0;
+}
+
+.library-material-reference {
+    margin-top: 12px !important;
+    overflow-wrap: anywhere;
+}
+
+.library-material-content {
+    margin-top: 12px;
+    white-space: pre-wrap;
+}
+
+.library-empty-state {
+    margin: 0;
+}
+
 button:focus-visible,
 a:focus-visible,
 input:focus-visible {

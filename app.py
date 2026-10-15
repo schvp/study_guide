@@ -366,6 +366,24 @@ def create_app(test_config=None):
                 completion_history=completion_history,
                 csrf_token=session["csrf_token"],
             )
+        if active_nav == "library":
+            library_materials = get_db().execute(
+                """
+                SELECT id, title, description, material_type, resource_url, content
+                FROM library_materials
+                WHERE course_id = ?
+                ORDER BY position, id
+                """,
+                (get_course()["id"],),
+            ).fetchall()
+            return render_template(
+                "section.html",
+                active_nav=active_nav,
+                section=APP_SECTIONS[active_nav],
+                current_user=user,
+                library_materials=library_materials,
+                csrf_token=session["csrf_token"],
+            )
         return render_template(
             "section.html",
             active_nav=active_nav,

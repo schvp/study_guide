@@ -26,6 +26,7 @@ class DatabaseMigrationTests(unittest.TestCase):
                 (3, "create_course_tables"),
                 (4, "link_progress_to_chapters"),
                 (5, "create_chapter_completion_history"),
+                (6, "create_library_materials"),
             ],
         )
         user_columns = {
@@ -47,8 +48,44 @@ class DatabaseMigrationTests(unittest.TestCase):
             self.database.execute(
                 "SELECT COUNT(*) FROM schema_migrations"
             ).fetchone()[0],
-            5,
+            6,
         )
+
+    def test_library_materials_are_course_scoped_and_have_resource_fields(self):
+        self.database.execute("PRAGMA foreign_keys = ON")
+        migrations.migrate_database(self.database)
+        columns = {
+            row[1] for row in self.database.execute(
+                "PRAGMA table_info(library_materials)"
+            )
+        }
+        self.assertTrue(
+            {
+                "course_id",
+                "title",
+                "description",
+                "material_type",
+                "resource_url",
+                "content",
+                "position",
+            }.issubset(columns)
+        )
+        self.database.execute(
+            "INSERT INTO courses (id, slug, title) VALUES (1, 'course', 'Course')"
+        )
+        self.database.execute(
+            """
+            INSERT INTO library_materials (course_id, title, material_type)
+            VALUES (1, 'Reference', 'book')
+            """
+        )
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.database.execute(
+                """
+                INSERT INTO library_materials (course_id, title, material_type)
+                VALUES (99, 'Invalid', 'article')
+                """
+            )
 
     def test_progress_references_chapters_and_cascades_on_deletion(self):
         self.database.execute("PRAGMA foreign_keys = ON")
@@ -102,7 +139,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         with patch.object(
             migrations,
             "MIGRATIONS",
-            migrations.MIGRATIONS + ((6, "failing_migration", fail_after_ddl),),
+            migrations.MIGRATIONS + ((7, "failing_migration", fail_after_ddl),),
         ):
             with self.assertRaisesRegex(RuntimeError, "migration failed"):
                 migrations.migrate_database(self.database)
@@ -116,7 +153,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         self.assertIsNone(table)
         self.assertIsNone(
             self.database.execute(
-                "SELECT 1 FROM schema_migrations WHERE version = 6"
+                "SELECT 1 FROM schema_migrations WHERE version = 7"
             ).fetchone()
         )
 

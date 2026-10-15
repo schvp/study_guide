@@ -117,12 +117,39 @@ def _create_chapter_completion_history(database):
     )
 
 
+def _create_library_materials(database):
+    database.execute(
+        """
+        CREATE TABLE library_materials (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            material_type TEXT NOT NULL DEFAULT 'article'
+                CHECK (material_type IN ('article', 'book', 'video', 'link', 'file')),
+            resource_url TEXT,
+            content TEXT NOT NULL DEFAULT '',
+            position INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    database.execute(
+        """
+        CREATE INDEX idx_library_materials_course_position
+        ON library_materials(course_id, position, id)
+        """
+    )
+
+
 MIGRATIONS = (
     (1, "create_user_tables", _create_user_tables),
     (2, "add_username", _add_username),
     (3, "create_course_tables", _create_course_tables),
     (4, "link_progress_to_chapters", _link_progress_to_chapters),
     (5, "create_chapter_completion_history", _create_chapter_completion_history),
+    (6, "create_library_materials", _create_library_materials),
 )
 
 

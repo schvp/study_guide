@@ -70,6 +70,30 @@
                 <p>После входа здесь появятся данные аккаунта и ваш прогресс.</p>
                 <a class="primary-link" href="{{ url_for('home', login='1') }}">Перейти ко входу <span aria-hidden="true">→</span></a>
             </section>
+        {% elif active_nav == "library" %}
+            <section class="library-materials" aria-label="Материалы библиотеки">
+                {% if library_materials %}
+                    <ul class="library-material-list">
+                        {% for material in library_materials %}
+                            <li class="library-material">
+                                <span class="library-material-type">{{ material.material_type }}</span>
+                                <h2>{{ material.title }}</h2>
+                                {% if material.description %}
+                                    <p>{{ material.description }}</p>
+                                {% endif %}
+                                {% if material.content %}
+                                    <div class="library-material-content">{{ material.content }}</div>
+                                {% endif %}
+                                {% if material.resource_url %}
+                                    <p class="library-material-reference">Ссылка: {{ material.resource_url }}</p>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="library-empty-state">Материалы библиотеки появятся здесь.</p>
+                {% endif %}
+            </section>
         {% else %}
             <section class="section-placeholder">
                 <span class="placeholder-mark" aria-hidden="true">{% if active_nav == "library" %}▥{% elif active_nav == "laboratory" %}⌬{% else %}✓{% endif %}</span>

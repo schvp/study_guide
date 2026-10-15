@@ -259,6 +259,41 @@ class AuthenticationTests(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertIn(title.encode(), response.data)
 
+    def test_library_page_shows_database_materials_and_empty_state(self):
+        empty_page = self.client.get("/library")
+        self.assertEqual(empty_page.status_code, 200)
+        self.assertIn("Материалы библиотеки появятся здесь.".encode(), empty_page.data)
+
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            database.execute(
+                """
+                INSERT INTO library_materials (
+                    course_id, title, description, material_type, resource_url,
+                    content, position
+                )
+                SELECT id, ?, ?, ?, ?, ?, ?
+                FROM courses
+                WHERE slug = 'digital-circuits'
+                """,
+                (
+                    "Справочник по логике",
+                    "Дополнительное описание",
+                    "book",
+                    "https://example.org/reference",
+                    "Текст из библиотеки",
+                    1,
+                ),
+            )
+            database.commit()
+
+        populated_page = self.client.get("/library")
+        self.assertEqual(populated_page.status_code, 200)
+        self.assertIn("Справочник по логике".encode(), populated_page.data)
+        self.assertIn("Дополнительное описание".encode(), populated_page.data)
+        self.assertIn("book".encode(), populated_page.data)
+        self.assertIn("Текст из библиотеки".encode(), populated_page.data)
+        self.assertIn("https://example.org/reference".encode(), populated_page.data)
+
     def test_unknown_routes_show_branded_404_page(self):
         response = self.client.get("/this-page-does-not-exist")
 
@@ -468,7 +503,10 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(len(seeded_chapters), 8)
         self.assertEqual(seeded_chapters[0], (1, 1, "Введение в цифровую схемотехнику"))
         self.assertEqual(legacy_progress, (1, 1))
-        self.assertEqual(migration_history, [(1,), (2,), (3,), (4,), (5,)])
+        self.assertEqual(
+            migration_history,
+            [(1,), (2,), (3,), (4,), (5,), (6,)],
+        )
         self.assertEqual(legacy_history, (1, legacy_progress_updated_at))
         self.assertIn(
             ("chapters", "chapter_id", "id", "CASCADE"),
