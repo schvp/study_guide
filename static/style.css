@@ -93,6 +93,15 @@ main,
     color: var(--paper);
 }
 
+.header-user {
+    max-width: 260px;
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .auth-dialog {
     width: min(440px, calc(100% - 32px));
     max-width: none;
@@ -613,6 +622,59 @@ p {
     font-size: 15px;
 }
 
+.progress-summary {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    margin: 0 0 15px;
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.progress-summary strong {
+    color: var(--ink);
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 12px;
+}
+
+.progress-summary progress {
+    width: min(190px, 35%);
+    height: 5px;
+    overflow: hidden;
+    border: 0;
+    border-radius: 5px;
+    background: #dfe5dc;
+    color: #6e9367;
+    appearance: none;
+}
+
+.progress-summary progress::-webkit-progress-bar {
+    border-radius: 5px;
+    background: #dfe5dc;
+}
+
+.progress-summary progress::-webkit-progress-value {
+    border-radius: 5px;
+    background: #6e9367;
+}
+
+.progress-summary progress::-moz-progress-bar {
+    border-radius: 5px;
+    background: #6e9367;
+}
+
+.progress-prompt,
+.progress-status {
+    margin: -10px 0 15px;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.6;
+}
+
+.progress-status:empty {
+    display: none;
+}
+
 .chapters {
     margin: 0;
     padding: 0;
@@ -624,7 +686,7 @@ p {
 .chapter {
     display: grid;
     min-height: 70px;
-    grid-template-columns: 58px 1fr;
+    grid-template-columns: 28px 1fr;
     align-items: center;
     gap: 15px;
     border-bottom: 1px solid var(--line);
@@ -640,6 +702,32 @@ p {
     font-size: 13px;
     font-weight: 700;
     letter-spacing: -0.015em;
+}
+
+.chapter-progress {
+    display: flex;
+    min-height: 70px;
+    align-items: center;
+    gap: 13px;
+    cursor: pointer;
+}
+
+.progress-toggle {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    margin: 0;
+    accent-color: #557d5c;
+}
+
+.progress-toggle:disabled {
+    cursor: not-allowed;
+}
+
+.progress-toggle:checked + .chapter-title {
+    color: #74837a;
+    text-decoration: line-through;
+    text-decoration-color: #a7b2a5;
 }
 
 .learning-note {
@@ -778,6 +866,11 @@ input:focus-visible {
         font-size: 11px;
     }
 
+    .header-user {
+        max-width: 125px;
+        font-size: 10px;
+    }
+
     .auth-card {
         padding: 32px 24px 25px;
     }
@@ -818,8 +911,13 @@ input:focus-visible {
 
     .chapter {
         min-height: 68px;
-        grid-template-columns: 34px 1fr;
-        gap: 10px;
+        grid-template-columns: 20px 1fr;
+        gap: 9px;
+    }
+
+    .chapter-progress {
+        min-height: 68px;
+        gap: 9px;
     }
 
     .chapter-title {

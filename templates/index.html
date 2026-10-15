@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <meta name="description" content="Интерактивное учебное пособие по схемотехнике цифровых систем: от систем счисления до запоминающих устройств.">
     <title>Схемотехника цифровых систем — учебное пособие</title>
     <link rel="stylesheet"
@@ -15,9 +16,15 @@
             <span>Учебный навигатор</span>
         </a>
         <a class="header-link" href="#contents">К содержанию <span aria-hidden="true">↘</span></a>
-        <button class="header-auth" type="button" data-auth-open>Войти</button>
+        {% if current_user %}
+            <span class="header-user">{{ current_user.email }}</span>
+            <button class="header-auth" type="button" data-auth-logout>Выйти</button>
+        {% else %}
+            <button class="header-auth" type="button" data-auth-open>Войти</button>
+        {% endif %}
     </header>
 
+    {% if not current_user %}
     <dialog class="auth-dialog" id="auth-dialog" aria-labelledby="auth-title">
         <div class="auth-card">
             <button class="auth-close" type="button" data-auth-close aria-label="Закрыть окно">×</button>
@@ -30,39 +37,40 @@
                 <button class="auth-tab" type="button" data-auth-mode="register" aria-pressed="false">Регистрация</button>
             </div>
 
-            <form class="auth-form" method="dialog" data-auth-form="login">
+            <form class="auth-form" method="post" action="/api/auth/login" data-auth-form="login">
                 <label class="auth-field">
                     <span>Электронная почта</span>
-                    <input type="email" name="email" autocomplete="email" placeholder="name@example.com" required>
+                    <input type="email" name="email" autocomplete="email" maxlength="254" placeholder="name@example.com" required>
                 </label>
                 <label class="auth-field">
                     <span>Пароль</span>
-                    <input type="password" name="password" autocomplete="current-password" placeholder="Введите пароль" required>
+                    <input type="password" name="password" autocomplete="current-password" maxlength="128" placeholder="Введите пароль" required>
                 </label>
                 <button class="auth-submit" type="submit">Войти <span aria-hidden="true">→</span></button>
             </form>
 
-            <form class="auth-form" method="dialog" data-auth-form="register" hidden>
+            <form class="auth-form" method="post" action="/api/auth/register" data-auth-form="register" hidden>
                 <label class="auth-field">
                     <span>Электронная почта</span>
-                    <input type="email" name="email" autocomplete="email" placeholder="name@example.com" required>
+                    <input type="email" name="email" autocomplete="email" maxlength="254" placeholder="name@example.com" required>
                 </label>
                 <label class="auth-field">
                     <span>Пароль</span>
-                    <input type="password" name="password" autocomplete="new-password" placeholder="Не менее 8 символов" minlength="8" required>
+                    <input type="password" name="password" autocomplete="new-password" placeholder="Не менее 8 символов" minlength="8" maxlength="128" required>
                 </label>
                 <label class="auth-field">
                     <span>Повторите пароль</span>
-                    <input type="password" name="password-confirmation" autocomplete="new-password" placeholder="Введите пароль ещё раз" required>
+                    <input type="password" name="password-confirmation" autocomplete="new-password" placeholder="Введите пароль ещё раз" maxlength="128" required>
                 </label>
                 <button class="auth-submit" type="submit">Создать аккаунт <span aria-hidden="true">→</span></button>
             </form>
 
             <p class="auth-status" data-auth-status aria-live="polite">
-                Демонстрационный интерфейс: данные не отправляются.
+                Пароль сохраняется в виде криптографического хеша.
             </p>
         </div>
     </dialog>
+    {% endif %}
 
     <main>
         <section class="hero" aria-labelledby="course-title">
@@ -141,11 +149,31 @@
                 <p class="contents-count"><span>{{ "%02d"|format(chapters|length) }}</span> разделов</p>
             </div>
 
+            {% if current_user %}
+                <div class="progress-summary">
+                    <span>Ваш прогресс</span>
+                    <progress data-progress-bar value="{{ completed_chapters|length }}" max="{{ chapters|length }}"></progress>
+                    <span><strong data-progress-count>{{ completed_chapters|length }}</strong> из {{ chapters|length }}</span>
+                </div>
+            {% else %}
+                <p class="progress-prompt">Войдите, чтобы отмечать пройденные разделы и сохранять прогресс.</p>
+            {% endif %}
+            <p class="progress-status" data-progress-status aria-live="polite"></p>
+
             <ol class="chapters">
                 {% for chapter in chapters %}
                     <li class="chapter">
                         <span class="number">{{ "%02d"|format(loop.index) }}</span>
-                        <span class="chapter-title">{{ chapter }}</span>
+                        <label class="chapter-progress">
+                            <input
+                                type="checkbox"
+                                class="progress-toggle"
+                                data-chapter-id="{{ loop.index }}"
+                                {% if loop.index in completed_chapters %}checked{% endif %}
+                                {% if not current_user %}disabled aria-label="Войдите, чтобы отметить раздел пройденным"{% else %}aria-label="Отметить раздел пройденным"{% endif %}
+                            >
+                            <span class="chapter-title">{{ chapter }}</span>
+                        </label>
                     </li>
                 {% endfor %}
             </ol>
