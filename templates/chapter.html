@@ -28,7 +28,7 @@
     {{ side_navigation("learning", current_user) }}
 
     <main class="lesson-main">
-        <a class="lesson-back" href="{{ url_for('home', _anchor='my-course') if current_user else url_for('home') }}">
+        <a class="lesson-back" href="{{ url_for('course_overview', slug=course.slug) if current_user else url_for('home') }}">
             <span aria-hidden="true">←</span> {% if current_user %}К содержанию курса{% else %}На главную{% endif %}
         </a>
 

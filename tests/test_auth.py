@@ -103,7 +103,7 @@ class AuthenticationTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         page = self.client.get("/").data
-        self.assertIn(b"#my-course", page)
+        self.assertIn(b'href="/courses"', page)
         self.assertIn(b'id="my-course"', page)
         self.assertIn("Мой курс".encode(), page)
         self.assertIn("Схемотехника цифровых систем".encode(), page)
@@ -115,6 +115,60 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn(b'href="/course/1"', page)
         self.assertEqual(page.count(b'class="chapter-link'), 8)
         self.assertIn(b'is-locked', page)
+
+    def test_course_catalog_lists_courses_and_opens_course_specific_chapters(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            database.execute(
+                """
+                INSERT INTO courses (id, slug, title, description)
+                VALUES (2, 'logic-basics', 'Основы логики', 'Отдельный учебный курс')
+                """
+            )
+            database.executemany(
+                """
+                INSERT INTO chapters (id, course_id, position, title, description)
+                VALUES (?, 2, ?, ?, ?)
+                """,
+                [
+                    (101, 1, "Логическое высказывание", "Первый раздел курса"),
+                    (102, 2, "Операции логики", "Второй раздел курса"),
+                ],
+            )
+            database.commit()
+
+        catalog = self.client.get("/courses")
+        self.assertEqual(catalog.status_code, 200)
+        self.assertIn("Каталог курсов".encode(), catalog.data)
+        self.assertIn("Основы логики".encode(), catalog.data)
+        self.assertIn(b'href="/courses/logic-basics"', catalog.data)
+
+        overview = self.client.get("/courses/logic-basics")
+        self.assertEqual(overview.status_code, 200)
+        self.assertIn("Отдельный учебный курс".encode(), overview.data)
+        self.assertIn("Логическое высказывание".encode(), overview.data)
+        self.assertIn("Операции логики".encode(), overview.data)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self.client.get("/course/101").status_code, 200)
+        self.assertEqual(self.client.get("/course/102").status_code, 403)
+        self.assertEqual(
+            self._post_json("/api/progress/101", {"completed": True}).status_code,
+            200,
+        )
+        self.assertEqual(self.client.get("/course/102").status_code, 200)
+
+    def test_unknown_course_overview_uses_branded_404(self):
+        response = self.client.get("/courses/missing-course")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("Страница не найдена".encode(), response.data)
 
     def test_homepage_and_chapter_page_use_course_data_from_database(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:

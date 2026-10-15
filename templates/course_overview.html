@@ -1,0 +1,74 @@
+{% from "_navigation.html" import header_navigation, side_navigation %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% if csrf_token %}<meta name="csrf-token" content="{{ csrf_token }}">{% endif %}
+    <meta name="description" content="{{ course.description }}">
+    <title>{{ course.title }} — Учебный навигатор</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="app-layout">
+    <header class="site-header">
+        <a class="brand" href="{{ url_for('home') }}" aria-label="На главную">
+            <span class="brand-mark" aria-hidden="true">Σ</span>
+            <span>Учебный навигатор</span>
+        </a>
+        {{ header_navigation(active_nav, current_user) }}
+        <div class="header-account">
+            {% if current_user %}
+                <span class="header-user">{{ current_user.email }}</span>
+                <button class="header-auth" type="button" data-auth-logout>Выйти</button>
+            {% else %}
+                <a class="header-auth" href="{{ url_for('home', login='1') }}">Войти</a>
+            {% endif %}
+        </div>
+    </header>
+    {{ side_navigation(active_nav, current_user) }}
+
+    <main class="section-main">
+        <a class="lesson-back" href="{{ url_for('course_catalog') }}"><span aria-hidden="true">←</span> К каталогу курсов</a>
+        <p class="eyebrow">Учебный курс</p>
+        <h1>{{ course.title }}</h1>
+        <p class="section-description">{{ course.description or "Описание курса будет добавлено позже." }}</p>
+
+        <section class="course-overview-contents" aria-labelledby="course-contents-title">
+            <div class="course-overview-heading">
+                <p class="profile-label">ПРОГРАММА</p>
+                <h2 id="course-contents-title">Содержание курса</h2>
+            </div>
+            {% if chapters %}
+                <ol class="course-overview-list">
+                    {% for chapter in chapters %}
+                        <li>
+                            <span class="course-overview-number">{{ "%02d"|format(chapter.position) }}</span>
+                            <div class="course-overview-chapter">
+                                <h3>{{ chapter.title }}</h3>
+                                {% if chapter.description %}
+                                    <p>{{ chapter.description }}</p>
+                                {% endif %}
+                            </div>
+                            {% if chapter.id in completed_chapters %}
+                                <span class="course-overview-status is-complete">Пройдено</span>
+                            {% elif chapter.id in accessible_chapters %}
+                                <a class="course-overview-link" href="{{ url_for('course_chapter', chapter_id=chapter.id) }}">Открыть <span aria-hidden="true">→</span></a>
+                            {% else %}
+                                <span class="course-overview-status">Закрыто</span>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ol>
+            {% else %}
+                <p class="library-empty-state">Содержание курса пока не добавлено.</p>
+            {% endif %}
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <span>Схемотехника цифровых систем</span>
+        <span>Учебное пособие <span aria-hidden="true">·</span> Учитесь видеть логику</span>
+    </footer>
+    <script src="{{ url_for('static', filename='auth.js') }}" defer></script>
+</body>
+</html>

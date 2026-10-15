@@ -224,6 +224,12 @@ def create_app(test_config=None):
             (COURSE_SLUG,),
         ).fetchone()
 
+    def get_course_by_slug(slug):
+        return get_db().execute(
+            "SELECT id, slug, title, description FROM courses WHERE slug = ?",
+            (slug,),
+        ).fetchone()
+
     def get_course_chapters(course_id):
         return get_db().execute(
             """
@@ -306,6 +312,73 @@ def create_app(test_config=None):
             accessible_chapters=accessible_chapters,
             csrf_token=session["csrf_token"],
             demo_user_enabled=app.config["SEED_DEMO_USER"],
+        )
+
+    @app.get("/courses")
+    def course_catalog():
+        courses = get_db().execute(
+            """
+            SELECT courses.id, courses.slug, courses.title, courses.description,
+                COUNT(chapters.id) AS chapter_count
+            FROM courses
+            LEFT JOIN chapters ON chapters.course_id = courses.id
+            GROUP BY courses.id
+            ORDER BY courses.title COLLATE NOCASE, courses.id
+            """
+        ).fetchall()
+        return render_template(
+            "courses.html",
+            courses=courses,
+            current_user=current_user(),
+            active_nav="learning",
+            csrf_token=session["csrf_token"],
+        )
+
+    @app.get("/courses/<slug>")
+    def course_overview(slug):
+        course = get_course_by_slug(slug)
+        if course is None:
+            return render_template(
+                "404.html",
+                current_user=current_user(),
+            ), 404
+
+        chapters = get_course_chapters(course["id"])
+        user = current_user()
+        completed_chapters = set()
+        if user is not None:
+            completed_chapters = {
+                row["chapter_id"]
+                for row in get_db().execute(
+                    """
+                    SELECT progress.chapter_id
+                    FROM chapter_progress AS progress
+                    JOIN chapters ON chapters.id = progress.chapter_id
+                    WHERE progress.user_id = ?
+                        AND progress.completed = 1
+                        AND chapters.course_id = ?
+                    """,
+                    (user["id"], course["id"]),
+                ).fetchall()
+            }
+        accessible_chapters = set()
+        for chapter in chapters:
+            if all(
+                previous["id"] in completed_chapters
+                for previous in chapters
+                if previous["position"] < chapter["position"]
+            ):
+                accessible_chapters.add(chapter["id"])
+
+        return render_template(
+            "course_overview.html",
+            course=course,
+            chapters=chapters,
+            current_user=user,
+            completed_chapters=completed_chapters,
+            accessible_chapters=accessible_chapters,
+            active_nav="learning",
+            csrf_token=session["csrf_token"],
         )
 
     def render_app_section(active_nav):
@@ -422,17 +495,24 @@ def create_app(test_config=None):
 
     @app.get("/course/<int:chapter_id>")
     def course_chapter(chapter_id):
-        course = get_course()
-        chapters = get_course_chapters(course["id"])
-        chapter_by_id = next(
-            (chapter for chapter in chapters if chapter["id"] == chapter_id),
-            None,
-        )
+        chapter_by_id = get_db().execute(
+            """
+            SELECT id, course_id, position, title, description, content
+            FROM chapters
+            WHERE id = ?
+            """,
+            (chapter_id,),
+        ).fetchone()
         if chapter_by_id is None:
             return render_template(
                 "404.html",
                 current_user=current_user(),
             ), 404
+        course = get_db().execute(
+            "SELECT id, slug, title, description FROM courses WHERE id = ?",
+            (chapter_by_id["course_id"],),
+        ).fetchone()
+        chapters = get_course_chapters(course["id"])
 
         user = current_user()
         if user is None:
@@ -442,6 +522,7 @@ def create_app(test_config=None):
                 chapter_id=chapter_id,
                 current_user=None,
                 access_state="login_required",
+                course=course,
                 csrf_token=session["csrf_token"],
             ), 401
 
@@ -465,6 +546,7 @@ def create_app(test_config=None):
                 chapter_id=chapter_id,
                 current_user=user,
                 access_state="locked",
+                course=course,
                 csrf_token=session["csrf_token"],
             ), 403
 
@@ -584,14 +666,17 @@ def create_app(test_config=None):
         user = current_user()
         if user is None:
             return jsonify(error="Войдите, чтобы сохранять прогресс обучения."), 401
-        course = get_course()
-        chapters = get_course_chapters(course["id"])
-        chapter = next(
-            (chapter for chapter in chapters if chapter["id"] == chapter_id),
-            None,
-        )
+        chapter = get_db().execute(
+            "SELECT id, course_id, position FROM chapters WHERE id = ?",
+            (chapter_id,),
+        ).fetchone()
         if chapter is None:
             return jsonify(error="Такого раздела не существует."), 404
+        course = get_db().execute(
+            "SELECT id FROM courses WHERE id = ?",
+            (chapter["course_id"],),
+        ).fetchone()
+        chapters = get_course_chapters(course["id"])
 
         payload = json_payload()
         if payload is None or payload.get("completed") is not True:

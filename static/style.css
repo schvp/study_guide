@@ -1552,6 +1552,121 @@ a.chapter-link:hover {
     margin: 0;
 }
 
+.course-catalog {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr));
+    gap: 16px;
+    margin: 35px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.course-catalog-card,
+.course-overview-contents {
+    padding: clamp(24px, 4vw, 36px);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+}
+
+.course-catalog-card > .eyebrow,
+.course-overview-heading .profile-label {
+    margin: 0 0 12px;
+}
+
+.course-catalog-card h2 {
+    margin: 0;
+    font-size: 21px;
+    letter-spacing: -0.045em;
+}
+
+.course-catalog-description,
+.course-overview-chapter p {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+.course-catalog-description {
+    margin: 12px 0 0;
+}
+
+.course-catalog-count {
+    margin: 18px 0 0;
+    color: #859188;
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 10px;
+}
+
+.course-catalog-card .primary-link {
+    margin-top: 15px;
+}
+
+.lesson-back + .eyebrow {
+    margin-top: 32px;
+}
+
+.course-overview-contents {
+    margin-top: 35px;
+}
+
+.course-overview-heading h2 {
+    margin: 0;
+    font-size: 20px;
+    letter-spacing: -0.04em;
+}
+
+.course-overview-list {
+    margin: 22px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.course-overview-list li {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 0;
+    border-top: 1px solid var(--line);
+}
+
+.course-overview-number {
+    color: #859188;
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 11px;
+}
+
+.course-overview-chapter {
+    min-width: 0;
+    flex: 1;
+}
+
+.course-overview-chapter h3 {
+    margin: 0;
+    font-size: 13px;
+}
+
+.course-overview-chapter p {
+    margin: 5px 0 0;
+}
+
+.course-overview-link,
+.course-overview-status {
+    flex: 0 0 auto;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.course-overview-link {
+    color: var(--ink);
+}
+
+.course-overview-status.is-complete {
+    color: #557d5c;
+}
+
 button:focus-visible,
 a:focus-visible,
 input:focus-visible {
@@ -1769,6 +1884,21 @@ input:focus-visible {
         align-items: flex-start;
         flex-direction: column;
         gap: 6px;
+    }
+
+    .course-overview-list li {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .course-overview-chapter {
+        flex-basis: calc(100% - 40px);
+    }
+
+    .course-overview-link,
+    .course-overview-status {
+        margin-left: 27px;
     }
 }
 
