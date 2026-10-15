@@ -66,7 +66,17 @@
                 <div class="lesson-content">
                     <p class="lesson-content-label">УЧЕБНЫЙ МАТЕРИАЛ</p>
                     {% if chapter.content %}
-                        <p class="lesson-body-text">{{ chapter.content }}</p>
+                        <div class="lesson-material">
+                            {% for block in chapter.content.split('\n\n') %}
+                                {% if block.startswith('## ') %}
+                                    <h2>{{ block[3:] }}</h2>
+                                {% elif block.startswith('### ') %}
+                                    <h3>{{ block[4:] }}</h3>
+                                {% else %}
+                                    <p>{{ block }}</p>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
                     {% else %}
                         <p>Учебный материал для этого раздела будет добавлен отдельно.</p>
                     {% endif %}

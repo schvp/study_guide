@@ -1087,7 +1087,32 @@ a.chapter-link:hover {
     letter-spacing: 0.1em;
 }
 
-.lesson-body-text {
+.lesson-material {
+    display: grid;
+    gap: 14px;
+}
+
+.lesson-material h2 {
+    margin: 14px 0 0;
+    color: var(--ink);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.035em;
+    line-height: 1.35;
+}
+
+.lesson-material h2:first-child {
+    margin-top: 0;
+}
+
+.lesson-material h3 {
+    margin: 8px 0 0;
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.lesson-material p {
     margin: 0;
     white-space: pre-wrap;
 }

@@ -148,6 +148,102 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("Описание из базы".encode(), chapter_page)
         self.assertIn("Текст материала из базы".encode(), chapter_page)
 
+    def test_first_chapter_is_seeded_with_readable_material(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            description, content = database.execute(
+                """
+                SELECT description, content FROM chapters
+                WHERE position = 1
+                """
+            ).fetchone()
+
+        self.assertTrue(description)
+        self.assertGreater(len(content), 1500)
+        self.assertIn("## Цель раздела", content)
+        self.assertIn("## Аналоговые и цифровые сигналы", content)
+        self.assertIn("## Проверьте себя", content)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        page = self.client.get("/course/1").data
+        self.assertIn("Цель раздела".encode(), page)
+        self.assertIn("Аналоговые и цифровые сигналы".encode(), page)
+        self.assertIn("Проверьте себя".encode(), page)
+        self.assertIn("Сколько различных комбинаций".encode(), page)
+
+    def test_first_chapter_material_is_seeded_into_existing_empty_chapter(self):
+        database_path = os.path.join(self.temp_dir.name, "empty-chapter.sqlite3")
+        with closing(sqlite3.connect(database_path)) as database:
+            database.executescript(
+                """
+                CREATE TABLE courses (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    slug TEXT NOT NULL UNIQUE,
+                    title TEXT NOT NULL,
+                    description TEXT NOT NULL DEFAULT '',
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+                INSERT INTO courses (slug, title) VALUES (
+                    'digital-circuits', 'Схемотехника цифровых систем'
+                );
+                CREATE TABLE chapters (
+                    id INTEGER PRIMARY KEY,
+                    course_id INTEGER NOT NULL REFERENCES courses(id),
+                    position INTEGER NOT NULL,
+                    title TEXT NOT NULL,
+                    description TEXT NOT NULL DEFAULT '',
+                    content TEXT NOT NULL DEFAULT '',
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE (course_id, position),
+                    UNIQUE (course_id, title)
+                );
+                INSERT INTO chapters (id, course_id, position, title)
+                VALUES (1, 1, 1, 'Введение в цифровую схемотехнику');
+                """
+            )
+
+        create_app(
+            {
+                "TESTING": True,
+                "SECRET_KEY": "seed-content-secret",
+                "DATABASE": database_path,
+                "SEED_DEMO_USER": False,
+            }
+        )
+        with closing(sqlite3.connect(database_path)) as database:
+            seeded_content = database.execute(
+                "SELECT description, content FROM chapters WHERE id = 1"
+            ).fetchone()
+        self.assertTrue(seeded_content[0])
+        self.assertIn("Цель раздела", seeded_content[1])
+
+        with closing(sqlite3.connect(database_path)) as database:
+            database.execute(
+                "UPDATE chapters SET content = ? WHERE id = 1",
+                ("Авторский материал",),
+            )
+            database.commit()
+        create_app(
+            {
+                "TESTING": True,
+                "SECRET_KEY": "seed-content-secret",
+                "DATABASE": database_path,
+                "SEED_DEMO_USER": False,
+            }
+        )
+        with closing(sqlite3.connect(database_path)) as database:
+            preserved_content = database.execute(
+                "SELECT content FROM chapters WHERE id = 1"
+            ).fetchone()[0]
+        self.assertEqual(preserved_content, "Авторский материал")
+
     def test_header_and_sidebar_navigation_routes_are_available(self):
         page = self.client.get("/").data
         for label in ["Главная", "Обучение", "Библиотека", "Лаборатория", "Тестирование", "Профиль"]:
