@@ -15,7 +15,54 @@
             <span>Учебный навигатор</span>
         </a>
         <a class="header-link" href="#contents">К содержанию <span aria-hidden="true">↘</span></a>
+        <button class="header-auth" type="button" data-auth-open>Войти</button>
     </header>
+
+    <dialog class="auth-dialog" id="auth-dialog" aria-labelledby="auth-title">
+        <div class="auth-card">
+            <button class="auth-close" type="button" data-auth-close aria-label="Закрыть окно">×</button>
+            <p class="eyebrow">Учебный навигатор</p>
+            <h2 id="auth-title">Рады вас видеть</h2>
+            <p class="auth-intro">Войдите или создайте аккаунт, чтобы продолжить обучение.</p>
+
+            <div class="auth-switch" aria-label="Вход или регистрация">
+                <button class="auth-tab" type="button" data-auth-mode="login" aria-pressed="true">Вход</button>
+                <button class="auth-tab" type="button" data-auth-mode="register" aria-pressed="false">Регистрация</button>
+            </div>
+
+            <form class="auth-form" method="dialog" data-auth-form="login">
+                <label class="auth-field">
+                    <span>Электронная почта</span>
+                    <input type="email" name="email" autocomplete="email" placeholder="name@example.com" required>
+                </label>
+                <label class="auth-field">
+                    <span>Пароль</span>
+                    <input type="password" name="password" autocomplete="current-password" placeholder="Введите пароль" required>
+                </label>
+                <button class="auth-submit" type="submit">Войти <span aria-hidden="true">→</span></button>
+            </form>
+
+            <form class="auth-form" method="dialog" data-auth-form="register" hidden>
+                <label class="auth-field">
+                    <span>Электронная почта</span>
+                    <input type="email" name="email" autocomplete="email" placeholder="name@example.com" required>
+                </label>
+                <label class="auth-field">
+                    <span>Пароль</span>
+                    <input type="password" name="password" autocomplete="new-password" placeholder="Не менее 8 символов" minlength="8" required>
+                </label>
+                <label class="auth-field">
+                    <span>Повторите пароль</span>
+                    <input type="password" name="password-confirmation" autocomplete="new-password" placeholder="Введите пароль ещё раз" required>
+                </label>
+                <button class="auth-submit" type="submit">Создать аккаунт <span aria-hidden="true">→</span></button>
+            </form>
+
+            <p class="auth-status" data-auth-status aria-live="polite">
+                Демонстрационный интерфейс: данные не отправляются.
+            </p>
+        </div>
+    </dialog>
 
     <main>
         <section class="hero" aria-labelledby="course-title">
@@ -115,5 +162,6 @@
         <span>Схемотехника цифровых систем</span>
         <span>Учебное пособие <span aria-hidden="true">·</span> Учитесь видеть логику</span>
     </footer>
+    <script src="{{ url_for('static', filename='auth.js') }}" defer></script>
 </body>
 </html>
