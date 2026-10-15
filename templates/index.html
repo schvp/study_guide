@@ -172,22 +172,25 @@
             {% else %}
                 <p class="progress-prompt">Войдите, чтобы отмечать пройденные разделы и сохранять прогресс.</p>
             {% endif %}
-            <p class="progress-status" data-progress-status aria-live="polite"></p>
+            {% if current_user %}
+                <p class="progress-prompt">Новые разделы открываются по очереди: после прохождения текущего становится доступен следующий.</p>
+            {% endif %}
 
             <ol class="chapters">
                 {% for chapter in chapters %}
                     <li class="chapter">
                         <span class="number">{{ "%02d"|format(loop.index) }}</span>
-                        <label class="chapter-progress">
-                            <input
-                                type="checkbox"
-                                class="progress-toggle"
-                                data-chapter-id="{{ loop.index }}"
-                                {% if loop.index in completed_chapters %}checked{% endif %}
-                                {% if not current_user %}disabled aria-label="Войдите, чтобы отметить раздел пройденным"{% else %}aria-label="Отметить раздел пройденным"{% endif %}
-                            >
-                            <span class="chapter-title">{{ chapter }}</span>
-                        </label>
+                        {% if loop.index in accessible_chapters %}
+                            <a class="chapter-link{% if loop.index in completed_chapters %} is-complete{% endif %}" href="{{ url_for('course_chapter', chapter_id=loop.index) }}">
+                                <span class="chapter-title">{{ chapter }}</span>
+                                <span class="chapter-state">{% if loop.index in completed_chapters %}Пройдено{% else %}Начать{% endif %}</span>
+                            </a>
+                        {% else %}
+                            <span class="chapter-link is-locked" aria-disabled="true">
+                                <span class="chapter-title">{{ chapter }}</span>
+                                <span class="chapter-state"><span aria-hidden="true">▣</span> Закрыт</span>
+                            </span>
+                        {% endif %}
                     </li>
                 {% endfor %}
             </ol>

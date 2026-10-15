@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% if csrf_token %}<meta name="csrf-token" content="{{ csrf_token }}">{% endif %}
+    <meta name="description" content="{% if chapter %}Раздел {{ chapter_id }}: {{ chapter }}{% else %}Раздел курса не найден{% endif %}">
+    <title>{% if chapter %}{{ chapter }} — Мой курс{% else %}Раздел не найден — Мой курс{% endif %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="site-header">
+        <a class="brand" href="{{ url_for('home') }}" aria-label="На главную">
+            <span class="brand-mark" aria-hidden="true">Σ</span>
+            <span>Учебный навигатор</span>
+        </a>
+        {% if current_user %}
+            <a class="header-link" href="{{ url_for('home', _anchor='my-course') }}">Мой курс <span aria-hidden="true">↗</span></a>
+            <span class="header-user">{{ current_user.email }}</span>
+        {% else %}
+            <a class="header-link" href="{{ url_for('home') }}">На главную <span aria-hidden="true">↗</span></a>
+        {% endif %}
+    </header>
+
+    <main class="lesson-main">
+        <a class="lesson-back" href="{{ url_for('home', _anchor='my-course') if current_user else url_for('home') }}">
+            <span aria-hidden="true">←</span> {% if current_user %}К содержанию курса{% else %}На главную{% endif %}
+        </a>
+
+        {% if access_state == "not_found" %}
+            <section class="lesson-card lesson-message">
+                <p class="eyebrow">Раздел не найден</p>
+                <h1>Такого раздела курса нет</h1>
+                <p>Проверьте адрес страницы или вернитесь к содержанию курса.</p>
+                <a class="primary-link" href="{{ url_for('home', _anchor='my-course') }}">К содержанию курса <span aria-hidden="true">→</span></a>
+            </section>
+        {% elif access_state == "login_required" %}
+            <section class="lesson-card lesson-message">
+                <p class="eyebrow">Нужен вход в аккаунт</p>
+                <h1>{{ chapter }}</h1>
+                <p>Войдите, чтобы открыть раздел и сохранять прогресс обучения.</p>
+                <a class="primary-link" href="{{ url_for('home') }}">Перейти ко входу <span aria-hidden="true">→</span></a>
+            </section>
+        {% elif access_state == "locked" %}
+            <section class="lesson-card lesson-message">
+                <p class="eyebrow">Раздел пока закрыт</p>
+                <span class="lesson-number">{{ "%02d"|format(chapter_id) }}</span>
+                <h1>{{ chapter }}</h1>
+                <p>Чтобы открыть этот раздел, завершите предыдущие разделы курса по порядку.</p>
+                <a class="primary-link" href="{{ url_for('home', _anchor='my-course') }}">Вернуться к содержанию <span aria-hidden="true">→</span></a>
+            </section>
+        {% else %}
+            <article class="lesson-card">
+                <div class="lesson-heading">
+                    <p class="eyebrow">Схемотехника цифровых систем <span class="lesson-divider">/</span> Раздел {{ "%02d"|format(chapter_id) }}</p>
+                    <span class="lesson-number">{{ "%02d"|format(chapter_id) }}</span>
+                    <h1>{{ chapter }}</h1>
+                    <p class="lesson-lead">Материалы раздела курса. Изучайте темы последовательно — следующий раздел откроется после завершения этого.</p>
+                </div>
+
+                <div class="lesson-content">
+                    <p class="lesson-content-label">УЧЕБНЫЙ МАТЕРИАЛ</p>
+                    <p>Учебный материал для этого раздела будет добавлен отдельно.</p>
+                </div>
+
+                <div class="lesson-actions">
+                    {% if completed %}
+                        <p class="lesson-complete-status"><span aria-hidden="true">✓</span> Раздел пройден</p>
+                        {% if next_chapter_id and next_chapter_accessible %}
+                            <a class="primary-link" href="{{ url_for('course_chapter', chapter_id=next_chapter_id) }}">Следующий раздел <span aria-hidden="true">→</span></a>
+                        {% elif next_chapter_id %}
+                            <a class="secondary-link" href="{{ url_for('home', _anchor='my-course') }}">К содержанию курса</a>
+                        {% else %}
+                            <p class="course-finished">Вы прошли все разделы курса.</p>
+                        {% endif %}
+                    {% else %}
+                        <p class="lesson-action-note">После изучения материала отметьте раздел пройденным, чтобы открыть следующий.</p>
+                        <button class="primary-link lesson-complete-button" type="button" data-complete-chapter="{{ chapter_id }}">
+                            Отметить раздел пройденным <span aria-hidden="true">→</span>
+                        </button>
+                        <p class="lesson-action-status" data-complete-status aria-live="polite"></p>
+                    {% endif %}
+                </div>
+            </article>
+        {% endif %}
+    </main>
+
+    <footer class="site-footer">
+        <span>Схемотехника цифровых систем</span>
+        <span>Учебное пособие <span aria-hidden="true">·</span> Учитесь видеть логику</span>
+    </footer>
+    <script src="{{ url_for('static', filename='auth.js') }}" defer></script>
+</body>
+</html>

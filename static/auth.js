@@ -5,7 +5,8 @@ const authModeButtons = document.querySelectorAll("[data-auth-mode]");
 const authForms = document.querySelectorAll("[data-auth-form]");
 const authStatus = document.querySelector("[data-auth-status]");
 const defaultAuthStatus = authStatus ? authStatus.textContent.trim() : "";
-const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+const csrfToken = csrfMeta ? csrfMeta.content : "";
 
 async function readApiResponse(response) {
     try {
@@ -136,49 +137,37 @@ if (logoutButton) {
     });
 }
 
-const progressToggles = document.querySelectorAll(".progress-toggle:not(:disabled)");
-const progressStatus = document.querySelector("[data-progress-status]");
-const progressCount = document.querySelector("[data-progress-count]");
-const progressBar = document.querySelector("[data-progress-bar]");
-
-function updateProgressSummary() {
-    if (!progressCount || !progressBar) {
-        return;
-    }
-
-    const completedCount = document.querySelectorAll(".progress-toggle:checked").length;
-    progressCount.textContent = String(completedCount);
-    progressBar.value = completedCount;
-}
-
-progressToggles.forEach((toggle) => {
-    toggle.addEventListener("change", async () => {
-        const completed = toggle.checked;
-        toggle.disabled = true;
-        progressStatus.textContent = "Сохраняем прогресс…";
+const completeChapterButton = document.querySelector("[data-complete-chapter]");
+if (completeChapterButton) {
+    completeChapterButton.addEventListener("click", async () => {
+        const status = document.querySelector("[data-complete-status]");
+        completeChapterButton.disabled = true;
+        status.textContent = "Сохраняем прогресс…";
 
         try {
-            const response = await fetch(`/api/progress/${toggle.dataset.chapterId}`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRF-Token": csrfToken,
+            const response = await fetch(
+                `/api/progress/${completeChapterButton.dataset.completeChapter}`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-Token": csrfToken,
+                    },
+                    body: JSON.stringify({ completed: true }),
                 },
-                body: JSON.stringify({ completed }),
-            });
+            );
             const result = await readApiResponse(response);
 
             if (!response.ok) {
                 throw new Error(result.error || "Не удалось сохранить прогресс.");
             }
 
-            updateProgressSummary();
-            progressStatus.textContent = "Прогресс сохранён.";
+            window.location.reload();
         } catch (error) {
-            toggle.checked = !completed;
-            progressStatus.textContent = error.message || "Не удалось связаться с сервером.";
-        } finally {
-            toggle.disabled = false;
+            status.textContent = error instanceof TypeError
+                ? "Не удалось связаться с сервером. Попробуйте ещё раз."
+                : error.message;
+            completeChapterButton.disabled = false;
         }
     });
-});
+}

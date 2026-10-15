@@ -109,6 +109,54 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("Схемотехника цифровых систем".encode(), page)
         self.assertIn("Содержание курса".encode(), page)
         self.assertEqual(page.count(b'class="chapter"'), 8)
+        self.assertIn(b'href="/course/1"', page)
+        self.assertEqual(page.count(b'class="chapter-link'), 8)
+        self.assertIn(b'is-locked', page)
+
+    def test_chapter_pages_are_locked_in_sequence_until_previous_is_completed(self):
+        anonymous_response = self.client.get("/course/1")
+        self.assertEqual(anonymous_response.status_code, 401)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self.client.get("/course/1").status_code, 200)
+        self.assertEqual(self.client.get("/course/2").status_code, 403)
+
+        response = self._post_json(
+            "/api/progress/1",
+            {"completed": True},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.client.get("/course/2").status_code, 200)
+        self.assertEqual(self.client.get("/course/3").status_code, 403)
+
+    def test_progress_cannot_skip_chapters_or_be_unmarked(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+
+        skipped = self._post_json(
+            "/api/progress/2",
+            {"completed": True},
+        )
+        unmarked = self._post_json(
+            "/api/progress/1",
+            {"completed": False},
+        )
+
+        self.assertEqual(skipped.status_code, 403)
+        self.assertEqual(unmarked.status_code, 400)
 
     def test_existing_database_is_migrated_without_losing_users(self):
         database_path = os.path.join(self.temp_dir.name, "legacy.sqlite3")
@@ -156,12 +204,14 @@ class AuthenticationTests(unittest.TestCase):
 
     def test_login_and_progress_are_persisted_per_user(self):
         self.assertEqual(self._register().status_code, 201)
-        response = self._post_json(
-            "/api/progress/2",
+        first_response = self._post_json(
+            "/api/progress/1",
             {"completed": True},
         )
+        response = self._post_json("/api/progress/2", {"completed": True})
+        self.assertEqual(first_response.status_code, 200)
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"checked", self.client.get("/").data)
+        self.assertIn(b"<strong data-progress-count>2</strong>", self.client.get("/").data)
 
         self.assertEqual(
             self._post_json("/api/auth/logout", {}).status_code,
@@ -176,7 +226,9 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         page = self.client.get("/").data
         self.assertIn(b"student@example.com", page)
-        self.assertIn(b"checked", page)
+        self.assertIn(b'href="/course/1"', page)
+        self.assertIn(b'href="/course/2"', page)
+        self.assertEqual(self.client.get("/course/3").status_code, 200)
 
     def test_login_rejects_wrong_password(self):
         self.assertEqual(self._register().status_code, 201)

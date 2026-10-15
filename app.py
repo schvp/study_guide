@@ -146,20 +146,91 @@ def create_app(test_config=None):
     def home():
         user = current_user()
         completed_chapters = set()
+        accessible_chapters = set()
         if user is not None:
             rows = get_db().execute(
                 "SELECT chapter_id FROM chapter_progress WHERE user_id = ? AND completed = 1",
                 (user["id"],),
             ).fetchall()
             completed_chapters = {row["chapter_id"] for row in rows}
+            for chapter_id in range(1, len(CHAPTERS) + 1):
+                if all(
+                    previous_id in completed_chapters
+                    for previous_id in range(1, chapter_id)
+                ):
+                    accessible_chapters.add(chapter_id)
 
         return render_template(
             "index.html",
             chapters=CHAPTERS,
             current_user=user,
             completed_chapters=completed_chapters,
+            accessible_chapters=accessible_chapters,
             csrf_token=session["csrf_token"],
             demo_user_enabled=app.config["SEED_DEMO_USER"],
+        )
+
+    @app.get("/course/<int:chapter_id>")
+    def course_chapter(chapter_id):
+        if chapter_id < 1 or chapter_id > len(CHAPTERS):
+            return render_template(
+                "chapter.html",
+                chapter=None,
+                current_user=current_user(),
+                access_state="not_found",
+                csrf_token=session["csrf_token"],
+            ), 404
+
+        user = current_user()
+        if user is None:
+            return render_template(
+                "chapter.html",
+                chapter=CHAPTERS[chapter_id - 1],
+                chapter_id=chapter_id,
+                current_user=None,
+                access_state="login_required",
+                csrf_token=session["csrf_token"],
+            ), 401
+
+        database = get_db()
+        completed_rows = database.execute(
+            """
+            SELECT chapter_id FROM chapter_progress
+            WHERE user_id = ? AND completed = 1
+            """,
+            (user["id"],),
+        ).fetchall()
+        completed_chapters = {row["chapter_id"] for row in completed_rows}
+        if any(
+            previous_id not in completed_chapters
+            for previous_id in range(1, chapter_id)
+        ):
+            return render_template(
+                "chapter.html",
+                chapter=CHAPTERS[chapter_id - 1],
+                chapter_id=chapter_id,
+                current_user=user,
+                access_state="locked",
+                csrf_token=session["csrf_token"],
+            ), 403
+
+        next_chapter_id = chapter_id + 1 if chapter_id < len(CHAPTERS) else None
+        return render_template(
+            "chapter.html",
+            chapter=CHAPTERS[chapter_id - 1],
+            chapter_id=chapter_id,
+            current_user=user,
+            access_state="available",
+            completed=chapter_id in completed_chapters,
+            next_chapter_id=next_chapter_id,
+            next_chapter_accessible=(
+                next_chapter_id is not None
+                and all(
+                    previous_id in completed_chapters
+                    for previous_id in range(1, next_chapter_id)
+                )
+            ),
+            csrf_token=session["csrf_token"],
         )
 
     @app.post("/api/auth/register")
@@ -254,8 +325,24 @@ def create_app(test_config=None):
             return jsonify(error="Такого раздела не существует."), 404
 
         payload = json_payload()
-        if payload is None or type(payload.get("completed")) is not bool:
+        if payload is None or payload.get("completed") is not True:
             return jsonify(error="Некорректное значение прогресса."), 400
+
+        completed_chapters = {
+            row["chapter_id"]
+            for row in get_db().execute(
+                """
+                SELECT chapter_id FROM chapter_progress
+                WHERE user_id = ? AND completed = 1
+                """,
+                (user["id"],),
+            ).fetchall()
+        }
+        if any(
+            previous_id not in completed_chapters
+            for previous_id in range(1, chapter_id)
+        ):
+            return jsonify(error="Сначала завершите предыдущие разделы курса."), 403
 
         get_db().execute(
             """

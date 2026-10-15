@@ -747,6 +747,29 @@ p {
     border-bottom: 1px solid var(--line);
 }
 
+.chapter-link {
+    display: flex;
+    min-width: 0;
+    min-height: 70px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+a.chapter-link {
+    transition: padding 160ms ease, color 160ms ease;
+}
+
+a.chapter-link:hover {
+    padding: 0 10px;
+    color: #527252;
+}
+
+.chapter-link.is-locked {
+    color: #8c9990;
+    cursor: not-allowed;
+}
+
 .number {
     color: #89968a;
     font-family: "DM Mono", Consolas, monospace;
@@ -759,30 +782,183 @@ p {
     letter-spacing: -0.015em;
 }
 
-.chapter-progress {
-    display: flex;
-    min-height: 70px;
-    align-items: center;
-    gap: 13px;
-    cursor: pointer;
-}
-
-.progress-toggle {
-    width: 16px;
-    height: 16px;
-    flex: 0 0 auto;
-    margin: 0;
-    accent-color: #557d5c;
-}
-
-.progress-toggle:disabled {
-    cursor: not-allowed;
-}
-
-.progress-toggle:checked + .chapter-title {
+.chapter-link.is-complete .chapter-title {
     color: #74837a;
-    text-decoration: line-through;
-    text-decoration-color: #a7b2a5;
+}
+
+.chapter-state {
+    flex: 0 0 auto;
+    color: #6c806e;
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 9px;
+    text-transform: uppercase;
+}
+
+.is-locked .chapter-state {
+    color: #97a198;
+}
+
+.lesson-main {
+    min-height: calc(100vh - 154px);
+    padding-top: 32px;
+    padding-bottom: 72px;
+}
+
+.lesson-back,
+.secondary-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.lesson-back {
+    margin-bottom: 23px;
+}
+
+.lesson-back:hover,
+.secondary-link:hover {
+    color: var(--ink);
+}
+
+.lesson-card {
+    position: relative;
+    overflow: hidden;
+    padding: clamp(28px, 6vw, 68px);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+}
+
+.lesson-heading {
+    position: relative;
+    padding: 0 70px 35px 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.lesson-heading .eyebrow {
+    margin-bottom: 18px;
+}
+
+.lesson-divider {
+    padding: 0 5px;
+    color: #a5afa5;
+}
+
+.lesson-number {
+    display: inline-block;
+    margin-bottom: 16px;
+    color: #8b998d;
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 12px;
+}
+
+.lesson-heading h1,
+.lesson-message h1 {
+    max-width: 740px;
+    margin: 0 0 15px;
+    font-size: clamp(32px, 5vw, 52px);
+    font-weight: 600;
+    letter-spacing: -0.06em;
+    line-height: 1.12;
+}
+
+.lesson-lead,
+.lesson-message > p:not(.eyebrow) {
+    max-width: 610px;
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.8;
+}
+
+.lesson-content {
+    min-height: 190px;
+    padding: 30px 0;
+    color: #52645a;
+    font-size: 13px;
+    line-height: 1.8;
+}
+
+.lesson-content-label {
+    margin-bottom: 12px;
+    color: #849187;
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+}
+
+.lesson-actions {
+    display: flex;
+    min-height: 52px;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px 22px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+}
+
+.lesson-action-note,
+.lesson-complete-status,
+.course-finished {
+    margin: 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.6;
+}
+
+.lesson-complete-status {
+    color: #557d5c;
+    font-weight: 800;
+}
+
+.lesson-complete-button {
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.lesson-complete-button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.lesson-action-status {
+    flex-basis: 100%;
+    margin: 0;
+    color: #a04535;
+    font-size: 11px;
+}
+
+.lesson-action-status:empty {
+    display: none;
+}
+
+.lesson-message {
+    min-height: 330px;
+    padding-top: clamp(40px, 8vw, 90px);
+}
+
+.lesson-message h1 {
+    margin-bottom: 15px;
+}
+
+.lesson-message .lesson-number {
+    display: block;
+}
+
+.lesson-message .primary-link {
+    margin-top: 25px;
+}
+
+.lesson-message .eyebrow {
+    color: #718278;
+}
+
+.lesson-message .lesson-number + h1 {
+    margin-top: 0;
 }
 
 .learning-note {
