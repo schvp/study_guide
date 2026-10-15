@@ -1180,6 +1180,77 @@ a.chapter-link:hover {
     line-height: 1.8;
 }
 
+.error-main {
+    display: grid;
+    min-height: calc(100vh - 184px);
+    place-items: center;
+    padding-top: 24px;
+    padding-bottom: 70px;
+}
+
+.error-card {
+    width: min(100%, 670px);
+    padding: clamp(32px, 7vw, 66px);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+    text-align: center;
+}
+
+.error-graphic {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 0 0 25px;
+    color: #183b37;
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: clamp(74px, 13vw, 118px);
+    font-weight: 500;
+    letter-spacing: -0.12em;
+    line-height: 1;
+}
+
+.error-mark {
+    display: grid;
+    width: clamp(60px, 10vw, 88px);
+    height: clamp(60px, 10vw, 88px);
+    place-items: center;
+    border: 1px solid #bdd094;
+    border-radius: 50%;
+    background: var(--lime);
+    font-size: 0.52em;
+    letter-spacing: 0;
+}
+
+.error-card > .eyebrow {
+    margin-bottom: 11px;
+}
+
+.error-card h1 {
+    margin: 0 0 12px;
+    font-size: clamp(25px, 4vw, 34px);
+    font-weight: 700;
+    letter-spacing: -0.055em;
+}
+
+.error-description {
+    max-width: 420px;
+    margin: 0 auto;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.8;
+}
+
+.error-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-top: 25px;
+}
+
 .section-placeholder,
 .profile-card {
     margin-top: 35px;
@@ -1471,6 +1542,11 @@ input:focus-visible {
     .section-main {
         min-height: calc(100vh - 176px);
         padding-top: 42px;
+    }
+
+    .error-main {
+        min-height: calc(100vh - 176px);
+        padding-top: 18px;
     }
 
     .profile-card {

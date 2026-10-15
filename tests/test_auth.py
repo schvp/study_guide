@@ -128,6 +128,30 @@ class AuthenticationTests(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertIn(title.encode(), response.data)
 
+    def test_unknown_routes_show_branded_404_page(self):
+        response = self.client.get("/this-page-does-not-exist")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("Страница не найдена".encode(), response.data)
+        self.assertIn("Похоже, схема разомкнулась".encode(), response.data)
+        self.assertIn(b'href="/">', response.data)
+        self.assertIn(b'href="/#contents"', response.data)
+
+    def test_unknown_route_404_page_keeps_signed_in_navigation(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+
+        response = self.client.get("/another-missing-page")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertIn(b"test@example.com", response.data)
+        self.assertIn(b'href="/#my-course"', response.data)
+
     def test_profile_navigation_shows_account_after_login(self):
         self.assertEqual(
             self._post_json(

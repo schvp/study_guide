@@ -242,15 +242,19 @@ def create_app(test_config=None):
     def profile():
         return render_app_section("profile")
 
+    @app.errorhandler(404)
+    def page_not_found(_error):
+        return render_template(
+            "404.html",
+            current_user=current_user(),
+        ), 404
+
     @app.get("/course/<int:chapter_id>")
     def course_chapter(chapter_id):
         if chapter_id < 1 or chapter_id > len(CHAPTERS):
             return render_template(
-                "chapter.html",
-                chapter=None,
+                "404.html",
                 current_user=current_user(),
-                access_state="not_found",
-                csrf_token=session["csrf_token"],
             ), 404
 
         user = current_user()
