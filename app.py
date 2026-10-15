@@ -311,6 +311,28 @@ def create_app(test_config=None):
     def render_app_section(active_nav):
         user = current_user()
         if active_nav == "profile":
+            completion_history = (
+                get_db()
+                .execute(
+                    """
+                    SELECT chapters.id AS chapter_id, chapters.title,
+                        strftime(
+                            '%d.%m.%Y %H:%M',
+                            history.completed_at,
+                            'localtime'
+                        ) AS completed_at
+                    FROM chapter_completion_history AS history
+                    JOIN chapters ON chapters.id = history.chapter_id
+                    WHERE history.user_id = ?
+                        AND chapters.course_id = ?
+                    ORDER BY history.completed_at DESC, chapters.position DESC
+                    """,
+                    (user["id"], get_course()["id"]),
+                )
+                .fetchall()
+                if user
+                else []
+            )
             return render_template(
                 "section.html",
                 active_nav=active_nav,
@@ -341,6 +363,7 @@ def create_app(test_config=None):
                     if user
                     else 0
                 ),
+                completion_history=completion_history,
                 csrf_token=session["csrf_token"],
             )
         return render_template(
@@ -582,6 +605,13 @@ def create_app(test_config=None):
                 updated_at = CURRENT_TIMESTAMP
             """,
             (user["id"], chapter_id, int(payload["completed"])),
+        )
+        get_db().execute(
+            """
+            INSERT OR IGNORE INTO chapter_completion_history (user_id, chapter_id)
+            VALUES (?, ?)
+            """,
+            (user["id"], chapter_id),
         )
         get_db().commit()
         return jsonify(chapter_id=chapter_id, completed=payload["completed"])

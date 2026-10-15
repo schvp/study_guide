@@ -25,6 +25,7 @@ class DatabaseMigrationTests(unittest.TestCase):
                 (2, "add_username"),
                 (3, "create_course_tables"),
                 (4, "link_progress_to_chapters"),
+                (5, "create_chapter_completion_history"),
             ],
         )
         user_columns = {
@@ -46,7 +47,7 @@ class DatabaseMigrationTests(unittest.TestCase):
             self.database.execute(
                 "SELECT COUNT(*) FROM schema_migrations"
             ).fetchone()[0],
-            4,
+            5,
         )
 
     def test_progress_references_chapters_and_cascades_on_deletion(self):
@@ -64,7 +65,17 @@ class DatabaseMigrationTests(unittest.TestCase):
         self.database.execute(
             "INSERT INTO chapter_progress (user_id, chapter_id, completed) VALUES (1, 1, 1)"
         )
+        self.database.execute(
+            "INSERT INTO chapter_completion_history (user_id, chapter_id) VALUES (1, 1)"
+        )
         self.database.commit()
+
+        self.assertEqual(
+            self.database.execute(
+                "SELECT COUNT(*) FROM chapter_completion_history"
+            ).fetchone()[0],
+            1,
+        )
 
         with self.assertRaises(sqlite3.IntegrityError):
             self.database.execute(
@@ -91,7 +102,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         with patch.object(
             migrations,
             "MIGRATIONS",
-            migrations.MIGRATIONS + ((5, "failing_migration", fail_after_ddl),),
+            migrations.MIGRATIONS + ((6, "failing_migration", fail_after_ddl),),
         ):
             with self.assertRaisesRegex(RuntimeError, "migration failed"):
                 migrations.migrate_database(self.database)
@@ -105,7 +116,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         self.assertIsNone(table)
         self.assertIsNone(
             self.database.execute(
-                "SELECT 1 FROM schema_migrations WHERE version = 5"
+                "SELECT 1 FROM schema_migrations WHERE version = 6"
             ).fetchone()
         )
 

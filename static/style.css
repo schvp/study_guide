@@ -1440,6 +1440,58 @@ a.chapter-link:hover {
     font-size: 17px;
 }
 
+.profile-history {
+    margin-top: 35px;
+    padding: clamp(24px, 5vw, 42px);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+}
+
+.profile-history-heading .profile-label {
+    margin-bottom: 8px;
+}
+
+.profile-history-heading h2 {
+    margin: 0;
+    font-size: 20px;
+    letter-spacing: -0.04em;
+}
+
+.profile-history-list {
+    display: grid;
+    gap: 0;
+    margin: 20px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.profile-history-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 13px 0;
+    border-top: 1px solid var(--line);
+}
+
+.profile-history-list a {
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.profile-history-list time,
+.profile-history-empty {
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.profile-history-empty {
+    margin: 18px 0 0;
+}
+
 button:focus-visible,
 a:focus-visible,
 input:focus-visible {
@@ -1651,6 +1703,12 @@ input:focus-visible {
         flex-basis: 100%;
         margin: 9px 0 0 71px;
         text-align: left;
+    }
+
+    .profile-history-list li {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 6px;
     }
 }
 

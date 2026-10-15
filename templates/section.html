@@ -45,6 +45,24 @@
                 </div>
             </section>
             <a class="primary-link section-course-link" href="{{ url_for('home', _anchor='my-course') }}">Продолжить обучение <span aria-hidden="true">→</span></a>
+            <section class="profile-history" aria-labelledby="profile-history-title">
+                <div class="profile-history-heading">
+                    <p class="profile-label">ИСТОРИЯ ОБУЧЕНИЯ</p>
+                    <h2 id="profile-history-title">Пройденные разделы</h2>
+                </div>
+                {% if completion_history %}
+                    <ol class="profile-history-list">
+                        {% for item in completion_history %}
+                            <li>
+                                <a href="{{ url_for('course_chapter', chapter_id=item.chapter_id) }}">{{ item.title }}</a>
+                                <time>{{ item.completed_at }}</time>
+                            </li>
+                        {% endfor %}
+                    </ol>
+                {% else %}
+                    <p class="profile-history-empty">Завершённые разделы появятся здесь.</p>
+                {% endif %}
+            </section>
         {% elif active_nav == "profile" %}
             <section class="section-placeholder">
                 <span class="placeholder-mark" aria-hidden="true">◉</span>

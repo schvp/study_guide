@@ -299,6 +299,52 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("разделов пройдено".encode(), response.data)
         self.assertIn(b'aria-current="page">', response.data)
 
+    def test_chapter_completion_is_recorded_once_and_shown_in_profile(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+
+        first_completion = self._post_json(
+            "/api/progress/1",
+            {"completed": True},
+        )
+        repeated_completion = self._post_json(
+            "/api/progress/1",
+            {"completed": True},
+        )
+
+        self.assertEqual(first_completion.status_code, 200)
+        self.assertEqual(repeated_completion.status_code, 200)
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            history = database.execute(
+                """
+                SELECT chapters.title,
+                    strftime(
+                        '%d.%m.%Y %H:%M',
+                        history.completed_at,
+                        'localtime'
+                    )
+                FROM chapter_completion_history AS history
+                JOIN chapters ON chapters.id = history.chapter_id
+                WHERE history.user_id = (
+                    SELECT id FROM users WHERE username = 'test'
+                )
+                """
+            ).fetchall()
+
+        self.assertEqual(len(history), 1)
+        self.assertTrue(history[0][1])
+
+        profile = self.client.get("/profile")
+        self.assertIn("Пройденные разделы".encode(), profile.data)
+        self.assertIn(history[0][0].encode(), profile.data)
+        self.assertIn(history[0][1].encode(), profile.data)
+
     def test_chapter_pages_are_locked_in_sequence_until_previous_is_completed(self):
         anonymous_response = self.client.get("/course/1")
         self.assertEqual(anonymous_response.status_code, 401)
@@ -405,6 +451,16 @@ class AuthenticationTests(unittest.TestCase):
             progress_foreign_keys = database.execute(
                 "PRAGMA foreign_key_list(chapter_progress)"
             ).fetchall()
+            legacy_history = database.execute(
+                """
+                SELECT chapter_id, completed_at
+                FROM chapter_completion_history
+                WHERE user_id = 1
+                """
+            ).fetchone()
+            legacy_progress_updated_at = database.execute(
+                "SELECT updated_at FROM chapter_progress WHERE user_id = 1"
+            ).fetchone()[0]
 
         self.assertIn("username", columns)
         self.assertEqual(legacy_user, ("legacy@example.com", "legacy-hash"))
@@ -412,7 +468,8 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(len(seeded_chapters), 8)
         self.assertEqual(seeded_chapters[0], (1, 1, "Введение в цифровую схемотехнику"))
         self.assertEqual(legacy_progress, (1, 1))
-        self.assertEqual(migration_history, [(1,), (2,), (3,), (4,)])
+        self.assertEqual(migration_history, [(1,), (2,), (3,), (4,), (5,)])
+        self.assertEqual(legacy_history, (1, legacy_progress_updated_at))
         self.assertIn(
             ("chapters", "chapter_id", "id", "CASCADE"),
             [

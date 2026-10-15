@@ -93,11 +93,36 @@ def _link_progress_to_chapters(database):
     )
 
 
+def _create_chapter_completion_history(database):
+    database.execute(
+        """
+        CREATE TABLE chapter_completion_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            chapter_id INTEGER NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+            completed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (user_id, chapter_id)
+        )
+        """
+    )
+    database.execute(
+        """
+        INSERT INTO chapter_completion_history (
+            user_id, chapter_id, completed_at
+        )
+        SELECT user_id, chapter_id, updated_at
+        FROM chapter_progress
+        WHERE completed = 1
+        """
+    )
+
+
 MIGRATIONS = (
     (1, "create_user_tables", _create_user_tables),
     (2, "add_username", _add_username),
     (3, "create_course_tables", _create_course_tables),
     (4, "link_progress_to_chapters", _link_progress_to_chapters),
+    (5, "create_chapter_completion_history", _create_chapter_completion_history),
 )
 
 
