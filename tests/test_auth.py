@@ -91,6 +91,25 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"test@example.com", self.client.get("/").data)
 
+    def test_my_course_is_shown_only_after_login_with_course_contents(self):
+        anonymous_page = self.client.get("/").data
+        self.assertNotIn(b"href=\"#my-course\"", anonymous_page)
+        self.assertNotIn(b"my-course-card", anonymous_page)
+
+        response = self._post_json(
+            "/api/auth/login",
+            {"login": "test", "password": "test"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        page = self.client.get("/").data
+        self.assertIn(b'href="#my-course"', page)
+        self.assertIn(b'id="my-course"', page)
+        self.assertIn("Мой курс".encode(), page)
+        self.assertIn("Схемотехника цифровых систем".encode(), page)
+        self.assertIn("Содержание курса".encode(), page)
+        self.assertEqual(page.count(b'class="chapter"'), 8)
+
     def test_existing_database_is_migrated_without_losing_users(self):
         database_path = os.path.join(self.temp_dir.name, "legacy.sqlite3")
         with closing(sqlite3.connect(database_path)) as database:

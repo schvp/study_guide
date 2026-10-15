@@ -15,11 +15,12 @@
             <span class="brand-mark" aria-hidden="true">Σ</span>
             <span>Учебный навигатор</span>
         </a>
-        <a class="header-link" href="#contents">К содержанию <span aria-hidden="true">↘</span></a>
         {% if current_user %}
+            <a class="header-link" href="#my-course">Мой курс <span aria-hidden="true">↘</span></a>
             <span class="header-user">{{ current_user.email }}</span>
             <button class="header-auth" type="button" data-auth-logout>Выйти</button>
         {% else %}
+            <a class="header-link" href="#contents">К содержанию <span aria-hidden="true">↘</span></a>
             <button class="header-auth" type="button" data-auth-open>Войти</button>
         {% endif %}
     </header>
@@ -144,16 +145,25 @@
             </div>
         </section>
 
-        <section class="contents" id="contents" aria-labelledby="contents-title">
+        <section class="contents{% if current_user %} my-course{% endif %}" id="{% if current_user %}my-course{% else %}contents{% endif %}" aria-labelledby="contents-title">
             <div class="contents-heading">
                 <div>
-                    <p class="eyebrow">Маршрут обучения</p>
-                    <h2 id="contents-title">Содержание пособия</h2>
+                    <p class="eyebrow">{% if current_user %}Ваш учебный маршрут{% else %}Маршрут обучения{% endif %}</p>
+                    <h2 id="contents-title">{% if current_user %}Мой курс{% else %}Содержание пособия{% endif %}</h2>
                 </div>
                 <p class="contents-count"><span>{{ "%02d"|format(chapters|length) }}</span> разделов</p>
             </div>
 
             {% if current_user %}
+                <div class="my-course-card">
+                    <span class="course-card-mark" aria-hidden="true">Σ</span>
+                    <div>
+                        <p class="course-card-label">ИНТЕРАКТИВНОЕ УЧЕБНОЕ ПОСОБИЕ</p>
+                        <h3>Схемотехника цифровых систем</h3>
+                        <p>Последовательно изучайте цифровую логику и устройства — ваш прогресс сохраняется в аккаунте.</p>
+                    </div>
+                </div>
+                <h3 class="course-outline-title">Содержание курса</h3>
                 <div class="progress-summary">
                     <span>Ваш прогресс</span>
                     <progress data-progress-bar value="{{ completed_chapters|length }}" max="{{ chapters|length }}"></progress>
