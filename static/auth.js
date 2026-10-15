@@ -4,6 +4,7 @@ const authCloseButton = document.querySelector("[data-auth-close]");
 const authModeButtons = document.querySelectorAll("[data-auth-mode]");
 const authForms = document.querySelectorAll("[data-auth-form]");
 const authStatus = document.querySelector("[data-auth-status]");
+const defaultAuthStatus = authStatus ? authStatus.textContent.trim() : "";
 const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
 async function readApiResponse(response) {
@@ -23,7 +24,7 @@ function setAuthMode(mode) {
         form.hidden = form.dataset.authForm !== mode;
     });
 
-    authStatus.textContent = "Пароль сохраняется в виде криптографического хеша.";
+    authStatus.textContent = defaultAuthStatus;
 }
 
 if (authOpenButton) {
@@ -84,7 +85,12 @@ if (authCloseButton) {
                         "X-CSRF-Token": csrfToken,
                     },
                     body: JSON.stringify({
-                        email: form.elements.email.value,
+                        ...(form.dataset.authForm === "register"
+                            ? {
+                                username: form.elements.username.value,
+                                email: form.elements.email.value,
+                            }
+                            : { login: form.elements.login.value }),
                         password: password.value,
                     }),
                 });

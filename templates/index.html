@@ -39,8 +39,8 @@
 
             <form class="auth-form" method="post" action="/api/auth/login" data-auth-form="login">
                 <label class="auth-field">
-                    <span>Электронная почта</span>
-                    <input type="email" name="email" autocomplete="email" maxlength="254" placeholder="name@example.com" required>
+                    <span>Логин или электронная почта</span>
+                    <input type="text" name="login" autocomplete="username" maxlength="254" placeholder="Логин или name@example.com" required>
                 </label>
                 <label class="auth-field">
                     <span>Пароль</span>
@@ -50,6 +50,10 @@
             </form>
 
             <form class="auth-form" method="post" action="/api/auth/register" data-auth-form="register" hidden>
+                <label class="auth-field">
+                    <span>Логин</span>
+                    <input type="text" name="username" autocomplete="username" minlength="3" maxlength="32" pattern="[A-Za-z0-9_.-]{3,32}" placeholder="Например, student_1" required>
+                </label>
                 <label class="auth-field">
                     <span>Электронная почта</span>
                     <input type="email" name="email" autocomplete="email" maxlength="254" placeholder="name@example.com" required>
@@ -66,7 +70,7 @@
             </form>
 
             <p class="auth-status" data-auth-status aria-live="polite">
-                Пароль сохраняется в виде криптографического хеша.
+                {% if demo_user_enabled %}Для демонстрационного входа: <strong>test / test</strong>. Пароли хранятся в виде хеша.{% else %}Пароли хранятся в виде криптографического хеша.{% endif %}
             </p>
         </div>
     </dialog>

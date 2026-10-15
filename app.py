@@ -20,8 +20,12 @@ CHAPTERS = [
 ]
 
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+USERNAME_PATTERN = re.compile(r"^[a-zA-Z0-9_.-]{3,32}$")
 MIN_PASSWORD_LENGTH = 8
 MAX_PASSWORD_LENGTH = 128
+DEMO_USERNAME = "test"
+DEMO_EMAIL = "test@example.com"
+DEMO_PASSWORD = "test"
 
 
 def create_app(test_config=None):
@@ -33,6 +37,8 @@ def create_app(test_config=None):
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=os.environ.get("SESSION_COOKIE_SECURE", "").lower()
         in {"1", "true"},
+        SEED_DEMO_USER=os.environ.get("SEED_DEMO_USER", "1").lower()
+        not in {"0", "false", "no"},
     )
     if test_config:
         app.config.update(test_config)
@@ -58,6 +64,7 @@ def create_app(test_config=None):
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                username TEXT UNIQUE COLLATE NOCASE,
                 password_hash TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
@@ -71,6 +78,27 @@ def create_app(test_config=None):
             );
             """
         )
+        user_columns = {
+            row["name"] for row in database.execute("PRAGMA table_info(users)")
+        }
+        if "username" not in user_columns:
+            database.execute("ALTER TABLE users ADD COLUMN username TEXT")
+        database.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_nocase "
+            "ON users(username COLLATE NOCASE)"
+        )
+        if app.config["SEED_DEMO_USER"]:
+            database.execute(
+                """
+                INSERT OR IGNORE INTO users (email, username, password_hash)
+                VALUES (?, ?, ?)
+                """,
+                (
+                    DEMO_EMAIL,
+                    DEMO_USERNAME,
+                    generate_password_hash(DEMO_PASSWORD),
+                ),
+            )
         database.commit()
 
     def current_user():
@@ -131,6 +159,7 @@ def create_app(test_config=None):
             current_user=user,
             completed_chapters=completed_chapters,
             csrf_token=session["csrf_token"],
+            demo_user_enabled=app.config["SEED_DEMO_USER"],
         )
 
     @app.post("/api/auth/register")
@@ -141,11 +170,21 @@ def create_app(test_config=None):
             return jsonify(error="Некорректный запрос."), 400
 
         email = payload.get("email")
+        username = payload.get("username")
         password = payload.get("password")
-        if not isinstance(email, str) or not isinstance(password, str):
-            return jsonify(error="Укажите электронную почту и пароль."), 400
+        if (
+            not isinstance(email, str)
+            or not isinstance(username, str)
+            or not isinstance(password, str)
+        ):
+            return jsonify(error="Укажите логин, электронную почту и пароль."), 400
 
         email = email.strip().casefold()
+        username = username.strip().casefold()
+        if not USERNAME_PATTERN.fullmatch(username):
+            return jsonify(
+                error="Логин должен содержать 3–32 символа: латинские буквы, цифры, точку, дефис или подчёркивание."
+            ), 400
         if len(email) > 254 or not EMAIL_PATTERN.fullmatch(email):
             return jsonify(error="Укажите корректный адрес электронной почты."), 400
         if not MIN_PASSWORD_LENGTH <= len(password) <= MAX_PASSWORD_LENGTH:
@@ -156,13 +195,13 @@ def create_app(test_config=None):
         database = get_db()
         try:
             cursor = database.execute(
-                "INSERT INTO users (email, password_hash) VALUES (?, ?)",
-                (email, generate_password_hash(password)),
+                "INSERT INTO users (email, username, password_hash) VALUES (?, ?, ?)",
+                (email, username, generate_password_hash(password)),
             )
             database.commit()
         except sqlite3.IntegrityError:
             database.rollback()
-            return jsonify(error="Аккаунт с такой почтой уже существует."), 409
+            return jsonify(error="Такой логин или адрес почты уже используется."), 409
 
         session.clear()
         session["user_id"] = cursor.lastrowid
@@ -176,17 +215,20 @@ def create_app(test_config=None):
         if payload is None:
             return jsonify(error="Некорректный запрос."), 400
 
-        email = payload.get("email")
+        login_value = payload.get("login")
         password = payload.get("password")
-        if not isinstance(email, str) or not isinstance(password, str):
-            return jsonify(error="Укажите электронную почту и пароль."), 400
+        if not isinstance(login_value, str) or not isinstance(password, str):
+            return jsonify(error="Укажите логин или электронную почту и пароль."), 400
 
-        email = email.strip().casefold()
+        login_value = login_value.strip().casefold()
         if len(password) > MAX_PASSWORD_LENGTH:
             return jsonify(error="Неверная почта или пароль."), 401
         user = get_db().execute(
-            "SELECT id, email, password_hash FROM users WHERE email = ?",
-            (email,),
+            """
+            SELECT id, email, password_hash FROM users
+            WHERE email = ? OR username = ?
+            """,
+            (login_value, login_value),
         ).fetchone()
         if user is None or not check_password_hash(user["password_hash"], password):
             return jsonify(error="Неверная почта или пароль."), 401

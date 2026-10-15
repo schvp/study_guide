@@ -42,10 +42,15 @@ class AuthenticationTests(unittest.TestCase):
             headers={"X-CSRF-Token": self.csrf_token},
         )
 
-    def _register(self, email="student@example.com", password="correct-horse"):
+    def _register(
+        self,
+        email="student@example.com",
+        password="correct-horse",
+        username="student",
+    ):
         response = self._post_json(
             "/api/auth/register",
-            {"email": email, "password": password},
+            {"email": email, "username": username, "password": password},
         )
         if response.status_code == 201:
             self.csrf_token = self._load_csrf_token()
@@ -58,13 +63,70 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(response.json["email"], "student@example.com")
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
             email, password_hash = database.execute(
-                "SELECT email, password_hash FROM users"
+                "SELECT email, password_hash FROM users WHERE email = ?",
+                ("student@example.com",),
             ).fetchone()
 
         self.assertEqual(email, "student@example.com")
         self.assertNotEqual(password_hash, "correct-horse")
         self.assertTrue(check_password_hash(password_hash, "correct-horse"))
         self.assertIn(b"student@example.com", self.client.get("/").data)
+
+    def test_demo_user_is_seeded_and_can_login_with_username(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            email, username, password_hash = database.execute(
+                "SELECT email, username, password_hash FROM users WHERE username = ?",
+                ("test",),
+            ).fetchone()
+
+        self.assertEqual(email, "test@example.com")
+        self.assertEqual(username, "test")
+        self.assertTrue(check_password_hash(password_hash, "test"))
+
+        response = self._post_json(
+            "/api/auth/login",
+            {"login": "test", "password": "test"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"test@example.com", self.client.get("/").data)
+
+    def test_existing_database_is_migrated_without_losing_users(self):
+        database_path = os.path.join(self.temp_dir.name, "legacy.sqlite3")
+        with closing(sqlite3.connect(database_path)) as database:
+            database.executescript(
+                """
+                CREATE TABLE users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                    password_hash TEXT NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+                INSERT INTO users (email, password_hash)
+                VALUES ('legacy@example.com', 'legacy-hash');
+                """
+            )
+
+        create_app(
+            {
+                "TESTING": True,
+                "SECRET_KEY": "migration-secret",
+                "DATABASE": database_path,
+                "SEED_DEMO_USER": False,
+            }
+        )
+
+        with closing(sqlite3.connect(database_path)) as database:
+            columns = {
+                row[1] for row in database.execute("PRAGMA table_info(users)")
+            }
+            legacy_user = database.execute(
+                "SELECT email, password_hash FROM users WHERE email = ?",
+                ("legacy@example.com",),
+            ).fetchone()
+
+        self.assertIn("username", columns)
+        self.assertEqual(legacy_user, ("legacy@example.com", "legacy-hash"))
 
     def test_duplicate_email_is_rejected_without_case_sensitivity(self):
         self.assertEqual(self._register().status_code, 201)
@@ -89,7 +151,7 @@ class AuthenticationTests(unittest.TestCase):
         self.csrf_token = self._load_csrf_token()
         response = self._post_json(
             "/api/auth/login",
-            {"email": "STUDENT@example.com", "password": "correct-horse"},
+            {"login": "STUDENT@example.com", "password": "correct-horse"},
         )
 
         self.assertEqual(response.status_code, 200)
@@ -104,7 +166,7 @@ class AuthenticationTests(unittest.TestCase):
 
         response = self._post_json(
             "/api/auth/login",
-            {"email": "student@example.com", "password": "wrong-password"},
+            {"login": "student@example.com", "password": "wrong-password"},
         )
 
         self.assertEqual(response.status_code, 401)
