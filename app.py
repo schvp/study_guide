@@ -153,7 +153,7 @@ def create_app(test_config=None):
 
     def init_db():
         database = get_db()
-        migrate_database(database)
+        migrate_database(database, through_version=3)
         if app.config["SEED_DEMO_USER"]:
             database.execute(
                 """
@@ -216,6 +216,7 @@ def create_app(test_config=None):
                 (FIRST_CHAPTER_DESCRIPTION, FIRST_CHAPTER_CONTENT, course_id),
             )
         database.commit()
+        migrate_database(database)
 
     def get_course():
         return get_db().execute(

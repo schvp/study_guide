@@ -66,14 +66,42 @@ def _create_course_tables(database):
     )
 
 
+def _link_progress_to_chapters(database):
+    database.execute(
+        """
+        CREATE TABLE chapter_progress_new (
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            chapter_id INTEGER NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+            completed INTEGER NOT NULL DEFAULT 0 CHECK (completed IN (0, 1)),
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, chapter_id)
+        )
+        """
+    )
+    database.execute(
+        """
+        INSERT INTO chapter_progress_new (
+            user_id, chapter_id, completed, updated_at
+        )
+        SELECT user_id, chapter_id, completed, updated_at
+        FROM chapter_progress
+        """
+    )
+    database.execute("DROP TABLE chapter_progress")
+    database.execute(
+        "ALTER TABLE chapter_progress_new RENAME TO chapter_progress"
+    )
+
+
 MIGRATIONS = (
     (1, "create_user_tables", _create_user_tables),
     (2, "add_username", _add_username),
     (3, "create_course_tables", _create_course_tables),
+    (4, "link_progress_to_chapters", _link_progress_to_chapters),
 )
 
 
-def migrate_database(database):
+def migrate_database(database, through_version=None):
     database.execute(
         """
         CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -100,6 +128,8 @@ def migrate_database(database):
         )
 
     for version, name, migration in MIGRATIONS:
+        if through_version is not None and version > through_version:
+            break
         if version in applied_migrations:
             if applied_migrations[version] != name:
                 raise RuntimeError(
