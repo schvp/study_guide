@@ -38,6 +38,7 @@
                     <p class="profile-label">УЧЁТНАЯ ЗАПИСЬ</p>
                     <h2>{{ current_user.username or "Студент" }}</h2>
                     <p>{{ current_user.email }}</p>
+                    <span class="profile-role">{{ user_role_label }}</span>
                 </div>
                 <div class="profile-progress">
                     <strong>{{ completed_count }} / {{ chapters_count }}</strong>

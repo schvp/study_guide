@@ -62,25 +62,27 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json["email"], "student@example.com")
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
-            email, password_hash = database.execute(
-                "SELECT email, password_hash FROM users WHERE email = ?",
+            email, password_hash, role = database.execute(
+                "SELECT email, password_hash, role FROM users WHERE email = ?",
                 ("student@example.com",),
             ).fetchone()
 
         self.assertEqual(email, "student@example.com")
+        self.assertEqual(role, "student")
         self.assertNotEqual(password_hash, "correct-horse")
         self.assertTrue(check_password_hash(password_hash, "correct-horse"))
         self.assertIn(b"student@example.com", self.client.get("/").data)
 
     def test_demo_user_is_seeded_and_can_login_with_username(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
-            email, username, password_hash = database.execute(
-                "SELECT email, username, password_hash FROM users WHERE username = ?",
+            email, username, password_hash, role = database.execute(
+                "SELECT email, username, password_hash, role FROM users WHERE username = ?",
                 ("test",),
             ).fetchone()
 
         self.assertEqual(email, "test@example.com")
         self.assertEqual(username, "test")
+        self.assertEqual(role, "student")
         self.assertTrue(check_password_hash(password_hash, "test"))
 
         response = self._post_json(
@@ -386,7 +388,27 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"test@example.com", response.data)
         self.assertIn("разделов пройдено".encode(), response.data)
+        self.assertIn("Учащийся".encode(), response.data)
         self.assertIn(b'aria-current="page">', response.data)
+
+    def test_registration_cannot_choose_a_privileged_role(self):
+        response = self._post_json(
+            "/api/auth/register",
+            {
+                "email": "privilege@example.com",
+                "username": "privilege",
+                "password": "correct-horse",
+                "role": "admin",
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            role = database.execute(
+                "SELECT role FROM users WHERE email = ?",
+                ("privilege@example.com",),
+            ).fetchone()[0]
+        self.assertEqual(role, "student")
 
     def test_chapter_completion_is_recorded_once_and_shown_in_profile(self):
         self.assertEqual(
@@ -518,7 +540,7 @@ class AuthenticationTests(unittest.TestCase):
                 row[1] for row in database.execute("PRAGMA table_info(users)")
             }
             legacy_user = database.execute(
-                "SELECT email, password_hash FROM users WHERE email = ?",
+                "SELECT email, password_hash, role FROM users WHERE email = ?",
                 ("legacy@example.com",),
             ).fetchone()
             seeded_course = database.execute(
@@ -552,14 +574,17 @@ class AuthenticationTests(unittest.TestCase):
             ).fetchone()[0]
 
         self.assertIn("username", columns)
-        self.assertEqual(legacy_user, ("legacy@example.com", "legacy-hash"))
+        self.assertEqual(
+            legacy_user,
+            ("legacy@example.com", "legacy-hash", "student"),
+        )
         self.assertEqual(seeded_course, ("Схемотехника цифровых систем",))
         self.assertEqual(len(seeded_chapters), 8)
         self.assertEqual(seeded_chapters[0], (1, 1, "Введение в цифровую схемотехнику"))
         self.assertEqual(legacy_progress, (1, 1))
         self.assertEqual(
             migration_history,
-            [(1,), (2,), (3,), (4,), (5,), (6,)],
+            [(1,), (2,), (3,), (4,), (5,), (6,), (7,)],
         )
         self.assertEqual(legacy_history, (1, legacy_progress_updated_at))
         self.assertIn(

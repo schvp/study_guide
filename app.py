@@ -112,6 +112,11 @@ APP_SECTIONS = {
         "status": "Тесты по разделам курса появятся здесь.",
     },
 }
+USER_ROLE_LABELS = {
+    "student": "Учащийся",
+    "teacher": "Преподаватель",
+    "admin": "Администратор",
+}
 
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 USERNAME_PATTERN = re.compile(r"^[a-zA-Z0-9_.-]{3,32}$")
@@ -246,7 +251,7 @@ def create_app(test_config=None):
         if user_id is None:
             return None
         return get_db().execute(
-            "SELECT id, email, username FROM users WHERE id = ?",
+            "SELECT id, email, username, role FROM users WHERE id = ?",
             (user_id,),
         ).fetchone()
 
@@ -415,6 +420,7 @@ def create_app(test_config=None):
                     "status": None,
                 },
                 current_user=user,
+                user_role_label=USER_ROLE_LABELS[user["role"]] if user else None,
                 chapters_count=get_db().execute(
                     "SELECT COUNT(*) FROM chapters WHERE course_id = ?",
                     (get_course()["id"],),

@@ -143,6 +143,16 @@ def _create_library_materials(database):
     )
 
 
+def _add_user_roles(database):
+    database.execute(
+        """
+        ALTER TABLE users
+        ADD COLUMN role TEXT NOT NULL DEFAULT 'student'
+            CHECK (role IN ('student', 'teacher', 'admin'))
+        """
+    )
+
+
 MIGRATIONS = (
     (1, "create_user_tables", _create_user_tables),
     (2, "add_username", _add_username),
@@ -150,6 +160,7 @@ MIGRATIONS = (
     (4, "link_progress_to_chapters", _link_progress_to_chapters),
     (5, "create_chapter_completion_history", _create_chapter_completion_history),
     (6, "create_library_materials", _create_library_materials),
+    (7, "add_user_roles", _add_user_roles),
 )
 
 

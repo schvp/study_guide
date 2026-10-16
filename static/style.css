@@ -1425,6 +1425,17 @@ a.chapter-link:hover {
     font-size: 11px;
 }
 
+.profile-role {
+    display: inline-block;
+    margin-top: 9px;
+    padding: 5px 8px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    color: #557d5c;
+    font-size: 10px;
+    font-weight: 700;
+}
+
 .profile-progress {
     display: grid;
     gap: 5px;

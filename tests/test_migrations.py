@@ -27,6 +27,7 @@ class DatabaseMigrationTests(unittest.TestCase):
                 (4, "link_progress_to_chapters"),
                 (5, "create_chapter_completion_history"),
                 (6, "create_library_materials"),
+                (7, "add_user_roles"),
             ],
         )
         user_columns = {
@@ -48,8 +49,27 @@ class DatabaseMigrationTests(unittest.TestCase):
             self.database.execute(
                 "SELECT COUNT(*) FROM schema_migrations"
             ).fetchone()[0],
-            6,
+            7,
         )
+
+    def test_user_roles_default_to_student_and_reject_unknown_roles(self):
+        migrations.migrate_database(self.database)
+        self.database.execute(
+            "INSERT INTO users (email, password_hash) VALUES ('student@example.com', 'hash')"
+        )
+        self.assertEqual(
+            self.database.execute(
+                "SELECT role FROM users WHERE email = 'student@example.com'"
+            ).fetchone()[0],
+            "student",
+        )
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.database.execute(
+                """
+                INSERT INTO users (email, password_hash, role)
+                VALUES ('invalid@example.com', 'hash', 'unknown')
+                """
+            )
 
     def test_library_materials_are_course_scoped_and_have_resource_fields(self):
         self.database.execute("PRAGMA foreign_keys = ON")
@@ -139,7 +159,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         with patch.object(
             migrations,
             "MIGRATIONS",
-            migrations.MIGRATIONS + ((7, "failing_migration", fail_after_ddl),),
+            migrations.MIGRATIONS + ((8, "failing_migration", fail_after_ddl),),
         ):
             with self.assertRaisesRegex(RuntimeError, "migration failed"):
                 migrations.migrate_database(self.database)
@@ -153,7 +173,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         self.assertIsNone(table)
         self.assertIsNone(
             self.database.execute(
-                "SELECT 1 FROM schema_migrations WHERE version = 7"
+                "SELECT 1 FROM schema_migrations WHERE version = 8"
             ).fetchone()
         )
 
