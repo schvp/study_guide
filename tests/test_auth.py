@@ -518,7 +518,15 @@ class AuthenticationTests(unittest.TestCase):
             self.assertIn("Введение в цифровую схемотехнику".encode(), response.data)
             self.assertIn(b'name="position"', response.data)
             self.assertIn(b'name="content"', response.data)
-            self.assertIn(b'type="button" disabled', response.data)
+            self.assertIn(
+                b'action="/content-management/courses/1/chapters"',
+                response.data,
+            )
+            self.assertIn(
+                b'action="/content-management/chapters/1"',
+                response.data,
+            )
+            self.assertIn(b'maxlength="100000"', response.data)
 
     def test_chapter_management_interface_groups_chapters_by_course(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
@@ -553,6 +561,247 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("Системы счисления и кодирование информации".encode(), management_page.data)
         self.assertIn("Описание".encode(), management_page.data)
         self.assertIn("Материал".encode(), management_page.data)
+
+    def test_chapter_management_creates_chapter_at_position_and_shifts_following(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "admin", "password": "admin"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+
+        response = self.client.post(
+            "/content-management/courses/1/chapters",
+            data={
+                "csrf_token": self.csrf_token,
+                "title": "Новая глава",
+                "position": "2",
+                "description": "Краткое описание",
+                "content": "Учебный материал",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response.headers["Location"],
+            "/content-management?course_id=1",
+        )
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            chapters = database.execute(
+                """
+                SELECT position, title, description, content
+                FROM chapters
+                WHERE course_id = 1
+                ORDER BY position
+                LIMIT 3
+                """
+            ).fetchall()
+        self.assertEqual(
+            [chapter[:2] for chapter in chapters],
+            [
+                (1, "Введение в цифровую схемотехнику"),
+                (2, "Новая глава"),
+                (3, "Системы счисления и кодирование информации"),
+            ],
+        )
+        self.assertTrue(chapters[0][2])
+        self.assertTrue(chapters[0][3])
+        self.assertEqual(
+            chapters[1][2:],
+            ("Краткое описание", "Учебный материал"),
+        )
+
+    def test_chapter_management_edits_content_and_reorders_without_changing_id(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "admin", "password": "admin"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            database.execute(
+                """
+                INSERT INTO chapter_progress (user_id, chapter_id, completed)
+                VALUES (
+                    (SELECT id FROM users WHERE username = 'admin'), 2, 1
+                )
+                """
+            )
+            database.execute(
+                """
+                INSERT INTO chapter_completion_history (user_id, chapter_id)
+                VALUES ((SELECT id FROM users WHERE username = 'admin'), 2)
+                """
+            )
+            database.commit()
+
+        response = self.client.post(
+            "/content-management/chapters/2",
+            data={
+                "csrf_token": self.csrf_token,
+                "title": "Системы счисления",
+                "position": "1",
+                "description": "Обновлённое описание",
+                "content": "Обновлённый материал",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            order = database.execute(
+                "SELECT id, position, title FROM chapters WHERE course_id = 1 ORDER BY position"
+            ).fetchall()
+            chapter_details = database.execute(
+                "SELECT description, content FROM chapters WHERE id = 2"
+            ).fetchone()
+            saved_progress = database.execute(
+                """
+                SELECT completed FROM chapter_progress
+                WHERE user_id = (SELECT id FROM users WHERE username = 'admin')
+                    AND chapter_id = 2
+                """
+            ).fetchone()
+            saved_history = database.execute(
+                """
+                SELECT COUNT(*) FROM chapter_completion_history
+                WHERE user_id = (SELECT id FROM users WHERE username = 'admin')
+                    AND chapter_id = 2
+                """
+            ).fetchone()[0]
+
+        self.assertEqual(order[0], (2, 1, "Системы счисления"))
+        self.assertEqual(order[1], (1, 2, "Введение в цифровую схемотехнику"))
+        self.assertEqual(
+            chapter_details,
+            ("Обновлённое описание", "Обновлённый материал"),
+        )
+        self.assertEqual(saved_progress, (1,))
+        self.assertEqual(saved_history, 1)
+
+    def test_chapter_management_rejects_invalid_duplicate_and_missing_data(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "admin", "password": "admin"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+
+        for payload, expected_message in [
+            (
+                {"title": "   ", "position": "1"},
+                "Укажите название главы.",
+            ),
+            (
+                {"title": "Неверная позиция", "position": "0"},
+                "Позиция главы должна быть",
+            ),
+            (
+                {
+                    "title": "введение в цифровую схемотехнику",
+                    "position": "1",
+                },
+                "уже есть глава с таким названием",
+            ),
+            (
+                {"title": "Не число", "position": "first"},
+                "Укажите целое число для позиции главы.",
+            ),
+            (
+                {
+                    "title": "Слишком большой материал",
+                    "position": "1",
+                    "content": "x" * 100001,
+                },
+                "не длиннее 100000 символов",
+            ),
+        ]:
+            response = self.client.post(
+                "/content-management/courses/1/chapters",
+                data={"csrf_token": self.csrf_token, **payload},
+                follow_redirects=True,
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(expected_message.encode(), response.data)
+
+        duplicate_edit = self.client.post(
+            "/content-management/chapters/2",
+            data={
+                "csrf_token": self.csrf_token,
+                "title": "Введение в цифровую схемотехнику",
+                "position": "2",
+                "description": "",
+                "content": "",
+            },
+            follow_redirects=True,
+        )
+        self.assertEqual(duplicate_edit.status_code, 200)
+        self.assertIn("уже есть глава с таким названием".encode(), duplicate_edit.data)
+
+        missing_chapter = self.client.post(
+            "/content-management/chapters/9999",
+            data={
+                "csrf_token": self.csrf_token,
+                "title": "Не существует",
+                "position": "1",
+            },
+        )
+        self.assertEqual(missing_chapter.status_code, 404)
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            self.assertEqual(
+                database.execute(
+                    "SELECT COUNT(*) FROM chapters WHERE course_id = 1"
+                ).fetchone()[0],
+                8,
+            )
+
+    def test_chapter_management_posts_require_role_and_csrf(self):
+        guest_response = self.client.post(
+            "/content-management/courses/1/chapters",
+            data={
+                "csrf_token": self.csrf_token,
+                "title": "Глава гостя",
+                "position": "1",
+            },
+        )
+        self.assertEqual(guest_response.status_code, 401)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        student_response = self.client.post(
+            "/content-management/courses/1/chapters",
+            data={
+                "csrf_token": self.csrf_token,
+                "title": "Глава учащегося",
+                "position": "1",
+            },
+        )
+        self.assertEqual(student_response.status_code, 403)
+
+        self._set_demo_user_role("admin")
+        missing_csrf = self.client.post(
+            "/content-management/courses/1/chapters",
+            data={"title": "Нет CSRF", "position": "1"},
+        )
+        self.assertEqual(missing_csrf.status_code, 400)
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            self.assertEqual(
+                database.execute(
+                    "SELECT COUNT(*) FROM chapters WHERE course_id = 1"
+                ).fetchone()[0],
+                8,
+            )
 
     def test_course_management_creates_and_updates_courses(self):
         self.assertEqual(

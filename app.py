@@ -566,14 +566,64 @@ def create_app(test_config=None):
         chapters_by_course = {}
         for chapter in chapter_rows:
             chapters_by_course.setdefault(chapter["course_id"], []).append(chapter)
+        selected_course_id = request.args.get("course_id", type=int)
         return render_template(
             "content_management.html",
             courses=courses,
             chapters_by_course=chapters_by_course,
+            selected_course_id=selected_course_id,
             current_user=current_user(),
             active_nav="learning",
             csrf_token=session["csrf_token"],
         )
+
+    def chapter_form_values(chapter_count, creating):
+        title = request.form.get("title", "").strip()
+        description = request.form.get("description", "").strip()
+        content = request.form.get("content", "")
+        try:
+            position = int(request.form.get("position", ""))
+        except ValueError:
+            return None, "Укажите целое число для позиции главы."
+        if not title:
+            return None, "Укажите название главы."
+        if len(title) > 200:
+            return None, "Название главы должно быть не длиннее 200 символов."
+        if len(description) > 2000:
+            return None, "Описание главы должно быть не длиннее 2000 символов."
+        if len(content) > 100000:
+            return None, "Учебный материал должен быть не длиннее 100000 символов."
+        max_position = chapter_count + 1 if creating else chapter_count
+        if position < 1 or position > max_position:
+            return None, f"Позиция главы должна быть от 1 до {max_position}."
+        return (title, position, description, content), None
+
+    def reorder_chapters(course_id, chapter_ids):
+        max_position = get_db().execute(
+            "SELECT COALESCE(MAX(position), 0) FROM chapters WHERE course_id = ?",
+            (course_id,),
+        ).fetchone()[0]
+        offset = max_position + len(chapter_ids) + 1
+        get_db().execute(
+            """
+            UPDATE chapters
+            SET position = position + ?, updated_at = CURRENT_TIMESTAMP
+            WHERE course_id = ?
+            """,
+            (offset, course_id),
+        )
+        for position, chapter_id in enumerate(chapter_ids, 1):
+            get_db().execute(
+                """
+                UPDATE chapters
+                SET position = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ? AND course_id = ?
+                """,
+                (position, chapter_id, course_id),
+            )
+
+    def redirect_to_course_management(course_id):
+        return redirect(url_for("content_management", course_id=course_id))
 
     def course_form_values():
         title = request.form.get("title", "").strip()
@@ -649,6 +699,123 @@ def create_app(test_config=None):
 
         flash("Изменения курса сохранены.", "success")
         return redirect(url_for("content_management"))
+
+    @app.post("/content-management/courses/<int:course_id>/chapters")
+    @roles_required("teacher", "admin")
+    @csrf_protected
+    def create_chapter(course_id):
+        database = get_db()
+        database.execute("BEGIN IMMEDIATE")
+        course = database.execute(
+            "SELECT id FROM courses WHERE id = ?",
+            (course_id,),
+        ).fetchone()
+        if course is None:
+            database.rollback()
+            return render_template(
+                "404.html",
+                current_user=current_user(),
+            ), 404
+
+        chapters = get_course_chapters(course_id)
+        values, error = chapter_form_values(len(chapters), creating=True)
+        if error:
+            database.rollback()
+            flash(error, "error")
+            return redirect_to_course_management(course_id)
+        title, position, description, content = values
+        if any(chapter["title"].casefold() == title.casefold() for chapter in chapters):
+            database.rollback()
+            flash("В этом курсе уже есть глава с таким названием.", "error")
+            return redirect_to_course_management(course_id)
+
+        try:
+            max_position = max(
+                (chapter["position"] for chapter in chapters),
+                default=0,
+            )
+            cursor = database.execute(
+                """
+                INSERT INTO chapters (
+                    course_id, position, title, description, content
+                )
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (course_id, max_position + 1, title, description, content),
+            )
+            chapter_ids = [chapter["id"] for chapter in chapters]
+            chapter_ids.insert(position - 1, cursor.lastrowid)
+            reorder_chapters(course_id, chapter_ids)
+            database.commit()
+        except sqlite3.IntegrityError:
+            database.rollback()
+            flash("Не удалось создать главу: проверьте её название и позицию.", "error")
+            return redirect_to_course_management(course_id)
+
+        flash("Глава создана.", "success")
+        return redirect_to_course_management(course_id)
+
+    @app.post("/content-management/chapters/<int:chapter_id>")
+    @roles_required("teacher", "admin")
+    @csrf_protected
+    def edit_chapter(chapter_id):
+        database = get_db()
+        database.execute("BEGIN IMMEDIATE")
+        chapter = database.execute(
+            """
+            SELECT id, course_id, position
+            FROM chapters
+            WHERE id = ?
+            """,
+            (chapter_id,),
+        ).fetchone()
+        if chapter is None:
+            database.rollback()
+            return render_template(
+                "404.html",
+                current_user=current_user(),
+            ), 404
+
+        course_id = chapter["course_id"]
+        chapters = get_course_chapters(course_id)
+        values, error = chapter_form_values(len(chapters), creating=False)
+        if error:
+            database.rollback()
+            flash(error, "error")
+            return redirect_to_course_management(course_id)
+        title, position, description, content = values
+        if any(
+            item["id"] != chapter_id
+            and item["title"].casefold() == title.casefold()
+            for item in chapters
+        ):
+            database.rollback()
+            flash("В этом курсе уже есть глава с таким названием.", "error")
+            return redirect_to_course_management(course_id)
+
+        try:
+            database.execute(
+                """
+                UPDATE chapters
+                SET title = ?, description = ?, content = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (title, description, content, chapter_id),
+            )
+            chapter_ids = [
+                item["id"] for item in chapters if item["id"] != chapter_id
+            ]
+            chapter_ids.insert(position - 1, chapter_id)
+            reorder_chapters(course_id, chapter_ids)
+            database.commit()
+        except sqlite3.IntegrityError:
+            database.rollback()
+            flash("Не удалось сохранить главу: проверьте её название и позицию.", "error")
+            return redirect_to_course_management(course_id)
+
+        flash("Изменения главы сохранены.", "success")
+        return redirect_to_course_management(course_id)
 
     @app.errorhandler(404)
     def page_not_found(_error):

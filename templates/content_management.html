@@ -69,7 +69,7 @@
             {% if courses %}
                 <div class="managed-course-list">
                     {% for course in courses %}
-                        <details class="managed-course" {% if loop.first %}open{% endif %}>
+                        <details class="managed-course" {% if course.id == selected_course_id or (selected_course_id is none and loop.first) %}open{% endif %}>
                             <summary>
                                 <span class="managed-course-title">{{ course.title }}</span>
                                 <span class="managed-course-meta">{{ course.chapter_count }} разделов · {{ course.slug }}</span>
@@ -99,7 +99,8 @@
                                 </div>
                                 <section class="chapter-editor-panel" aria-labelledby="new-chapter-title-{{ course.id }}">
                                     <h4 id="new-chapter-title-{{ course.id }}">Добавить главу</h4>
-                                    <form class="management-form chapter-management-form">
+                                    <form class="management-form chapter-management-form" method="post" action="{{ url_for('create_chapter', course_id=course.id) }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                         <label class="management-field">
                                             <span>Название главы</span>
                                             <input type="text" name="title" maxlength="200" placeholder="Название новой главы" required>
@@ -114,9 +115,9 @@
                                         </label>
                                         <label class="management-field">
                                             <span>Учебный материал</span>
-                                            <textarea name="content" rows="5" placeholder="Текст материала главы"></textarea>
+                                            <textarea name="content" rows="5" maxlength="100000" placeholder="Текст материала главы"></textarea>
                                         </label>
-                                        <button class="management-save" type="button" disabled>Добавить главу</button>
+                                        <button class="management-save" type="submit">Добавить главу</button>
                                     </form>
                                 </section>
 
@@ -130,7 +131,8 @@
                                                         <span class="managed-chapter-title">{{ chapter.title }}</span>
                                                         <span class="managed-course-action">Редактировать</span>
                                                     </summary>
-                                                    <form class="management-form managed-chapter-form">
+                                                    <form class="management-form managed-chapter-form" method="post" action="{{ url_for('edit_chapter', chapter_id=chapter.id) }}">
+                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                                         <label class="management-field">
                                                             <span>Название главы</span>
                                                             <input type="text" name="title" value="{{ chapter.title }}" maxlength="200" required>
@@ -145,9 +147,9 @@
                                                         </label>
                                                         <label class="management-field">
                                                             <span>Учебный материал</span>
-                                                            <textarea name="content" rows="5">{{ chapter.content }}</textarea>
+                                                            <textarea name="content" rows="5" maxlength="100000">{{ chapter.content }}</textarea>
                                                         </label>
-                                                        <button class="management-save" type="button" disabled>Сохранить изменения</button>
+                                                        <button class="management-save" type="submit">Сохранить изменения</button>
                                                     </form>
                                                 </details>
                                             </li>
