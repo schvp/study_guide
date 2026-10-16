@@ -74,7 +74,15 @@
             </form>
 
             <p class="auth-status" data-auth-status aria-live="polite">
-                {% if demo_user_enabled %}Для демонстрационного входа: <strong>test / test</strong>. Пароли хранятся в виде хеша.{% else %}Пароли хранятся в виде криптографического хеша.{% endif %}
+                {% if demo_user_enabled or demo_admin_enabled %}
+                    Для демонстрационного входа:
+                    {% if demo_user_enabled %}<strong>учащийся test / test</strong>{% endif %}
+                    {% if demo_user_enabled and demo_admin_enabled %}; {% endif %}
+                    {% if demo_admin_enabled %}<strong>администратор admin / admin</strong>{% endif %}.
+                    Пароли хранятся в виде хеша.
+                {% else %}
+                    Пароли хранятся в виде криптографического хеша.
+                {% endif %}
             </p>
         </div>
     </dialog>

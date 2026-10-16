@@ -101,6 +101,51 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"test@example.com", self.client.get("/").data)
 
+    def test_demo_admin_is_seeded_with_admin_role_and_can_login(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            email, username, password_hash, role = database.execute(
+                """
+                SELECT email, username, password_hash, role
+                FROM users WHERE username = ?
+                """,
+                ("admin",),
+            ).fetchone()
+
+        self.assertEqual(email, "admin@example.com")
+        self.assertEqual(username, "admin")
+        self.assertEqual(role, "admin")
+        self.assertTrue(check_password_hash(password_hash, "admin"))
+        self.assertIn(
+            "администратор admin / admin".encode(),
+            self.client.get("/").data,
+        )
+
+        login_response = self._post_json(
+            "/api/auth/login",
+            {"login": "admin", "password": "admin"},
+        )
+        self.assertEqual(login_response.status_code, 200)
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self.client.get("/content-management").status_code, 200)
+
+    def test_demo_admin_seed_can_be_disabled(self):
+        database_path = os.path.join(self.temp_dir.name, "no-demo-admin.sqlite3")
+        app_without_demo_admin = create_app(
+            {
+                "TESTING": True,
+                "SECRET_KEY": "no-demo-admin-secret",
+                "DATABASE": database_path,
+                "SEED_DEMO_ADMIN": False,
+            }
+        )
+
+        with closing(sqlite3.connect(app_without_demo_admin.config["DATABASE"])) as database:
+            admin = database.execute(
+                "SELECT id FROM users WHERE username = 'admin'"
+            ).fetchone()
+
+        self.assertIsNone(admin)
+
     def test_my_course_is_shown_only_after_login_with_course_contents(self):
         anonymous_page = self.client.get("/").data
         self.assertNotIn(b"href=\"#my-course\"", anonymous_page)

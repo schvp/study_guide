@@ -126,6 +126,9 @@ MAX_PASSWORD_LENGTH = 128
 DEMO_USERNAME = "test"
 DEMO_EMAIL = "test@example.com"
 DEMO_PASSWORD = "test"
+DEMO_ADMIN_USERNAME = "admin"
+DEMO_ADMIN_EMAIL = "admin@example.com"
+DEMO_ADMIN_PASSWORD = "admin"
 
 
 def create_app(test_config=None):
@@ -138,6 +141,8 @@ def create_app(test_config=None):
         SESSION_COOKIE_SECURE=os.environ.get("SESSION_COOKIE_SECURE", "").lower()
         in {"1", "true"},
         SEED_DEMO_USER=os.environ.get("SEED_DEMO_USER", "1").lower()
+        not in {"0", "false", "no"},
+        SEED_DEMO_ADMIN=os.environ.get("SEED_DEMO_ADMIN", "1").lower()
         not in {"0", "false", "no"},
     )
     if test_config:
@@ -223,6 +228,19 @@ def create_app(test_config=None):
             )
         database.commit()
         migrate_database(database)
+        if app.config["SEED_DEMO_ADMIN"]:
+            database.execute(
+                """
+                INSERT OR IGNORE INTO users (email, username, password_hash, role)
+                VALUES (?, ?, ?, 'admin')
+                """,
+                (
+                    DEMO_ADMIN_EMAIL,
+                    DEMO_ADMIN_USERNAME,
+                    generate_password_hash(DEMO_ADMIN_PASSWORD),
+                ),
+            )
+            database.commit()
 
     def get_course():
         return get_db().execute(
@@ -343,6 +361,7 @@ def create_app(test_config=None):
             accessible_chapters=accessible_chapters,
             csrf_token=session["csrf_token"],
             demo_user_enabled=app.config["SEED_DEMO_USER"],
+            demo_admin_enabled=app.config["SEED_DEMO_ADMIN"],
         )
 
     @app.get("/courses")
