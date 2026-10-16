@@ -244,13 +244,21 @@ def create_app(test_config=None):
 
     def get_course():
         return get_db().execute(
-            "SELECT id, slug, title, description FROM courses WHERE slug = ?",
+            """
+            SELECT id, slug, title, description
+            FROM courses
+            WHERE slug = ? AND status = 'published'
+            """,
             (COURSE_SLUG,),
         ).fetchone()
 
     def get_course_by_slug(slug):
         return get_db().execute(
-            "SELECT id, slug, title, description FROM courses WHERE slug = ?",
+            """
+            SELECT id, slug, title, description
+            FROM courses
+            WHERE slug = ? AND status = 'published'
+            """,
             (slug,),
         ).fetchone()
 
@@ -258,6 +266,17 @@ def create_app(test_config=None):
         return get_db().execute(
             """
             SELECT id, course_id, position, title, description, content
+            FROM chapters
+            WHERE course_id = ? AND status = 'published'
+            ORDER BY position, id
+            """,
+            (course_id,),
+        ).fetchall()
+
+    def get_managed_course_chapters(course_id):
+        return get_db().execute(
+            """
+            SELECT id, course_id, position, title, description, content, status
             FROM chapters
             WHERE course_id = ?
             ORDER BY position, id
@@ -335,12 +354,21 @@ def create_app(test_config=None):
     def home():
         user = current_user()
         course = get_course()
+        if course is None:
+            return redirect(url_for("course_catalog"))
         chapters = get_course_chapters(course["id"])
         completed_chapters = set()
         accessible_chapters = set()
         if user is not None:
             rows = get_db().execute(
-                "SELECT chapter_id FROM chapter_progress WHERE user_id = ? AND completed = 1",
+                """
+                SELECT progress.chapter_id
+                FROM chapter_progress AS progress
+                JOIN chapters ON chapters.id = progress.chapter_id
+                WHERE progress.user_id = ?
+                    AND progress.completed = 1
+                    AND chapters.status = 'published'
+                """,
                 (user["id"],),
             ).fetchall()
             completed_chapters = {row["chapter_id"] for row in rows}
@@ -371,7 +399,10 @@ def create_app(test_config=None):
             SELECT courses.id, courses.slug, courses.title, courses.description,
                 COUNT(chapters.id) AS chapter_count
             FROM courses
-            LEFT JOIN chapters ON chapters.course_id = courses.id
+            LEFT JOIN chapters
+                ON chapters.course_id = courses.id
+                AND chapters.status = 'published'
+            WHERE courses.status = 'published'
             GROUP BY courses.id
             ORDER BY courses.title COLLATE NOCASE, courses.id
             """
@@ -407,6 +438,7 @@ def create_app(test_config=None):
                     WHERE progress.user_id = ?
                         AND progress.completed = 1
                         AND chapters.course_id = ?
+                        AND chapters.status = 'published'
                     """,
                     (user["id"], course["id"]),
                 ).fetchall()
@@ -433,6 +465,7 @@ def create_app(test_config=None):
 
     def render_app_section(active_nav):
         user = current_user()
+        course = get_course()
         if active_nav == "profile":
             completion_history = (
                 get_db()
@@ -448,12 +481,13 @@ def create_app(test_config=None):
                     JOIN chapters ON chapters.id = history.chapter_id
                     WHERE history.user_id = ?
                         AND chapters.course_id = ?
+                        AND chapters.status = 'published'
                     ORDER BY history.completed_at DESC, chapters.position DESC
                     """,
-                    (user["id"], get_course()["id"]),
+                    (user["id"], course["id"]),
                 )
                 .fetchall()
-                if user
+                if user and course
                 else []
             )
             return render_template(
@@ -469,10 +503,17 @@ def create_app(test_config=None):
                 can_manage_content=(
                     user is not None and user["role"] in {"teacher", "admin"}
                 ),
-                chapters_count=get_db().execute(
-                    "SELECT COUNT(*) FROM chapters WHERE course_id = ?",
-                    (get_course()["id"],),
-                ).fetchone()[0],
+                chapters_count=(
+                    get_db().execute(
+                        """
+                        SELECT COUNT(*) FROM chapters
+                        WHERE course_id = ? AND status = 'published'
+                        """,
+                        (course["id"],),
+                    ).fetchone()[0]
+                    if course
+                    else 0
+                ),
                 completed_count=(
                     get_db()
                     .execute(
@@ -483,11 +524,12 @@ def create_app(test_config=None):
                         WHERE progress.user_id = ?
                             AND progress.completed = 1
                             AND chapters.course_id = ?
+                            AND chapters.status = 'published'
                         """,
-                        (user["id"], get_course()["id"]),
+                        (user["id"], course["id"]),
                     )
                     .fetchone()[0]
-                    if user
+                    if user and course
                     else 0
                 ),
                 completion_history=completion_history,
@@ -501,8 +543,8 @@ def create_app(test_config=None):
                 WHERE course_id = ?
                 ORDER BY position, id
                 """,
-                (get_course()["id"],),
-            ).fetchall()
+                (course["id"],),
+            ).fetchall() if course else []
             return render_template(
                 "section.html",
                 active_nav=active_nav,
@@ -516,10 +558,17 @@ def create_app(test_config=None):
             active_nav=active_nav,
             section=APP_SECTIONS[active_nav],
             current_user=user,
-            chapters_count=get_db().execute(
-                "SELECT COUNT(*) FROM chapters WHERE course_id = ?",
-                (get_course()["id"],),
-            ).fetchone()[0],
+            chapters_count=(
+                get_db().execute(
+                    """
+                    SELECT COUNT(*) FROM chapters
+                    WHERE course_id = ? AND status = 'published'
+                    """,
+                    (course["id"],),
+                ).fetchone()[0]
+                if course
+                else 0
+            ),
             completed_count=0,
             csrf_token=session["csrf_token"],
         )
@@ -549,7 +598,7 @@ def create_app(test_config=None):
         courses = get_db().execute(
             """
             SELECT courses.id, courses.slug, courses.title, courses.description,
-                COUNT(chapters.id) AS chapter_count
+                courses.status, COUNT(chapters.id) AS chapter_count
             FROM courses
             LEFT JOIN chapters ON chapters.course_id = courses.id
             GROUP BY courses.id
@@ -558,7 +607,7 @@ def create_app(test_config=None):
         ).fetchall()
         chapter_rows = get_db().execute(
             """
-            SELECT id, course_id, position, title, description, content
+            SELECT id, course_id, position, title, description, content, status
             FROM chapters
             ORDER BY course_id, position, id
             """
@@ -577,10 +626,11 @@ def create_app(test_config=None):
             csrf_token=session["csrf_token"],
         )
 
-    def chapter_form_values(chapter_count, creating):
+    def chapter_form_values(chapter_count, creating, existing_status="published"):
         title = request.form.get("title", "").strip()
         description = request.form.get("description", "").strip()
         content = request.form.get("content", "")
+        status = request.form.get("status", "draft" if creating else existing_status)
         try:
             position = int(request.form.get("position", ""))
         except ValueError:
@@ -593,10 +643,12 @@ def create_app(test_config=None):
             return None, "Описание главы должно быть не длиннее 2000 символов."
         if len(content) > 100000:
             return None, "Учебный материал должен быть не длиннее 100000 символов."
+        if status not in {"draft", "published"}:
+            return None, "Выберите статус главы."
         max_position = chapter_count + 1 if creating else chapter_count
         if position < 1 or position > max_position:
             return None, f"Позиция главы должна быть от 1 до {max_position}."
-        return (title, position, description, content), None
+        return (title, position, description, content, status), None
 
     def reorder_chapters(course_id, chapter_ids):
         max_position = get_db().execute(
@@ -625,10 +677,11 @@ def create_app(test_config=None):
     def redirect_to_course_management(course_id):
         return redirect(url_for("content_management", course_id=course_id))
 
-    def course_form_values():
+    def course_form_values(existing_status="draft"):
         title = request.form.get("title", "").strip()
         slug = request.form.get("slug", "").strip()
         description = request.form.get("description", "").strip()
+        status = request.form.get("status", existing_status)
         if not title:
             return None, "Укажите название курса."
         if len(title) > 160:
@@ -637,7 +690,9 @@ def create_app(test_config=None):
             return None, "Адрес курса должен содержать латинские строчные буквы, цифры и дефисы."
         if len(description) > 2000:
             return None, "Описание курса должно быть не длиннее 2000 символов."
-        return (title, slug, description), None
+        if status not in {"draft", "published"}:
+            return None, "Выберите статус курса."
+        return (title, slug, description, status), None
 
     @app.post("/content-management/courses")
     @roles_required("teacher", "admin")
@@ -650,7 +705,10 @@ def create_app(test_config=None):
 
         try:
             get_db().execute(
-                "INSERT INTO courses (title, slug, description) VALUES (?, ?, ?)",
+                """
+                INSERT INTO courses (title, slug, description, status)
+                VALUES (?, ?, ?, ?)
+                """,
                 values,
             )
             get_db().commit()
@@ -667,7 +725,7 @@ def create_app(test_config=None):
     @csrf_protected
     def edit_course(course_id):
         course = get_db().execute(
-            "SELECT id FROM courses WHERE id = ?",
+            "SELECT id, status FROM courses WHERE id = ?",
             (course_id,),
         ).fetchone()
         if course is None:
@@ -676,7 +734,7 @@ def create_app(test_config=None):
                 current_user=current_user(),
             ), 404
 
-        values, error = course_form_values()
+        values, error = course_form_values(course["status"])
         if error:
             flash(error, "error")
             return redirect(url_for("content_management"))
@@ -685,7 +743,7 @@ def create_app(test_config=None):
             get_db().execute(
                 """
                 UPDATE courses
-                SET title = ?, slug = ?, description = ?,
+                SET title = ?, slug = ?, description = ?, status = ?,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
                 """,
@@ -717,13 +775,13 @@ def create_app(test_config=None):
                 current_user=current_user(),
             ), 404
 
-        chapters = get_course_chapters(course_id)
+        chapters = get_managed_course_chapters(course_id)
         values, error = chapter_form_values(len(chapters), creating=True)
         if error:
             database.rollback()
             flash(error, "error")
             return redirect_to_course_management(course_id)
-        title, position, description, content = values
+        title, position, description, content, status = values
         if any(chapter["title"].casefold() == title.casefold() for chapter in chapters):
             database.rollback()
             flash("В этом курсе уже есть глава с таким названием.", "error")
@@ -737,11 +795,11 @@ def create_app(test_config=None):
             cursor = database.execute(
                 """
                 INSERT INTO chapters (
-                    course_id, position, title, description, content
+                    course_id, position, title, description, content, status
                 )
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (course_id, max_position + 1, title, description, content),
+                (course_id, max_position + 1, title, description, content, status),
             )
             chapter_ids = [chapter["id"] for chapter in chapters]
             chapter_ids.insert(position - 1, cursor.lastrowid)
@@ -763,7 +821,7 @@ def create_app(test_config=None):
         database.execute("BEGIN IMMEDIATE")
         chapter = database.execute(
             """
-            SELECT id, course_id, position
+            SELECT id, course_id, position, status
             FROM chapters
             WHERE id = ?
             """,
@@ -777,13 +835,17 @@ def create_app(test_config=None):
             ), 404
 
         course_id = chapter["course_id"]
-        chapters = get_course_chapters(course_id)
-        values, error = chapter_form_values(len(chapters), creating=False)
+        chapters = get_managed_course_chapters(course_id)
+        values, error = chapter_form_values(
+            len(chapters),
+            creating=False,
+            existing_status=chapter["status"],
+        )
         if error:
             database.rollback()
             flash(error, "error")
             return redirect_to_course_management(course_id)
-        title, position, description, content = values
+        title, position, description, content, status = values
         if any(
             item["id"] != chapter_id
             and item["title"].casefold() == title.casefold()
@@ -797,11 +859,11 @@ def create_app(test_config=None):
             database.execute(
                 """
                 UPDATE chapters
-                SET title = ?, description = ?, content = ?,
+                SET title = ?, description = ?, content = ?, status = ?,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
                 """,
-                (title, description, content, chapter_id),
+                (title, description, content, status, chapter_id),
             )
             chapter_ids = [
                 item["id"] for item in chapters if item["id"] != chapter_id
@@ -830,7 +892,7 @@ def create_app(test_config=None):
             """
             SELECT id, course_id, position, title, description, content
             FROM chapters
-            WHERE id = ?
+            WHERE id = ? AND status = 'published'
             """,
             (chapter_id,),
         ).fetchone()
@@ -840,9 +902,18 @@ def create_app(test_config=None):
                 current_user=current_user(),
             ), 404
         course = get_db().execute(
-            "SELECT id, slug, title, description FROM courses WHERE id = ?",
+            """
+            SELECT id, slug, title, description
+            FROM courses
+            WHERE id = ? AND status = 'published'
+            """,
             (chapter_by_id["course_id"],),
         ).fetchone()
+        if course is None:
+            return render_template(
+                "404.html",
+                current_user=current_user(),
+            ), 404
         chapters = get_course_chapters(course["id"])
 
         user = current_user()
@@ -998,7 +1069,14 @@ def create_app(test_config=None):
         if user is None:
             return jsonify(error="Войдите, чтобы сохранять прогресс обучения."), 401
         chapter = get_db().execute(
-            "SELECT id, course_id, position FROM chapters WHERE id = ?",
+            """
+            SELECT chapters.id, chapters.course_id, chapters.position
+            FROM chapters
+            JOIN courses ON courses.id = chapters.course_id
+            WHERE chapters.id = ?
+                AND chapters.status = 'published'
+                AND courses.status = 'published'
+            """,
             (chapter_id,),
         ).fetchone()
         if chapter is None:

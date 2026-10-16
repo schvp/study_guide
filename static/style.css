@@ -1721,7 +1721,8 @@ a.chapter-link:hover {
 }
 
 .management-field input,
-.management-field textarea {
+.management-field textarea,
+.management-field select {
     width: 100%;
     padding: 12px 13px;
     border: 1px solid var(--line);

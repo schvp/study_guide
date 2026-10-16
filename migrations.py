@@ -153,6 +153,23 @@ def _add_user_roles(database):
     )
 
 
+def _add_content_publication_status(database):
+    database.execute(
+        """
+        ALTER TABLE courses
+        ADD COLUMN status TEXT NOT NULL DEFAULT 'published'
+            CHECK (status IN ('draft', 'published'))
+        """
+    )
+    database.execute(
+        """
+        ALTER TABLE chapters
+        ADD COLUMN status TEXT NOT NULL DEFAULT 'published'
+            CHECK (status IN ('draft', 'published'))
+        """
+    )
+
+
 MIGRATIONS = (
     (1, "create_user_tables", _create_user_tables),
     (2, "add_username", _add_username),
@@ -161,6 +178,7 @@ MIGRATIONS = (
     (5, "create_chapter_completion_history", _create_chapter_completion_history),
     (6, "create_library_materials", _create_library_materials),
     (7, "add_user_roles", _add_user_roles),
+    (8, "add_content_publication_status", _add_content_publication_status),
 )
 
 

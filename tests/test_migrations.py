@@ -28,12 +28,19 @@ class DatabaseMigrationTests(unittest.TestCase):
                 (5, "create_chapter_completion_history"),
                 (6, "create_library_materials"),
                 (7, "add_user_roles"),
+                (8, "add_content_publication_status"),
             ],
         )
         user_columns = {
             row[1] for row in self.database.execute("PRAGMA table_info(users)")
         }
         self.assertIn("username", user_columns)
+        for table in ("courses", "chapters"):
+            columns = {
+                row[1]
+                for row in self.database.execute(f"PRAGMA table_info({table})")
+            }
+            self.assertIn("status", columns)
         self.assertTrue(
             self.database.execute(
                 """
@@ -49,7 +56,7 @@ class DatabaseMigrationTests(unittest.TestCase):
             self.database.execute(
                 "SELECT COUNT(*) FROM schema_migrations"
             ).fetchone()[0],
-            7,
+            8,
         )
 
     def test_user_roles_default_to_student_and_reject_unknown_roles(self):
@@ -69,6 +76,35 @@ class DatabaseMigrationTests(unittest.TestCase):
                 INSERT INTO users (email, password_hash, role)
                 VALUES ('invalid@example.com', 'hash', 'unknown')
                 """
+            )
+
+    def test_publication_status_defaults_to_published_and_rejects_unknown_values(self):
+        migrations.migrate_database(self.database)
+        self.database.execute(
+            "INSERT INTO courses (slug, title) VALUES ('course', 'Course')"
+        )
+        self.database.execute(
+            "INSERT INTO chapters (course_id, position, title) VALUES (1, 1, 'Chapter')"
+        )
+        self.assertEqual(
+            self.database.execute(
+                "SELECT status FROM courses WHERE id = 1"
+            ).fetchone()[0],
+            "published",
+        )
+        self.assertEqual(
+            self.database.execute(
+                "SELECT status FROM chapters WHERE id = 1"
+            ).fetchone()[0],
+            "published",
+        )
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.database.execute(
+                "UPDATE courses SET status = 'review' WHERE id = 1"
+            )
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.database.execute(
+                "UPDATE chapters SET status = 'review' WHERE id = 1"
             )
 
     def test_library_materials_are_course_scoped_and_have_resource_fields(self):
@@ -159,7 +195,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         with patch.object(
             migrations,
             "MIGRATIONS",
-            migrations.MIGRATIONS + ((8, "failing_migration", fail_after_ddl),),
+            migrations.MIGRATIONS + ((9, "failing_migration", fail_after_ddl),),
         ):
             with self.assertRaisesRegex(RuntimeError, "migration failed"):
                 migrations.migrate_database(self.database)
@@ -173,7 +209,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         self.assertIsNone(table)
         self.assertIsNone(
             self.database.execute(
-                "SELECT 1 FROM schema_migrations WHERE version = 8"
+                "SELECT 1 FROM schema_migrations WHERE version = 9"
             ).fetchone()
         )
 

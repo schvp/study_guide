@@ -57,6 +57,13 @@
                     <span>Описание</span>
                     <textarea name="description" rows="4" maxlength="2000" placeholder="Кратко опишите курс"></textarea>
                 </label>
+                <label class="management-field">
+                    <span>Статус</span>
+                    <select name="status">
+                        <option value="draft" selected>Черновик</option>
+                        <option value="published">Опубликован</option>
+                    </select>
+                </label>
                 <button class="management-save" type="submit">Создать курс</button>
             </form>
         </section>
@@ -72,7 +79,7 @@
                         <details class="managed-course" {% if course.id == selected_course_id or (selected_course_id is none and loop.first) %}open{% endif %}>
                             <summary>
                                 <span class="managed-course-title">{{ course.title }}</span>
-                                <span class="managed-course-meta">{{ course.chapter_count }} разделов · {{ course.slug }}</span>
+                                <span class="managed-course-meta">{{ course.chapter_count }} разделов · {{ course.slug }} · {% if course.status == 'published' %}Опубликован{% else %}Черновик{% endif %}</span>
                                 <span class="managed-course-action">Редактировать</span>
                             </summary>
                             <form class="management-form managed-course-form" method="post" action="{{ url_for('edit_course', course_id=course.id) }}">
@@ -88,6 +95,13 @@
                                 <label class="management-field">
                                     <span>Описание</span>
                                     <textarea name="description" rows="4" maxlength="2000">{{ course.description }}</textarea>
+                                </label>
+                                <label class="management-field">
+                                    <span>Статус</span>
+                                    <select name="status">
+                                        <option value="draft" {% if course.status == 'draft' %}selected{% endif %}>Черновик</option>
+                                        <option value="published" {% if course.status == 'published' %}selected{% endif %}>Опубликован</option>
+                                    </select>
                                 </label>
                                 <button class="management-save" type="submit">Сохранить изменения</button>
                             </form>
@@ -117,6 +131,13 @@
                                             <span>Учебный материал</span>
                                             <textarea name="content" rows="5" maxlength="100000" placeholder="Текст материала главы"></textarea>
                                         </label>
+                                        <label class="management-field">
+                                            <span>Статус</span>
+                                            <select name="status">
+                                                <option value="draft" selected>Черновик</option>
+                                                <option value="published">Опубликован</option>
+                                            </select>
+                                        </label>
                                         <button class="management-save" type="submit">Добавить главу</button>
                                     </form>
                                 </section>
@@ -129,6 +150,7 @@
                                                     <summary>
                                                         <span class="managed-chapter-position">{{ "%02d"|format(chapter.position) }}</span>
                                                         <span class="managed-chapter-title">{{ chapter.title }}</span>
+                                                        <span class="managed-course-meta">{% if chapter.status == 'published' %}Опубликована{% else %}Черновик{% endif %}</span>
                                                         <span class="managed-course-action">Редактировать</span>
                                                     </summary>
                                                     <form class="management-form managed-chapter-form" method="post" action="{{ url_for('edit_chapter', chapter_id=chapter.id) }}">
@@ -148,6 +170,13 @@
                                                         <label class="management-field">
                                                             <span>Учебный материал</span>
                                                             <textarea name="content" rows="5" maxlength="100000">{{ chapter.content }}</textarea>
+                                                        </label>
+                                                        <label class="management-field">
+                                                            <span>Статус</span>
+                                                            <select name="status">
+                                                                <option value="draft" {% if chapter.status == 'draft' %}selected{% endif %}>Черновик</option>
+                                                                <option value="published" {% if chapter.status == 'published' %}selected{% endif %}>Опубликована</option>
+                                                            </select>
                                                         </label>
                                                         <button class="management-save" type="submit">Сохранить изменения</button>
                                                     </form>

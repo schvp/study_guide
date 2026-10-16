@@ -612,6 +612,14 @@ class AuthenticationTests(unittest.TestCase):
             chapters[1][2:],
             ("Краткое описание", "Учебный материал"),
         )
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            self.assertEqual(
+                database.execute(
+                    "SELECT status FROM chapters WHERE title = ?",
+                    ("Новая глава",),
+                ).fetchone()[0],
+                "draft",
+            )
 
     def test_chapter_management_edits_content_and_reorders_without_changing_id(self):
         self.assertEqual(
@@ -672,6 +680,9 @@ class AuthenticationTests(unittest.TestCase):
                     AND chapter_id = 2
                 """
             ).fetchone()[0]
+            saved_status = database.execute(
+                "SELECT status FROM chapters WHERE id = 2"
+            ).fetchone()[0]
 
         self.assertEqual(order[0], (2, 1, "Системы счисления"))
         self.assertEqual(order[1], (1, 2, "Введение в цифровую схемотехнику"))
@@ -679,6 +690,7 @@ class AuthenticationTests(unittest.TestCase):
             chapter_details,
             ("Обновлённое описание", "Обновлённый материал"),
         )
+        self.assertEqual(saved_status, "published")
         self.assertEqual(saved_progress, (1,))
         self.assertEqual(saved_history, 1)
 
@@ -828,11 +840,12 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(created.headers["Location"], "/content-management")
 
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
-            course_id, title, description = database.execute(
-                "SELECT id, title, description FROM courses WHERE slug = ?",
+            course_id, title, description, status = database.execute(
+                "SELECT id, title, description, status FROM courses WHERE slug = ?",
                 ("osnovy-elektroniki",),
             ).fetchone()
         self.assertEqual((title, description), ("Основы электроники", "Вводный курс"))
+        self.assertEqual(status, "draft")
 
         updated = self.client.post(
             f"/content-management/courses/{course_id}",
@@ -846,7 +859,7 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(updated.status_code, 302)
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
             saved = database.execute(
-                "SELECT title, slug, description FROM courses WHERE id = ?",
+                "SELECT title, slug, description, status FROM courses WHERE id = ?",
                 (course_id,),
             ).fetchone()
         self.assertEqual(
@@ -855,8 +868,100 @@ class AuthenticationTests(unittest.TestCase):
                 "Основы электроники и схем",
                 "osnovy-elektroniki-i-shem",
                 "Обновлённое описание",
+                "draft",
             ),
         )
+
+    def test_drafts_stay_private_until_course_and_chapter_are_published(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "admin", "password": "admin"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        form_token = self.csrf_token
+
+        self.client.post(
+            "/content-management/courses",
+            data={
+                "csrf_token": form_token,
+                "title": "Черновой курс",
+                "slug": "draft-course",
+                "description": "Пока не опубликован",
+            },
+        )
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            course_id = database.execute(
+                "SELECT id FROM courses WHERE slug = 'draft-course'"
+            ).fetchone()[0]
+
+        self.client.post(
+            f"/content-management/courses/{course_id}/chapters",
+            data={
+                "csrf_token": form_token,
+                "title": "Черновая глава",
+                "position": "1",
+                "content": "Скрытый материал",
+            },
+        )
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            chapter_id = database.execute(
+                "SELECT id FROM chapters WHERE course_id = ?",
+                (course_id,),
+            ).fetchone()[0]
+
+        catalog = self.client.get("/courses")
+        self.assertNotIn("Черновой курс".encode(), catalog.data)
+        self.assertEqual(self.client.get("/courses/draft-course").status_code, 404)
+        self.assertEqual(self.client.get(f"/course/{chapter_id}").status_code, 404)
+        self.assertEqual(
+            self._post_json(
+                f"/api/progress/{chapter_id}",
+                {"completed": True},
+            ).status_code,
+            404,
+        )
+        management = self.client.get("/content-management")
+        self.assertIn("Черновой курс".encode(), management.data)
+        self.assertIn("Черновая глава".encode(), management.data)
+
+        self.client.post(
+            f"/content-management/courses/{course_id}",
+            data={
+                "csrf_token": form_token,
+                "title": "Черновой курс",
+                "slug": "draft-course",
+                "description": "Опубликованный курс",
+                "status": "published",
+            },
+        )
+        overview = self.client.get("/courses/draft-course")
+        self.assertEqual(overview.status_code, 200)
+        self.assertNotIn("Черновая глава".encode(), overview.data)
+        self.assertEqual(self.client.get(f"/course/{chapter_id}").status_code, 404)
+        self.assertEqual(
+            self._post_json(
+                f"/api/progress/{chapter_id}",
+                {"completed": True},
+            ).status_code,
+            404,
+        )
+
+        self.client.post(
+            f"/content-management/chapters/{chapter_id}",
+            data={
+                "csrf_token": form_token,
+                "title": "Черновая глава",
+                "position": "1",
+                "content": "Опубликованный материал",
+                "status": "published",
+            },
+        )
+        overview = self.client.get("/courses/draft-course")
+        self.assertIn("Черновая глава".encode(), overview.data)
+        self.assertEqual(self.client.get(f"/course/{chapter_id}").status_code, 200)
 
     def test_course_management_rejects_invalid_and_duplicate_data(self):
         self.assertEqual(
@@ -1118,8 +1223,22 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(legacy_progress, (1, 1))
         self.assertEqual(
             migration_history,
-            [(1,), (2,), (3,), (4,), (5,), (6,), (7,)],
+            [(1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,)],
         )
+        with closing(sqlite3.connect(database_path)) as database:
+            self.assertEqual(
+                database.execute(
+                    "SELECT status FROM courses WHERE slug = ?",
+                    ("digital-circuits",),
+                ).fetchone()[0],
+                "published",
+            )
+            self.assertEqual(
+                database.execute(
+                    "SELECT DISTINCT status FROM chapters"
+                ).fetchall(),
+                [("published",)],
+            )
         self.assertEqual(legacy_history, (1, legacy_progress_updated_at))
         self.assertIn(
             ("chapters", "chapter_id", "id", "CASCADE"),
