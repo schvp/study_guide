@@ -42,6 +42,14 @@ class AuthenticationTests(unittest.TestCase):
             headers={"X-CSRF-Token": self.csrf_token},
         )
 
+    def _set_demo_user_role(self, role):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            database.execute(
+                "UPDATE users SET role = ? WHERE username = 'test'",
+                (role,),
+            )
+            database.commit()
+
     def _register(
         self,
         email="student@example.com",
@@ -458,7 +466,149 @@ class AuthenticationTests(unittest.TestCase):
             self.assertIn("Схемотехника цифровых систем".encode(), response.data)
             self.assertIn(b'name="title"', response.data)
             self.assertIn(b'name="slug"', response.data)
-            self.assertIn(b'disabled', response.data)
+            self.assertIn(b'action="/content-management/courses"', response.data)
+            self.assertIn(b'name="csrf_token"', response.data)
+
+    def test_course_management_creates_and_updates_courses(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self._set_demo_user_role("teacher")
+        self.csrf_token = self._load_csrf_token()
+        form_token = self.csrf_token
+
+        created = self.client.post(
+            "/content-management/courses",
+            data={
+                "csrf_token": form_token,
+                "title": "Основы электроники",
+                "slug": "osnovy-elektroniki",
+                "description": "Вводный курс",
+            },
+        )
+        self.assertEqual(created.status_code, 302)
+        self.assertEqual(created.headers["Location"], "/content-management")
+
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            course_id, title, description = database.execute(
+                "SELECT id, title, description FROM courses WHERE slug = ?",
+                ("osnovy-elektroniki",),
+            ).fetchone()
+        self.assertEqual((title, description), ("Основы электроники", "Вводный курс"))
+
+        updated = self.client.post(
+            f"/content-management/courses/{course_id}",
+            data={
+                "csrf_token": form_token,
+                "title": "Основы электроники и схем",
+                "slug": "osnovy-elektroniki-i-shem",
+                "description": "Обновлённое описание",
+            },
+        )
+        self.assertEqual(updated.status_code, 302)
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            saved = database.execute(
+                "SELECT title, slug, description FROM courses WHERE id = ?",
+                (course_id,),
+            ).fetchone()
+        self.assertEqual(
+            saved,
+            (
+                "Основы электроники и схем",
+                "osnovy-elektroniki-i-shem",
+                "Обновлённое описание",
+            ),
+        )
+
+    def test_course_management_rejects_invalid_and_duplicate_data(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self._set_demo_user_role("admin")
+        self.csrf_token = self._load_csrf_token()
+        form_token = self.csrf_token
+
+        invalid = self.client.post(
+            "/content-management/courses",
+            data={
+                "csrf_token": form_token,
+                "title": "Некорректный курс",
+                "slug": "Invalid Slug",
+                "description": "",
+            },
+            follow_redirects=True,
+        )
+        self.assertEqual(invalid.status_code, 200)
+        self.assertIn("Адрес курса должен содержать".encode(), invalid.data)
+
+        duplicate = self.client.post(
+            "/content-management/courses",
+            data={
+                "csrf_token": form_token,
+                "title": "Дубликат",
+                "slug": "digital-circuits",
+                "description": "",
+            },
+            follow_redirects=True,
+        )
+        self.assertEqual(duplicate.status_code, 200)
+        self.assertIn("такой адрес уже используется".encode(), duplicate.data)
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            self.assertEqual(
+                database.execute("SELECT COUNT(*) FROM courses").fetchone()[0],
+                1,
+            )
+
+    def test_course_management_posts_require_role_and_csrf(self):
+        guest_post = self.client.post(
+            "/content-management/courses",
+            data={
+                "csrf_token": self.csrf_token,
+                "title": "Гостевой",
+                "slug": "guest-course",
+            },
+        )
+        self.assertEqual(guest_post.status_code, 401)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        student_post = self.client.post(
+            "/content-management/courses",
+            data={
+                "csrf_token": self.csrf_token,
+                "title": "Курс учащегося",
+                "slug": "student-course",
+            },
+        )
+        self.assertEqual(student_post.status_code, 403)
+        self._set_demo_user_role("teacher")
+
+        invalid_csrf = self.client.post(
+            "/content-management/courses",
+            data={
+                "title": "Запрос без CSRF",
+                "slug": "no-csrf-course",
+            },
+        )
+        self.assertEqual(invalid_csrf.status_code, 400)
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            self.assertEqual(
+                database.execute("SELECT COUNT(*) FROM courses").fetchone()[0],
+                1,
+            )
 
     def test_chapter_completion_is_recorded_once_and_shown_in_profile(self):
         self.assertEqual(

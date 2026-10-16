@@ -26,14 +26,24 @@
     <main class="section-main">
         <p class="eyebrow">Учебный навигатор <span aria-hidden="true">/</span> Управление</p>
         <h1>Управление контентом</h1>
-        <p class="section-description">Создавайте и редактируйте курсы. Сохранение изменений будет подключено следующим этапом.</p>
+        <p class="section-description">Создавайте и редактируйте курсы.</p>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="management-messages" aria-live="polite">
+                    {% for category, message in messages %}
+                        <li class="management-message is-{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
 
         <section class="content-management-panel" aria-labelledby="new-course-title">
             <div class="content-management-heading">
                 <p class="profile-label">НОВАЯ ЗАПИСЬ</p>
                 <h2 id="new-course-title">Создать курс</h2>
             </div>
-            <form class="management-form">
+            <form class="management-form" method="post" action="{{ url_for('create_course') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <label class="management-field">
                     <span>Название курса</span>
                     <input type="text" name="title" maxlength="160" placeholder="Например, Основы электроники" required>
@@ -47,7 +57,7 @@
                     <span>Описание</span>
                     <textarea name="description" rows="4" maxlength="2000" placeholder="Кратко опишите курс"></textarea>
                 </label>
-                <button class="management-save" type="button" disabled>Создать курс</button>
+                <button class="management-save" type="submit">Создать курс</button>
             </form>
         </section>
 
@@ -65,7 +75,8 @@
                                 <span class="managed-course-meta">{{ course.chapter_count }} разделов · {{ course.slug }}</span>
                                 <span class="managed-course-action">Редактировать</span>
                             </summary>
-                            <form class="management-form managed-course-form">
+                            <form class="management-form managed-course-form" method="post" action="{{ url_for('edit_course', course_id=course.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                 <label class="management-field">
                                     <span>Название курса</span>
                                     <input type="text" name="title" value="{{ course.title }}" maxlength="160" required>
@@ -78,7 +89,7 @@
                                     <span>Описание</span>
                                     <textarea name="description" rows="4" maxlength="2000">{{ course.description }}</textarea>
                                 </label>
-                                <button class="management-save" type="button" disabled>Сохранить изменения</button>
+                                <button class="management-save" type="submit">Сохранить изменения</button>
                             </form>
                         </details>
                     {% endfor %}
@@ -87,7 +98,6 @@
                 <p class="library-empty-state">Курсы пока не добавлены.</p>
             {% endif %}
         </section>
-        <p class="management-note">Поля формы пока не сохраняются. Функциональность записи будет добавлена отдельным этапом.</p>
     </main>
 
     <footer class="site-footer">

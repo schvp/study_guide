@@ -1753,12 +1753,42 @@ a.chapter-link:hover {
     padding: 0 18px;
     border: 0;
     border-radius: 3px;
-    background: #dce5c9;
-    color: #697365;
+    background: var(--lime);
+    color: var(--ink);
     font: inherit;
     font-size: 11px;
     font-weight: 700;
-    cursor: not-allowed;
+    cursor: pointer;
+}
+
+.management-save:hover {
+    background: #e5ff91;
+}
+
+.management-messages {
+    display: grid;
+    gap: 8px;
+    margin: 20px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.management-message {
+    padding: 12px 15px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    font-size: 11px;
+    line-height: 1.6;
+}
+
+.management-message.is-success {
+    background: #f1f6e8;
+    color: #456b4b;
+}
+
+.management-message.is-error {
+    background: #fff2ed;
+    color: #9b493a;
 }
 
 .managed-course-list {

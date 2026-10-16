@@ -4,7 +4,7 @@ import secrets
 import sqlite3
 from functools import wraps
 
-from flask import Flask, g, jsonify, render_template, request, session
+from flask import Flask, flash, g, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 from migrations import migrate_database
 
@@ -120,6 +120,7 @@ USER_ROLE_LABELS = {
 
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 USERNAME_PATTERN = re.compile(r"^[a-zA-Z0-9_.-]{3,32}$")
+COURSE_SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 MIN_PASSWORD_LENGTH = 8
 MAX_PASSWORD_LENGTH = 128
 DEMO_USERNAME = "test"
@@ -279,7 +280,9 @@ def create_app(test_config=None):
         return decorate
 
     def csrf_is_valid():
-        token = request.headers.get("X-CSRF-Token", "")
+        token = request.headers.get("X-CSRF-Token", "") or request.form.get(
+            "csrf_token", ""
+        )
         session_token = session.get("csrf_token", "")
         return bool(token and session_token and secrets.compare_digest(token, session_token))
 
@@ -521,6 +524,9 @@ def create_app(test_config=None):
     @app.get("/content-management")
     @roles_required("teacher", "admin")
     def content_management():
+        return render_content_management()
+
+    def render_content_management():
         courses = get_db().execute(
             """
             SELECT courses.id, courses.slug, courses.title, courses.description,
@@ -538,6 +544,81 @@ def create_app(test_config=None):
             active_nav="learning",
             csrf_token=session["csrf_token"],
         )
+
+    def course_form_values():
+        title = request.form.get("title", "").strip()
+        slug = request.form.get("slug", "").strip()
+        description = request.form.get("description", "").strip()
+        if not title:
+            return None, "Укажите название курса."
+        if len(title) > 160:
+            return None, "Название курса должно быть не длиннее 160 символов."
+        if not COURSE_SLUG_PATTERN.fullmatch(slug) or len(slug) > 100:
+            return None, "Адрес курса должен содержать латинские строчные буквы, цифры и дефисы."
+        if len(description) > 2000:
+            return None, "Описание курса должно быть не длиннее 2000 символов."
+        return (title, slug, description), None
+
+    @app.post("/content-management/courses")
+    @roles_required("teacher", "admin")
+    @csrf_protected
+    def create_course():
+        values, error = course_form_values()
+        if error:
+            flash(error, "error")
+            return redirect(url_for("content_management"))
+
+        try:
+            get_db().execute(
+                "INSERT INTO courses (title, slug, description) VALUES (?, ?, ?)",
+                values,
+            )
+            get_db().commit()
+        except sqlite3.IntegrityError:
+            get_db().rollback()
+            flash("Не удалось создать курс: такой адрес уже используется.", "error")
+            return redirect(url_for("content_management"))
+
+        flash("Курс создан.", "success")
+        return redirect(url_for("content_management"))
+
+    @app.post("/content-management/courses/<int:course_id>")
+    @roles_required("teacher", "admin")
+    @csrf_protected
+    def edit_course(course_id):
+        course = get_db().execute(
+            "SELECT id FROM courses WHERE id = ?",
+            (course_id,),
+        ).fetchone()
+        if course is None:
+            return render_template(
+                "404.html",
+                current_user=current_user(),
+            ), 404
+
+        values, error = course_form_values()
+        if error:
+            flash(error, "error")
+            return redirect(url_for("content_management"))
+
+        try:
+            get_db().execute(
+                """
+                UPDATE courses
+                SET title = ?, slug = ?, description = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (*values, course_id),
+            )
+            get_db().commit()
+        except sqlite3.IntegrityError:
+            get_db().rollback()
+            flash("Не удалось сохранить курс: такой адрес уже используется.", "error")
+            return redirect(url_for("content_management"))
+
+        flash("Изменения курса сохранены.", "success")
+        return redirect(url_for("content_management"))
 
     @app.errorhandler(404)
     def page_not_found(_error):
