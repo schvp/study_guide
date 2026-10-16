@@ -69,7 +69,7 @@
             {% if courses %}
                 <div class="managed-course-list">
                     {% for course in courses %}
-                        <details class="managed-course">
+                        <details class="managed-course" {% if loop.first %}open{% endif %}>
                             <summary>
                                 <span class="managed-course-title">{{ course.title }}</span>
                                 <span class="managed-course-meta">{{ course.chapter_count }} разделов · {{ course.slug }}</span>
@@ -91,6 +91,72 @@
                                 </label>
                                 <button class="management-save" type="submit">Сохранить изменения</button>
                             </form>
+
+                            <section class="managed-chapters" aria-labelledby="chapters-title-{{ course.id }}">
+                                <div class="managed-chapters-heading">
+                                    <p class="profile-label">СТРУКТУРА КУРСА</p>
+                                    <h3 id="chapters-title-{{ course.id }}">Главы курса</h3>
+                                </div>
+                                <section class="chapter-editor-panel" aria-labelledby="new-chapter-title-{{ course.id }}">
+                                    <h4 id="new-chapter-title-{{ course.id }}">Добавить главу</h4>
+                                    <form class="management-form chapter-management-form">
+                                        <label class="management-field">
+                                            <span>Название главы</span>
+                                            <input type="text" name="title" maxlength="200" placeholder="Название новой главы" required>
+                                        </label>
+                                        <label class="management-field">
+                                            <span>Позиция в курсе</span>
+                                            <input type="number" name="position" min="1" value="{{ chapters_by_course.get(course.id, [])|length + 1 }}" required>
+                                        </label>
+                                        <label class="management-field">
+                                            <span>Описание</span>
+                                            <textarea name="description" rows="3" maxlength="2000" placeholder="Краткое описание главы"></textarea>
+                                        </label>
+                                        <label class="management-field">
+                                            <span>Учебный материал</span>
+                                            <textarea name="content" rows="5" placeholder="Текст материала главы"></textarea>
+                                        </label>
+                                        <button class="management-save" type="button" disabled>Добавить главу</button>
+                                    </form>
+                                </section>
+
+                                {% if chapters_by_course.get(course.id) %}
+                                    <ol class="managed-chapter-list">
+                                        {% for chapter in chapters_by_course.get(course.id) %}
+                                            <li class="managed-chapter">
+                                                <details>
+                                                    <summary>
+                                                        <span class="managed-chapter-position">{{ "%02d"|format(chapter.position) }}</span>
+                                                        <span class="managed-chapter-title">{{ chapter.title }}</span>
+                                                        <span class="managed-course-action">Редактировать</span>
+                                                    </summary>
+                                                    <form class="management-form managed-chapter-form">
+                                                        <label class="management-field">
+                                                            <span>Название главы</span>
+                                                            <input type="text" name="title" value="{{ chapter.title }}" maxlength="200" required>
+                                                        </label>
+                                                        <label class="management-field">
+                                                            <span>Позиция в курсе</span>
+                                                            <input type="number" name="position" min="1" value="{{ chapter.position }}" required>
+                                                        </label>
+                                                        <label class="management-field">
+                                                            <span>Описание</span>
+                                                            <textarea name="description" rows="3" maxlength="2000">{{ chapter.description }}</textarea>
+                                                        </label>
+                                                        <label class="management-field">
+                                                            <span>Учебный материал</span>
+                                                            <textarea name="content" rows="5">{{ chapter.content }}</textarea>
+                                                        </label>
+                                                        <button class="management-save" type="button" disabled>Сохранить изменения</button>
+                                                    </form>
+                                                </details>
+                                            </li>
+                                        {% endfor %}
+                                    </ol>
+                                {% else %}
+                                    <p class="library-empty-state managed-chapters-empty">В этом курсе пока нет глав.</p>
+                                {% endif %}
+                            </section>
                         </details>
                     {% endfor %}
                 </div>

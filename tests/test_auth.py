@@ -513,6 +513,46 @@ class AuthenticationTests(unittest.TestCase):
             self.assertIn(b'name="slug"', response.data)
             self.assertIn(b'action="/content-management/courses"', response.data)
             self.assertIn(b'name="csrf_token"', response.data)
+            self.assertIn("Главы курса".encode(), response.data)
+            self.assertIn("Добавить главу".encode(), response.data)
+            self.assertIn("Введение в цифровую схемотехнику".encode(), response.data)
+            self.assertIn(b'name="position"', response.data)
+            self.assertIn(b'name="content"', response.data)
+            self.assertIn(b'type="button" disabled', response.data)
+
+    def test_chapter_management_interface_groups_chapters_by_course(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            database.execute(
+                """
+                INSERT INTO courses (id, slug, title, description)
+                VALUES (2, 'logic-basics', 'Основы логики', 'Отдельный курс')
+                """
+            )
+            database.execute(
+                """
+                INSERT INTO chapters (
+                    id, course_id, position, title, description, content
+                )
+                VALUES (101, 2, 1, 'Логическое высказывание', 'Описание', 'Материал')
+                """
+            )
+            database.commit()
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "admin", "password": "admin"},
+            ).status_code,
+            200,
+        )
+        management_page = self.client.get("/content-management")
+
+        self.assertEqual(management_page.status_code, 200)
+        self.assertIn("Основы логики".encode(), management_page.data)
+        self.assertIn("Логическое высказывание".encode(), management_page.data)
+        self.assertIn("Системы счисления и кодирование информации".encode(), management_page.data)
+        self.assertIn("Описание".encode(), management_page.data)
+        self.assertIn("Материал".encode(), management_page.data)
 
     def test_course_management_creates_and_updates_courses(self):
         self.assertEqual(

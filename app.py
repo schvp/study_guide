@@ -556,9 +556,20 @@ def create_app(test_config=None):
             ORDER BY courses.title COLLATE NOCASE, courses.id
             """
         ).fetchall()
+        chapter_rows = get_db().execute(
+            """
+            SELECT id, course_id, position, title, description, content
+            FROM chapters
+            ORDER BY course_id, position, id
+            """
+        ).fetchall()
+        chapters_by_course = {}
+        for chapter in chapter_rows:
+            chapters_by_course.setdefault(chapter["course_id"], []).append(chapter)
         return render_template(
             "content_management.html",
             courses=courses,
+            chapters_by_course=chapters_by_course,
             current_user=current_user(),
             active_nav="learning",
             csrf_token=session["csrf_token"],

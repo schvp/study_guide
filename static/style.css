@@ -1845,6 +1845,93 @@ a.chapter-link:hover {
     padding: 4px 0 20px 26px;
 }
 
+.managed-chapters {
+    margin: 10px 0 0 26px;
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+}
+
+.managed-chapters-heading {
+    margin-bottom: 18px;
+}
+
+.managed-chapters-heading .profile-label {
+    margin: 0 0 7px;
+}
+
+.managed-chapters-heading h3 {
+    margin: 0;
+    font-size: 16px;
+    letter-spacing: -0.035em;
+}
+
+.chapter-editor-panel {
+    margin-bottom: 22px;
+    padding: 20px;
+    border: 1px dashed #cbd3c5;
+    border-radius: 4px;
+    background: #f8f9f3;
+}
+
+.chapter-editor-panel h4 {
+    margin: 0 0 16px;
+    font-size: 12px;
+}
+
+.managed-chapter-list {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.managed-chapter {
+    border-top: 1px solid var(--line);
+}
+
+.managed-chapter details > summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0;
+    cursor: pointer;
+    list-style: none;
+}
+
+.managed-chapter details > summary::-webkit-details-marker {
+    display: none;
+}
+
+.managed-chapter details > summary::before {
+    content: "+";
+    color: #557d5c;
+}
+
+.managed-chapter details[open] > summary::before {
+    content: "−";
+}
+
+.managed-chapter-position {
+    color: #859188;
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 10px;
+}
+
+.managed-chapter-title {
+    min-width: 0;
+    flex: 1;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.managed-chapter-form {
+    padding: 4px 0 20px 25px;
+}
+
+.managed-chapters-empty {
+    margin: 0;
+}
+
 .management-note {
     margin-top: 15px;
     color: var(--muted);
