@@ -1,0 +1,49 @@
+{% from "_navigation.html" import header_navigation, side_navigation %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Недостаточно прав для доступа к разделу">
+    <title>Доступ ограничен — Учебный навигатор</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="app-layout">
+    <header class="site-header">
+        <a class="brand" href="{{ url_for('home') }}" aria-label="На главную">
+            <span class="brand-mark" aria-hidden="true">Σ</span>
+            <span>Учебный навигатор</span>
+        </a>
+        {{ header_navigation("learning", current_user) }}
+        <div class="header-account">
+            {% if current_user %}
+                <span class="header-user">{{ current_user.email }}</span>
+                <button class="header-auth" type="button" data-auth-logout>Выйти</button>
+            {% else %}
+                <a class="header-auth" href="{{ url_for('home', login='1') }}">Войти</a>
+            {% endif %}
+        </div>
+    </header>
+    {{ side_navigation("learning", current_user) }}
+
+    <main class="section-main">
+        <section class="section-placeholder access-denied" role="status">
+            <span class="placeholder-mark" aria-hidden="true">⊘</span>
+            <p class="eyebrow">{% if current_user %}Недостаточно прав{% else %}Требуется вход{% endif %}</p>
+            <h1>{% if current_user %}Доступ ограничен{% else %}Войдите в аккаунт{% endif %}</h1>
+            <p>{{ message }}</p>
+            {% if current_user %}
+                <a class="primary-link" href="{{ url_for('profile') }}">Вернуться в профиль <span aria-hidden="true">→</span></a>
+            {% else %}
+                <a class="primary-link" href="{{ url_for('home', login='1') }}">Перейти ко входу <span aria-hidden="true">→</span></a>
+            {% endif %}
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <span>Схемотехника цифровых систем</span>
+        <span>Учебное пособие <span aria-hidden="true">·</span> Учитесь видеть логику</span>
+    </footer>
+    <script src="{{ url_for('static', filename='auth.js') }}" defer></script>
+</body>
+</html>

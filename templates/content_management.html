@@ -1,0 +1,45 @@
+{% from "_navigation.html" import header_navigation, side_navigation %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <meta name="description" content="Управление учебными материалами">
+    <title>Управление контентом — Учебный навигатор</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="app-layout">
+    <header class="site-header">
+        <a class="brand" href="{{ url_for('home') }}" aria-label="На главную">
+            <span class="brand-mark" aria-hidden="true">Σ</span>
+            <span>Учебный навигатор</span>
+        </a>
+        {{ header_navigation(active_nav, current_user) }}
+        <div class="header-account">
+            <span class="header-user">{{ current_user.email }}</span>
+            <button class="header-auth" type="button" data-auth-logout>Выйти</button>
+        </div>
+    </header>
+    {{ side_navigation(active_nav, current_user) }}
+
+    <main class="section-main">
+        <p class="eyebrow">Учебный навигатор <span aria-hidden="true">/</span> Управление</p>
+        <h1>Управление контентом</h1>
+        <p class="section-description">Раздел доступен преподавателям и администраторам.</p>
+        <section class="section-placeholder">
+            <span class="placeholder-mark" aria-hidden="true">✎</span>
+            <p class="eyebrow">Подготовка каркаса</p>
+            <h2>Инструменты редактирования появятся здесь</h2>
+            <p>Структура курсов, глав и материалов уже хранится в базе данных. Следующим этапом можно добавить формы создания и редактирования.</p>
+            <a class="primary-link" href="{{ url_for('course_catalog') }}">Перейти к курсам <span aria-hidden="true">→</span></a>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <span>Схемотехника цифровых систем</span>
+        <span>Учебное пособие <span aria-hidden="true">·</span> Учитесь видеть логику</span>
+    </footer>
+    <script src="{{ url_for('static', filename='auth.js') }}" defer></script>
+</body>
+</html>

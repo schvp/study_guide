@@ -46,6 +46,9 @@
                 </div>
             </section>
             <a class="primary-link section-course-link" href="{{ url_for('home', _anchor='my-course') }}">Продолжить обучение <span aria-hidden="true">→</span></a>
+            {% if can_manage_content %}
+                <a class="secondary-link section-course-link" href="{{ url_for('content_management') }}">Управление контентом <span aria-hidden="true">→</span></a>
+            {% endif %}
             <section class="profile-history" aria-labelledby="profile-history-title">
                 <div class="profile-history-heading">
                     <p class="profile-label">ИСТОРИЯ ОБУЧЕНИЯ</p>

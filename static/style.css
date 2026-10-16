@@ -1379,6 +1379,13 @@ a.chapter-link:hover {
     letter-spacing: -0.04em;
 }
 
+.access-denied h1 {
+    max-width: 550px;
+    margin: 0 0 10px;
+    font-size: clamp(24px, 4vw, 32px);
+    letter-spacing: -0.05em;
+}
+
 .section-placeholder > p:not(.eyebrow) {
     color: var(--muted);
     font-size: 12px;

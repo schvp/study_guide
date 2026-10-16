@@ -255,6 +255,29 @@ def create_app(test_config=None):
             (user_id,),
         ).fetchone()
 
+    def roles_required(*allowed_roles):
+        def decorate(view):
+            @wraps(view)
+            def wrapped(*args, **kwargs):
+                user = current_user()
+                if user is None:
+                    return render_template(
+                        "403.html",
+                        current_user=None,
+                        message="Войдите в аккаунт, чтобы открыть этот раздел.",
+                    ), 401
+                if user["role"] not in allowed_roles:
+                    return render_template(
+                        "403.html",
+                        current_user=user,
+                        message="Для этого раздела нужны права преподавателя или администратора.",
+                    ), 403
+                return view(*args, **kwargs)
+
+            return wrapped
+
+        return decorate
+
     def csrf_is_valid():
         token = request.headers.get("X-CSRF-Token", "")
         session_token = session.get("csrf_token", "")
@@ -421,6 +444,9 @@ def create_app(test_config=None):
                 },
                 current_user=user,
                 user_role_label=USER_ROLE_LABELS[user["role"]] if user else None,
+                can_manage_content=(
+                    user is not None and user["role"] in {"teacher", "admin"}
+                ),
                 chapters_count=get_db().execute(
                     "SELECT COUNT(*) FROM chapters WHERE course_id = ?",
                     (get_course()["id"],),
@@ -491,6 +517,16 @@ def create_app(test_config=None):
     @app.get("/profile")
     def profile():
         return render_app_section("profile")
+
+    @app.get("/content-management")
+    @roles_required("teacher", "admin")
+    def content_management():
+        return render_template(
+            "content_management.html",
+            current_user=current_user(),
+            active_nav="learning",
+            csrf_token=session["csrf_token"],
+        )
 
     @app.errorhandler(404)
     def page_not_found(_error):

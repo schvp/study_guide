@@ -410,6 +410,50 @@ class AuthenticationTests(unittest.TestCase):
             ).fetchone()[0]
         self.assertEqual(role, "student")
 
+    def test_content_management_requires_login_and_privileged_role(self):
+        anonymous_response = self.client.get("/content-management")
+        self.assertEqual(anonymous_response.status_code, 401)
+        self.assertIn("Требуется вход".encode(), anonymous_response.data)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        student_profile = self.client.get("/profile")
+        self.assertNotIn(b'href="/content-management"', student_profile.data)
+
+        student_response = self.client.get("/content-management")
+        self.assertEqual(student_response.status_code, 403)
+        self.assertIn("Недостаточно прав".encode(), student_response.data)
+
+    def test_teacher_and_admin_can_open_content_management(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+
+        for role in ("teacher", "admin"):
+            with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+                database.execute(
+                    "UPDATE users SET role = ? WHERE username = 'test'",
+                    (role,),
+                )
+                database.commit()
+
+            profile = self.client.get("/profile")
+            self.assertIn(b'href="/content-management"', profile.data)
+            response = self.client.get("/content-management")
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("Управление контентом".encode(), response.data)
+
     def test_chapter_completion_is_recorded_once_and_shown_in_profile(self):
         self.assertEqual(
             self._post_json(
