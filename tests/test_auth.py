@@ -453,6 +453,12 @@ class AuthenticationTests(unittest.TestCase):
             response = self.client.get("/content-management")
             self.assertEqual(response.status_code, 200)
             self.assertIn("Управление контентом".encode(), response.data)
+            self.assertIn("Создать курс".encode(), response.data)
+            self.assertIn("Редактирование курсов".encode(), response.data)
+            self.assertIn("Схемотехника цифровых систем".encode(), response.data)
+            self.assertIn(b'name="title"', response.data)
+            self.assertIn(b'name="slug"', response.data)
+            self.assertIn(b'disabled', response.data)
 
     def test_chapter_completion_is_recorded_once_and_shown_in_profile(self):
         self.assertEqual(

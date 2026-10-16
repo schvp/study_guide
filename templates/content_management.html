@@ -26,14 +26,68 @@
     <main class="section-main">
         <p class="eyebrow">Учебный навигатор <span aria-hidden="true">/</span> Управление</p>
         <h1>Управление контентом</h1>
-        <p class="section-description">Раздел доступен преподавателям и администраторам.</p>
-        <section class="section-placeholder">
-            <span class="placeholder-mark" aria-hidden="true">✎</span>
-            <p class="eyebrow">Подготовка каркаса</p>
-            <h2>Инструменты редактирования появятся здесь</h2>
-            <p>Структура курсов, глав и материалов уже хранится в базе данных. Следующим этапом можно добавить формы создания и редактирования.</p>
-            <a class="primary-link" href="{{ url_for('course_catalog') }}">Перейти к курсам <span aria-hidden="true">→</span></a>
+        <p class="section-description">Создавайте и редактируйте курсы. Сохранение изменений будет подключено следующим этапом.</p>
+
+        <section class="content-management-panel" aria-labelledby="new-course-title">
+            <div class="content-management-heading">
+                <p class="profile-label">НОВАЯ ЗАПИСЬ</p>
+                <h2 id="new-course-title">Создать курс</h2>
+            </div>
+            <form class="management-form">
+                <label class="management-field">
+                    <span>Название курса</span>
+                    <input type="text" name="title" maxlength="160" placeholder="Например, Основы электроники" required>
+                </label>
+                <label class="management-field">
+                    <span>Адрес курса (slug)</span>
+                    <input type="text" name="slug" maxlength="100" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="osnovy-elektroniki" required>
+                    <small>Латинские буквы в нижнем регистре, цифры и дефисы.</small>
+                </label>
+                <label class="management-field">
+                    <span>Описание</span>
+                    <textarea name="description" rows="4" maxlength="2000" placeholder="Кратко опишите курс"></textarea>
+                </label>
+                <button class="management-save" type="button" disabled>Создать курс</button>
+            </form>
         </section>
+
+        <section class="content-management-panel" aria-labelledby="existing-courses-title">
+            <div class="content-management-heading">
+                <p class="profile-label">КУРСЫ В СИСТЕМЕ</p>
+                <h2 id="existing-courses-title">Редактирование курсов</h2>
+            </div>
+            {% if courses %}
+                <div class="managed-course-list">
+                    {% for course in courses %}
+                        <details class="managed-course">
+                            <summary>
+                                <span class="managed-course-title">{{ course.title }}</span>
+                                <span class="managed-course-meta">{{ course.chapter_count }} разделов · {{ course.slug }}</span>
+                                <span class="managed-course-action">Редактировать</span>
+                            </summary>
+                            <form class="management-form managed-course-form">
+                                <label class="management-field">
+                                    <span>Название курса</span>
+                                    <input type="text" name="title" value="{{ course.title }}" maxlength="160" required>
+                                </label>
+                                <label class="management-field">
+                                    <span>Адрес курса (slug)</span>
+                                    <input type="text" name="slug" value="{{ course.slug }}" maxlength="100" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" required>
+                                </label>
+                                <label class="management-field">
+                                    <span>Описание</span>
+                                    <textarea name="description" rows="4" maxlength="2000">{{ course.description }}</textarea>
+                                </label>
+                                <button class="management-save" type="button" disabled>Сохранить изменения</button>
+                            </form>
+                        </details>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="library-empty-state">Курсы пока не добавлены.</p>
+            {% endif %}
+        </section>
+        <p class="management-note">Поля формы пока не сохраняются. Функциональность записи будет добавлена отдельным этапом.</p>
     </main>
 
     <footer class="site-footer">

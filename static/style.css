@@ -1685,6 +1685,143 @@ a.chapter-link:hover {
     color: #557d5c;
 }
 
+.content-management-panel {
+    margin-top: 30px;
+    padding: clamp(24px, 4vw, 36px);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+}
+
+.content-management-heading {
+    margin-bottom: 22px;
+}
+
+.content-management-heading .profile-label {
+    margin-bottom: 8px;
+}
+
+.content-management-heading h2 {
+    margin: 0;
+    font-size: 20px;
+    letter-spacing: -0.04em;
+}
+
+.management-form {
+    display: grid;
+    gap: 16px;
+}
+
+.management-field {
+    display: grid;
+    gap: 7px;
+    color: var(--ink);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.management-field input,
+.management-field textarea {
+    width: 100%;
+    padding: 12px 13px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: #fff;
+    color: var(--ink);
+    font: inherit;
+    font-weight: 400;
+}
+
+.management-field textarea {
+    resize: vertical;
+}
+
+.management-field input::placeholder,
+.management-field textarea::placeholder {
+    color: #9aa69b;
+}
+
+.management-field small {
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 400;
+}
+
+.management-save {
+    justify-self: start;
+    min-height: 42px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 3px;
+    background: #dce5c9;
+    color: #697365;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: not-allowed;
+}
+
+.managed-course-list {
+    display: grid;
+    gap: 10px;
+}
+
+.managed-course {
+    border-top: 1px solid var(--line);
+}
+
+.managed-course summary {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    padding: 16px 0;
+    cursor: pointer;
+    list-style: none;
+}
+
+.managed-course summary::-webkit-details-marker {
+    display: none;
+}
+
+.managed-course summary::before {
+    content: "+";
+    color: #557d5c;
+    font-size: 17px;
+}
+
+.managed-course[open] summary::before {
+    content: "−";
+}
+
+.managed-course-title {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.managed-course-meta {
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.managed-course-action {
+    margin-left: auto;
+    color: #557d5c;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.managed-course-form {
+    padding: 4px 0 20px 26px;
+}
+
+.management-note {
+    margin-top: 15px;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.7;
+}
+
 button:focus-visible,
 a:focus-visible,
 input:focus-visible {

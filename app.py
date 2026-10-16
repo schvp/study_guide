@@ -521,8 +521,19 @@ def create_app(test_config=None):
     @app.get("/content-management")
     @roles_required("teacher", "admin")
     def content_management():
+        courses = get_db().execute(
+            """
+            SELECT courses.id, courses.slug, courses.title, courses.description,
+                COUNT(chapters.id) AS chapter_count
+            FROM courses
+            LEFT JOIN chapters ON chapters.course_id = courses.id
+            GROUP BY courses.id
+            ORDER BY courses.title COLLATE NOCASE, courses.id
+            """
+        ).fetchall()
         return render_template(
             "content_management.html",
+            courses=courses,
             current_user=current_user(),
             active_nav="learning",
             csrf_token=session["csrf_token"],
