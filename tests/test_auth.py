@@ -393,15 +393,237 @@ class AuthenticationTests(unittest.TestCase):
                     1,
                 ),
             )
+            database.execute(
+                """
+                INSERT INTO library_materials (
+                    course_id, title, material_type, resource_url, position
+                )
+                SELECT id, 'Старая ссылка', 'link', 'javascript:alert(1)', 2
+                FROM courses
+                WHERE slug = 'digital-circuits'
+                """
+            )
             database.commit()
 
         populated_page = self.client.get("/library")
         self.assertEqual(populated_page.status_code, 200)
         self.assertIn("Справочник по логике".encode(), populated_page.data)
         self.assertIn("Дополнительное описание".encode(), populated_page.data)
-        self.assertIn("book".encode(), populated_page.data)
+        self.assertIn("Книга".encode(), populated_page.data)
         self.assertIn("Текст из библиотеки".encode(), populated_page.data)
-        self.assertIn("https://example.org/reference".encode(), populated_page.data)
+        self.assertIn(
+            b'href="https://example.org/reference"',
+            populated_page.data,
+        )
+        self.assertIn("javascript:alert(1)".encode(), populated_page.data)
+        self.assertNotIn(b'href="javascript:alert(1)"', populated_page.data)
+
+    def test_library_material_management_creates_edits_reorders_and_deletes(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            database.executemany(
+                """
+                INSERT INTO library_materials (
+                    course_id, title, material_type, position
+                )
+                VALUES (1, ?, 'article', ?)
+                """,
+                [("Первая запись", 1), ("Вторая запись", 2)],
+            )
+            database.commit()
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "admin", "password": "admin"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        token = self.csrf_token
+
+        created = self.client.post(
+            "/content-management/courses/1/library-materials",
+            data={
+                "csrf_token": token,
+                "title": "Справочник по логике",
+                "description": "Полезное дополнение",
+                "material_type": "book",
+                "resource_url": "https://example.org/reference",
+                "content": "  Содержимое со значимыми пробелами  ",
+                "position": "2",
+            },
+        )
+        self.assertEqual(created.status_code, 302)
+        self.assertEqual(
+            created.headers["Location"],
+            "/content-management?course_id=1",
+        )
+
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            created_record = database.execute(
+                """
+                SELECT id, title, description, material_type, resource_url,
+                    content, position
+                FROM library_materials
+                WHERE title = 'Справочник по логике'
+                """
+            ).fetchone()
+            created_id = created_record[0]
+            created_order = database.execute(
+                """
+                SELECT title, position FROM library_materials
+                WHERE course_id = 1 ORDER BY position, id
+                """
+            ).fetchall()
+        self.assertEqual(
+            created_record[1:],
+            (
+                "Справочник по логике",
+                "Полезное дополнение",
+                "book",
+                "https://example.org/reference",
+                "  Содержимое со значимыми пробелами  ",
+                2,
+            ),
+        )
+        self.assertEqual(
+            created_order,
+            [
+                ("Первая запись", 1),
+                ("Справочник по логике", 2),
+                ("Вторая запись", 3),
+            ],
+        )
+
+        edited = self.client.post(
+            f"/content-management/library-materials/{created_id}",
+            data={
+                "csrf_token": token,
+                "title": "Обновлённый справочник",
+                "description": "Новое описание",
+                "material_type": "link",
+                "resource_url": "https://example.org/updated",
+                "content": "Обновлённый материал",
+                "position": "1",
+            },
+        )
+        self.assertEqual(edited.status_code, 302)
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            updated_material = database.execute(
+                """
+                SELECT title, description, material_type, resource_url,
+                    content, position
+                FROM library_materials WHERE id = ?
+                """,
+                (created_id,),
+            ).fetchone()
+        self.assertEqual(
+            updated_material,
+            (
+                "Обновлённый справочник",
+                "Новое описание",
+                "link",
+                "https://example.org/updated",
+                "Обновлённый материал",
+                1,
+            ),
+        )
+
+        library_page = self.client.get("/library")
+        self.assertIn("Обновлённый справочник".encode(), library_page.data)
+        self.assertIn(b'href="https://example.org/updated"', library_page.data)
+        self.assertNotIn("Справочник по логике".encode(), library_page.data)
+
+        deleted = self.client.post(
+            "/content-management/library-materials/2/delete",
+            data={"csrf_token": token},
+        )
+        self.assertEqual(deleted.status_code, 302)
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            remaining = database.execute(
+                """
+                SELECT title, position FROM library_materials
+                WHERE course_id = 1 ORDER BY position, id
+                """
+            ).fetchall()
+        self.assertEqual(
+            remaining,
+            [("Обновлённый справочник", 1), ("Первая запись", 2)],
+        )
+
+    def test_library_material_management_validates_input_roles_and_csrf(self):
+        missing_login = self.client.post(
+            "/content-management/courses/1/library-materials",
+            data={"title": "Материал", "material_type": "article", "position": "1"},
+        )
+        self.assertEqual(missing_login.status_code, 401)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        forbidden = self.client.post(
+            "/content-management/courses/1/library-materials",
+            data={
+                "csrf_token": self.csrf_token,
+                "title": "Материал",
+                "material_type": "article",
+                "position": "1",
+            },
+        )
+        self.assertEqual(forbidden.status_code, 403)
+
+        self._set_demo_user_role("admin")
+        invalid_csrf = self.client.post(
+            "/content-management/courses/1/library-materials",
+            data={
+                "title": "Материал",
+                "material_type": "article",
+                "position": "1",
+            },
+        )
+        self.assertEqual(invalid_csrf.status_code, 400)
+
+        for values, expected_message in [
+            (
+                {"title": " ", "material_type": "article", "position": "1"},
+                "Укажите название материала.",
+            ),
+            (
+                {"title": "Материал", "material_type": "unknown", "position": "1"},
+                "Выберите тип материала.",
+            ),
+            (
+                {
+                    "title": "Материал",
+                    "material_type": "article",
+                    "resource_url": "javascript:alert(1)",
+                    "position": "1",
+                },
+                "Укажите корректную ссылку",
+            ),
+            (
+                {"title": "Материал", "material_type": "article", "position": "0"},
+                "Позиция материала должна быть",
+            ),
+        ]:
+            response = self.client.post(
+                "/content-management/courses/1/library-materials",
+                data={"csrf_token": self.csrf_token, **values},
+                follow_redirects=True,
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(expected_message.encode(), response.data)
+
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            self.assertEqual(
+                database.execute("SELECT COUNT(*) FROM library_materials").fetchone()[0],
+                0,
+            )
 
     def test_unknown_routes_show_branded_404_page(self):
         response = self.client.get("/this-page-does-not-exist")
@@ -526,6 +748,13 @@ class AuthenticationTests(unittest.TestCase):
                 b'action="/content-management/chapters/1"',
                 response.data,
             )
+            self.assertIn("Материалы библиотеки".encode(), response.data)
+            self.assertIn("Добавить материал".encode(), response.data)
+            self.assertIn(
+                b'action="/content-management/courses/1/library-materials"',
+                response.data,
+            )
+            self.assertIn(b'name="material_type"', response.data)
             self.assertIn(b'maxlength="100000"', response.data)
 
     def test_chapter_management_interface_groups_chapters_by_course(self):

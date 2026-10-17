@@ -188,6 +188,103 @@
                                     <p class="library-empty-state managed-chapters-empty">В этом курсе пока нет глав.</p>
                                 {% endif %}
                             </section>
+
+                            <section class="managed-library" aria-labelledby="library-title-{{ course.id }}">
+                                <div class="managed-chapters-heading">
+                                    <p class="profile-label">ДОПОЛНИТЕЛЬНЫЕ РЕСУРСЫ</p>
+                                    <h3 id="library-title-{{ course.id }}">Материалы библиотеки</h3>
+                                </div>
+                                <section class="chapter-editor-panel" aria-labelledby="new-library-material-title-{{ course.id }}">
+                                    <h4 id="new-library-material-title-{{ course.id }}">Добавить материал</h4>
+                                    <form class="management-form library-material-management-form" method="post" action="{{ url_for('create_library_material', course_id=course.id) }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                        <label class="management-field">
+                                            <span>Название</span>
+                                            <input type="text" name="title" maxlength="200" required>
+                                        </label>
+                                        <label class="management-field">
+                                            <span>Тип материала</span>
+                                            <select name="material_type" required>
+                                                {% for type, label in library_material_types.items() %}
+                                                    <option value="{{ type }}">{{ label }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </label>
+                                        <label class="management-field">
+                                            <span>Позиция в библиотеке</span>
+                                            <input type="number" name="position" min="1" value="{{ materials_by_course.get(course.id, [])|length + 1 }}" required>
+                                        </label>
+                                        <label class="management-field">
+                                            <span>Описание</span>
+                                            <textarea name="description" rows="3" maxlength="2000"></textarea>
+                                        </label>
+                                        <label class="management-field">
+                                            <span>Ссылка на ресурс (необязательно)</span>
+                                            <input type="url" name="resource_url" maxlength="2048" placeholder="https://example.org">
+                                        </label>
+                                        <label class="management-field">
+                                            <span>Содержимое</span>
+                                            <textarea name="content" rows="5" maxlength="100000"></textarea>
+                                        </label>
+                                        <button class="management-save" type="submit">Добавить материал</button>
+                                    </form>
+                                </section>
+
+                                {% if materials_by_course.get(course.id) %}
+                                    <ol class="managed-library-list">
+                                        {% for material in materials_by_course.get(course.id) %}
+                                            <li class="managed-library-item">
+                                                <details>
+                                                    <summary>
+                                                        <span class="managed-chapter-position">{{ "%02d"|format(material.position) }}</span>
+                                                        <span class="managed-chapter-title">{{ material.title }}</span>
+                                                        <span class="managed-course-meta">{{ library_material_types[material.material_type] }}</span>
+                                                        <span class="managed-course-action">Редактировать</span>
+                                                    </summary>
+                                                    <form class="management-form managed-library-form" method="post" action="{{ url_for('edit_library_material', material_id=material.id) }}">
+                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                        <label class="management-field">
+                                                            <span>Название</span>
+                                                            <input type="text" name="title" value="{{ material.title }}" maxlength="200" required>
+                                                        </label>
+                                                        <label class="management-field">
+                                                            <span>Тип материала</span>
+                                                            <select name="material_type" required>
+                                                                {% for type, label in library_material_types.items() %}
+                                                                    <option value="{{ type }}" {% if material.material_type == type %}selected{% endif %}>{{ label }}</option>
+                                                                {% endfor %}
+                                                            </select>
+                                                        </label>
+                                                        <label class="management-field">
+                                                            <span>Позиция в библиотеке</span>
+                                                            <input type="number" name="position" min="1" max="{{ materials_by_course.get(course.id, [])|length }}" value="{{ material.position }}" required>
+                                                        </label>
+                                                        <label class="management-field">
+                                                            <span>Описание</span>
+                                                            <textarea name="description" rows="3" maxlength="2000">{{ material.description }}</textarea>
+                                                        </label>
+                                                        <label class="management-field">
+                                                            <span>Ссылка на ресурс (необязательно)</span>
+                                                            <input type="url" name="resource_url" value="{{ material.resource_url or '' }}" maxlength="2048" placeholder="https://example.org">
+                                                        </label>
+                                                        <label class="management-field">
+                                                            <span>Содержимое</span>
+                                                            <textarea name="content" rows="5" maxlength="100000">{{ material.content }}</textarea>
+                                                        </label>
+                                                        <button class="management-save" type="submit">Сохранить изменения</button>
+                                                    </form>
+                                                    <form class="managed-library-delete" method="post" action="{{ url_for('delete_library_material', material_id=material.id) }}" onsubmit="return confirm('Удалить этот материал библиотеки?');">
+                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                        <button class="management-delete" type="submit">Удалить материал</button>
+                                                    </form>
+                                                </details>
+                                            </li>
+                                        {% endfor %}
+                                    </ol>
+                                {% else %}
+                                    <p class="library-empty-state managed-chapters-empty">Материалов библиотеки пока нет.</p>
+                                {% endif %}
+                            </section>
                         </details>
                     {% endfor %}
                 </div>

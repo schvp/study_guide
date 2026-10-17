@@ -1852,6 +1852,12 @@ a.chapter-link:hover {
     border-top: 1px solid var(--line);
 }
 
+.managed-library {
+    margin: 26px 0 0 26px;
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+}
+
 .managed-chapters-heading {
     margin-bottom: 18px;
 }
@@ -1929,6 +1935,64 @@ a.chapter-link:hover {
     padding: 4px 0 20px 25px;
 }
 
+.managed-library-list {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.managed-library-item {
+    border-top: 1px solid var(--line);
+}
+
+.managed-library-item details > summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0;
+    cursor: pointer;
+    list-style: none;
+}
+
+.managed-library-item details > summary::-webkit-details-marker {
+    display: none;
+}
+
+.managed-library-item details > summary::before {
+    content: "+";
+    color: #557d5c;
+}
+
+.managed-library-item details[open] > summary::before {
+    content: "−";
+}
+
+.managed-library-form {
+    padding: 4px 0 14px 25px;
+}
+
+.managed-library-delete {
+    padding: 0 0 20px 25px;
+}
+
+.management-delete {
+    min-height: 38px;
+    padding: 0 14px;
+    border: 1px solid #d9a99d;
+    border-radius: 3px;
+    background: #fff8f5;
+    color: #9b493a;
+    font: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.management-delete:hover {
+    background: #fff0eb;
+}
+
 .managed-chapters-empty {
     margin: 0;
 }
@@ -1942,7 +2006,9 @@ a.chapter-link:hover {
 
 button:focus-visible,
 a:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
     outline: 2px solid var(--orange);
     outline-offset: 4px;
 }

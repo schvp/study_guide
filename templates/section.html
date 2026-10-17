@@ -80,7 +80,7 @@
                     <ul class="library-material-list">
                         {% for material in library_materials %}
                             <li class="library-material">
-                                <span class="library-material-type">{{ material.material_type }}</span>
+                                <span class="library-material-type">{{ library_material_types[material.material_type] }}</span>
                                 <h2>{{ material.title }}</h2>
                                 {% if material.description %}
                                     <p>{{ material.description }}</p>
@@ -89,7 +89,13 @@
                                     <div class="library-material-content">{{ material.content }}</div>
                                 {% endif %}
                                 {% if material.resource_url %}
-                                    <p class="library-material-reference">Ссылка: {{ material.resource_url }}</p>
+                                    <p class="library-material-reference">Ссылка:
+                                        {% if material.safe_resource_url %}
+                                            <a href="{{ material.safe_resource_url }}" target="_blank" rel="noopener noreferrer">{{ material.resource_url }}</a>
+                                        {% else %}
+                                            {{ material.resource_url }}
+                                        {% endif %}
+                                    </p>
                                 {% endif %}
                             </li>
                         {% endfor %}

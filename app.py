@@ -3,6 +3,7 @@ import re
 import secrets
 import sqlite3
 from functools import wraps
+from urllib.parse import urlsplit
 
 from flask import Flask, flash, g, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -121,6 +122,29 @@ USER_ROLE_LABELS = {
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 USERNAME_PATTERN = re.compile(r"^[a-zA-Z0-9_.-]{3,32}$")
 COURSE_SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+LIBRARY_MATERIAL_TYPES = {
+    "article": "Статья",
+    "book": "Книга",
+    "video": "Видео",
+    "link": "Ссылка",
+    "file": "Файл",
+}
+
+
+def is_http_resource_url(value):
+    if not isinstance(value, str) or not value:
+        return False
+    try:
+        parsed_url = urlsplit(value)
+        hostname = parsed_url.hostname
+    except ValueError:
+        return False
+    return (
+        parsed_url.scheme in {"http", "https"}
+        and bool(hostname)
+        and parsed_url.username is None
+        and parsed_url.password is None
+    )
 MIN_PASSWORD_LENGTH = 8
 MAX_PASSWORD_LENGTH = 128
 DEMO_USERNAME = "test"
@@ -545,12 +569,24 @@ def create_app(test_config=None):
                 """,
                 (course["id"],),
             ).fetchall() if course else []
+            library_materials = [
+                {
+                    **dict(material),
+                    "safe_resource_url": (
+                        material["resource_url"]
+                        if is_http_resource_url(material["resource_url"])
+                        else None
+                    ),
+                }
+                for material in library_materials
+            ]
             return render_template(
                 "section.html",
                 active_nav=active_nav,
                 section=APP_SECTIONS[active_nav],
                 current_user=user,
                 library_materials=library_materials,
+                library_material_types=LIBRARY_MATERIAL_TYPES,
                 csrf_token=session["csrf_token"],
             )
         return render_template(
@@ -615,11 +651,24 @@ def create_app(test_config=None):
         chapters_by_course = {}
         for chapter in chapter_rows:
             chapters_by_course.setdefault(chapter["course_id"], []).append(chapter)
+        material_rows = get_db().execute(
+            """
+            SELECT id, course_id, title, description, material_type,
+                resource_url, content, position
+            FROM library_materials
+            ORDER BY course_id, position, id
+            """
+        ).fetchall()
+        materials_by_course = {}
+        for material in material_rows:
+            materials_by_course.setdefault(material["course_id"], []).append(material)
         selected_course_id = request.args.get("course_id", type=int)
         return render_template(
             "content_management.html",
             courses=courses,
             chapters_by_course=chapters_by_course,
+            materials_by_course=materials_by_course,
+            library_material_types=LIBRARY_MATERIAL_TYPES,
             selected_course_id=selected_course_id,
             current_user=current_user(),
             active_nav="learning",
@@ -676,6 +725,53 @@ def create_app(test_config=None):
 
     def redirect_to_course_management(course_id):
         return redirect(url_for("content_management", course_id=course_id))
+
+    def library_material_form_values(material_count, creating):
+        title = request.form.get("title", "").strip()
+        description = request.form.get("description", "").strip()
+        material_type = request.form.get("material_type", "")
+        resource_url = request.form.get("resource_url", "").strip()
+        content = request.form.get("content", "")
+        try:
+            position = int(request.form.get("position", ""))
+        except ValueError:
+            return None, "Укажите целое число для позиции материала."
+        if not title:
+            return None, "Укажите название материала."
+        if len(title) > 200:
+            return None, "Название материала должно быть не длиннее 200 символов."
+        if len(description) > 2000:
+            return None, "Описание материала должно быть не длиннее 2000 символов."
+        if material_type not in LIBRARY_MATERIAL_TYPES:
+            return None, "Выберите тип материала."
+        if len(resource_url) > 2048:
+            return None, "Ссылка должна быть не длиннее 2048 символов."
+        if resource_url and not is_http_resource_url(resource_url):
+            return None, "Укажите корректную ссылку, начинающуюся с http:// или https://."
+        if len(content) > 100000:
+            return None, "Содержимое материала должно быть не длиннее 100000 символов."
+        max_position = material_count + 1 if creating else material_count
+        if position < 1 or position > max_position:
+            return None, f"Позиция материала должна быть от 1 до {max_position}."
+        return (
+            title,
+            description,
+            material_type,
+            resource_url or None,
+            content,
+            position,
+        ), None
+
+    def reorder_library_materials(course_id, material_ids):
+        for position, material_id in enumerate(material_ids, 1):
+            get_db().execute(
+                """
+                UPDATE library_materials
+                SET position = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ? AND course_id = ?
+                """,
+                (position, material_id, course_id),
+            )
 
     def course_form_values(existing_status="draft"):
         title = request.form.get("title", "").strip()
@@ -877,6 +973,156 @@ def create_app(test_config=None):
             return redirect_to_course_management(course_id)
 
         flash("Изменения главы сохранены.", "success")
+        return redirect_to_course_management(course_id)
+
+    @app.post("/content-management/courses/<int:course_id>/library-materials")
+    @roles_required("teacher", "admin")
+    @csrf_protected
+    def create_library_material(course_id):
+        database = get_db()
+        database.execute("BEGIN IMMEDIATE")
+        course = database.execute(
+            "SELECT id FROM courses WHERE id = ?",
+            (course_id,),
+        ).fetchone()
+        if course is None:
+            database.rollback()
+            return render_template(
+                "404.html",
+                current_user=current_user(),
+            ), 404
+
+        materials = database.execute(
+            """
+            SELECT id FROM library_materials
+            WHERE course_id = ?
+            ORDER BY position, id
+            """,
+            (course_id,),
+        ).fetchall()
+        values, error = library_material_form_values(len(materials), creating=True)
+        if error:
+            database.rollback()
+            flash(error, "error")
+            return redirect_to_course_management(course_id)
+        title, description, material_type, resource_url, content, position = values
+
+        cursor = database.execute(
+            """
+            INSERT INTO library_materials (
+                course_id, title, description, material_type,
+                resource_url, content, position
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                course_id,
+                title,
+                description,
+                material_type,
+                resource_url,
+                content,
+                len(materials) + 1,
+            ),
+        )
+        material_ids = [material["id"] for material in materials]
+        material_ids.insert(position - 1, cursor.lastrowid)
+        reorder_library_materials(course_id, material_ids)
+        database.commit()
+        flash("Материал библиотеки добавлен.", "success")
+        return redirect_to_course_management(course_id)
+
+    @app.post("/content-management/library-materials/<int:material_id>")
+    @roles_required("teacher", "admin")
+    @csrf_protected
+    def edit_library_material(material_id):
+        database = get_db()
+        database.execute("BEGIN IMMEDIATE")
+        material = database.execute(
+            """
+            SELECT id, course_id
+            FROM library_materials
+            WHERE id = ?
+            """,
+            (material_id,),
+        ).fetchone()
+        if material is None:
+            database.rollback()
+            return render_template(
+                "404.html",
+                current_user=current_user(),
+            ), 404
+
+        course_id = material["course_id"]
+        materials = database.execute(
+            """
+            SELECT id FROM library_materials
+            WHERE course_id = ?
+            ORDER BY position, id
+            """,
+            (course_id,),
+        ).fetchall()
+        values, error = library_material_form_values(len(materials), creating=False)
+        if error:
+            database.rollback()
+            flash(error, "error")
+            return redirect_to_course_management(course_id)
+        title, description, material_type, resource_url, content, position = values
+
+        database.execute(
+            """
+            UPDATE library_materials
+            SET title = ?, description = ?, material_type = ?,
+                resource_url = ?, content = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (title, description, material_type, resource_url, content, material_id),
+        )
+        material_ids = [
+            item["id"] for item in materials if item["id"] != material_id
+        ]
+        material_ids.insert(position - 1, material_id)
+        reorder_library_materials(course_id, material_ids)
+        database.commit()
+        flash("Изменения материала библиотеки сохранены.", "success")
+        return redirect_to_course_management(course_id)
+
+    @app.post("/content-management/library-materials/<int:material_id>/delete")
+    @roles_required("teacher", "admin")
+    @csrf_protected
+    def delete_library_material(material_id):
+        database = get_db()
+        database.execute("BEGIN IMMEDIATE")
+        material = database.execute(
+            "SELECT id, course_id FROM library_materials WHERE id = ?",
+            (material_id,),
+        ).fetchone()
+        if material is None:
+            database.rollback()
+            return render_template(
+                "404.html",
+                current_user=current_user(),
+            ), 404
+
+        course_id = material["course_id"]
+        database.execute(
+            "DELETE FROM library_materials WHERE id = ?",
+            (material_id,),
+        )
+        remaining_materials = database.execute(
+            """
+            SELECT id FROM library_materials
+            WHERE course_id = ?
+            ORDER BY position, id
+            """,
+            (course_id,),
+        ).fetchall()
+        reorder_library_materials(
+            course_id,
+            [item["id"] for item in remaining_materials],
+        )
+        database.commit()
+        flash("Материал библиотеки удалён.", "success")
         return redirect_to_course_management(course_id)
 
     @app.errorhandler(404)
