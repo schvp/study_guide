@@ -1,0 +1,89 @@
+{% from "_navigation.html" import header_navigation, side_navigation %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <meta name="description" content="Управление пользователями и ролями">
+    <title>Пользователи и роли — Учебный навигатор</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="app-layout">
+    <header class="site-header">
+        <a class="brand" href="{{ url_for('home') }}" aria-label="На главную">
+            <span class="brand-mark" aria-hidden="true">Σ</span>
+            <span>Учебный навигатор</span>
+        </a>
+        {{ header_navigation(active_nav, current_user) }}
+        <div class="header-account">
+            <span class="header-user">{{ current_user.email }}</span>
+            <button class="header-auth" type="button" data-auth-logout>Выйти</button>
+        </div>
+    </header>
+    {{ side_navigation(active_nav, current_user) }}
+
+    <main class="section-main">
+        <p class="eyebrow">Учебный навигатор <span aria-hidden="true">/</span> Администрирование</p>
+        <h1>Пользователи и роли</h1>
+        <p class="section-description">Просматривайте учётные записи и назначайте роли учащегося, преподавателя или администратора.</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="management-messages" aria-live="polite">
+                    {% for category, message in messages %}
+                        <li class="management-message is-{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <section class="content-management-panel" aria-labelledby="users-title">
+            <div class="content-management-heading">
+                <p class="profile-label">УЧЁТНЫЕ ЗАПИСИ</p>
+                <h2 id="users-title">Пользователи ({{ users|length }})</h2>
+            </div>
+            {% if users %}
+                <ul class="admin-user-list">
+                    {% for user in users %}
+                        <li class="admin-user">
+                            <div class="admin-user-details">
+                                <strong>{{ user.username or "Без логина" }}</strong>
+                                <span>{{ user.email }}</span>
+                                <small>Создан: {{ user.created_at }}</small>
+                            </div>
+                            {% if user.id == current_user.id %}
+                                <div class="admin-user-self">
+                                    <span class="profile-role">{{ role_labels[user.role] }}</span>
+                                    <small>Собственную роль изменить нельзя.</small>
+                                </div>
+                            {% else %}
+                                <form class="admin-role-form" method="post" action="{{ url_for('update_user_role', user_id=user.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    <label class="management-field">
+                                        <span>Роль</span>
+                                        <select name="role">
+                                            {% for role, label in role_labels.items() %}
+                                                <option value="{{ role }}" {% if user.role == role %}selected{% endif %}>{{ label }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </label>
+                                    <button class="management-save" type="submit">Сохранить</button>
+                                </form>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="library-empty-state">Пользователей пока нет.</p>
+            {% endif %}
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <span>Схемотехника цифровых систем</span>
+        <span>Учебное пособие <span aria-hidden="true">·</span> Учитесь видеть логику</span>
+    </footer>
+    <script src="{{ url_for('static', filename='auth.js') }}" defer></script>
+</body>
+</html>

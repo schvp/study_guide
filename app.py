@@ -625,6 +625,75 @@ def create_app(test_config=None):
     def profile():
         return render_app_section("profile")
 
+    @app.get("/admin/users")
+    @roles_required("admin")
+    def admin_users():
+        users = get_db().execute(
+            """
+            SELECT id, email, username, role, created_at
+            FROM users
+            ORDER BY
+                CASE role
+                    WHEN 'admin' THEN 0
+                    WHEN 'teacher' THEN 1
+                    ELSE 2
+                END,
+                email COLLATE NOCASE
+            """
+        ).fetchall()
+        return render_template(
+            "admin_users.html",
+            users=users,
+            current_user=current_user(),
+            active_nav="profile",
+            role_labels=USER_ROLE_LABELS,
+            csrf_token=session["csrf_token"],
+        )
+
+    @app.post("/admin/users/<int:user_id>/role")
+    @roles_required("admin")
+    @csrf_protected
+    def update_user_role(user_id):
+        role = request.form.get("role", "")
+        if role not in USER_ROLE_LABELS:
+            flash("Выберите допустимую роль пользователя.", "error")
+            return redirect(url_for("admin_users"))
+
+        database = get_db()
+        database.execute("BEGIN IMMEDIATE")
+        target_user = database.execute(
+            "SELECT id, role FROM users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+        if target_user is None:
+            database.rollback()
+            return render_template(
+                "404.html",
+                current_user=current_user(),
+            ), 404
+
+        if user_id == current_user()["id"] and role != target_user["role"]:
+            database.rollback()
+            flash("Нельзя изменить собственную роль.", "error")
+            return redirect(url_for("admin_users"))
+
+        if target_user["role"] == "admin" and role != "admin":
+            admin_count = database.execute(
+                "SELECT COUNT(*) FROM users WHERE role = 'admin'"
+            ).fetchone()[0]
+            if admin_count <= 1:
+                database.rollback()
+                flash("Нельзя снять роль последнего администратора.", "error")
+                return redirect(url_for("admin_users"))
+
+        database.execute(
+            "UPDATE users SET role = ? WHERE id = ?",
+            (role, user_id),
+        )
+        database.commit()
+        flash("Роль пользователя обновлена.", "success")
+        return redirect(url_for("admin_users"))
+
     @app.get("/content-management")
     @roles_required("teacher", "admin")
     def content_management():

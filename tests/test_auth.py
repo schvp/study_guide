@@ -705,6 +705,134 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(student_response.status_code, 403)
         self.assertIn("Недостаточно прав".encode(), student_response.data)
 
+    def test_admin_can_manage_user_roles(self):
+        anonymous = self.client.get("/admin/users")
+        self.assertEqual(anonymous.status_code, 401)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "admin", "password": "admin"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+
+        profile = self.client.get("/profile")
+        self.assertIn(b'href="/admin/users"', profile.data)
+        page = self.client.get("/admin/users")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("Пользователи и роли".encode(), page.data)
+        self.assertIn(b"test@example.com", page.data)
+        self.assertIn(b"admin@example.com", page.data)
+        self.assertIn(b'value="student" selected', page.data)
+        target_user_id = self._user_id_for_username("test")
+        admin_user_id = self._user_id_for_username("admin")
+        self.assertIn(
+            f'action="/admin/users/{target_user_id}/role"'.encode(),
+            page.data,
+        )
+        self.assertNotIn(
+            f'action="/admin/users/{admin_user_id}/role"'.encode(),
+            page.data,
+        )
+
+        changed = self.client.post(
+            f"/admin/users/{target_user_id}/role",
+            data={"csrf_token": self.csrf_token, "role": "teacher"},
+        )
+        self.assertEqual(changed.status_code, 302)
+        self.assertEqual(changed.headers["Location"], "/admin/users")
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            self.assertEqual(
+                database.execute(
+                    "SELECT role FROM users WHERE id = ?",
+                    (target_user_id,),
+                ).fetchone()[0],
+                "teacher",
+            )
+
+    def test_admin_user_role_updates_validate_csrf_and_protect_admin_access(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "admin", "password": "admin"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        target_user_id = self._user_id_for_username("test")
+        admin_user_id = self._user_id_for_username("admin")
+
+        invalid_csrf = self.client.post(
+            f"/admin/users/{target_user_id}/role",
+            data={"role": "teacher"},
+        )
+        self.assertEqual(invalid_csrf.status_code, 400)
+
+        invalid_role = self.client.post(
+            f"/admin/users/{target_user_id}/role",
+            data={"csrf_token": self.csrf_token, "role": "owner"},
+            follow_redirects=True,
+        )
+        self.assertEqual(invalid_role.status_code, 200)
+        self.assertIn("Выберите допустимую роль".encode(), invalid_role.data)
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            self.assertEqual(
+                database.execute(
+                    "SELECT role FROM users WHERE id = ?",
+                    (target_user_id,),
+                ).fetchone()[0],
+                "student",
+            )
+
+        self_change = self.client.post(
+            f"/admin/users/{admin_user_id}/role",
+            data={"csrf_token": self.csrf_token, "role": "teacher"},
+            follow_redirects=True,
+        )
+        self.assertEqual(self_change.status_code, 200)
+        self.assertIn("Нельзя изменить собственную роль".encode(), self_change.data)
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            self.assertEqual(
+                database.execute(
+                    "SELECT role FROM users WHERE username = 'admin'"
+                ).fetchone()[0],
+                "admin",
+            )
+
+        missing_user = self.client.post(
+            "/admin/users/9999/role",
+            data={"csrf_token": self.csrf_token, "role": "teacher"},
+        )
+        self.assertEqual(missing_user.status_code, 404)
+
+    def test_student_cannot_access_user_role_management(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self.client.get("/admin/users").status_code, 403)
+        admin_user_id = self._user_id_for_username("admin")
+        self.assertEqual(
+            self.client.post(
+                f"/admin/users/{admin_user_id}/role",
+                data={"csrf_token": self.csrf_token, "role": "teacher"},
+            ).status_code,
+            403,
+        )
+
+    def _user_id_for_username(self, username):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            return database.execute(
+                "SELECT id FROM users WHERE username = ?",
+                (username,),
+            ).fetchone()[0]
+
     def test_teacher_and_admin_can_open_content_management(self):
         self.assertEqual(
             self._post_json(

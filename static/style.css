@@ -1993,6 +1993,64 @@ a.chapter-link:hover {
     background: #fff0eb;
 }
 
+.admin-user-list {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.admin-user {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 18px 0;
+    border-top: 1px solid var(--line);
+}
+
+.admin-user-details,
+.admin-user-self {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+}
+
+.admin-user-details strong {
+    color: var(--ink);
+    font-size: 12px;
+}
+
+.admin-user-details span,
+.admin-user-details small,
+.admin-user-self small {
+    color: var(--muted);
+    font-size: 10px;
+    overflow-wrap: anywhere;
+}
+
+.admin-role-form {
+    display: flex;
+    align-items: end;
+    gap: 12px;
+}
+
+.admin-role-form .management-field {
+    min-width: 170px;
+}
+
+@media (max-width: 600px) {
+    .admin-user {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .admin-role-form {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}
+
 .managed-chapters-empty {
     margin: 0;
 }

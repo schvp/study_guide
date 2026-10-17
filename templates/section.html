@@ -49,6 +49,9 @@
             {% if can_manage_content %}
                 <a class="secondary-link section-course-link" href="{{ url_for('content_management') }}">Управление контентом <span aria-hidden="true">→</span></a>
             {% endif %}
+            {% if current_user.role == "admin" %}
+                <a class="secondary-link section-course-link" href="{{ url_for('admin_users') }}">Пользователи и роли <span aria-hidden="true">→</span></a>
+            {% endif %}
             <section class="profile-history" aria-labelledby="profile-history-title">
                 <div class="profile-history-heading">
                     <p class="profile-label">ИСТОРИЯ ОБУЧЕНИЯ</p>
