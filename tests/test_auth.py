@@ -285,6 +285,42 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("Проверьте себя".encode(), page)
         self.assertIn("Сколько различных комбинаций".encode(), page)
 
+    def test_second_chapter_is_seeded_from_versioned_course_material(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            title, description, content = database.execute(
+                """
+                SELECT title, description, content
+                FROM chapters
+                WHERE course_id = 1 AND position = 2
+                """
+            ).fetchone()
+
+        self.assertEqual(title, "Системы счисления и кодирование информации")
+        self.assertTrue(description)
+        self.assertIn("## Позиционная запись числа", content)
+        self.assertIn("110101₂", content)
+        self.assertIn("## Восьмеричная и шестнадцатеричная системы", content)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        page = self.client.get("/course/2")
+        self.assertEqual(page.status_code, 403)
+        self.assertIn("Раздел пока закрыт".encode(), page.data)
+        self.assertEqual(
+            self._post_json("/api/progress/1", {"completed": True}).status_code,
+            200,
+        )
+        page = self.client.get("/course/2")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("Позиционная запись числа".encode(), page.data)
+        self.assertIn("110101₂".encode(), page.data)
+
     def test_first_chapter_material_is_seeded_into_existing_empty_chapter(self):
         database_path = os.path.join(self.temp_dir.name, "empty-chapter.sqlite3")
         with closing(sqlite3.connect(database_path)) as database:

@@ -186,10 +186,12 @@ def create_app(test_config=None):
                 (material["course"], material["position"]),
             ).fetchone()
             if content_chapter is None:
-                raise ValueError(
-                    "Course material references missing chapter "
-                    f"{material['course']!r} at position {material['position']}."
+                app.logger.warning(
+                    "Skipping course material for missing chapter %s at position %s.",
+                    material["course"],
+                    material["position"],
                 )
+                continue
             if not content_chapter["content"]:
                 if content_chapter["title"] != material["title"]:
                     raise ValueError(
