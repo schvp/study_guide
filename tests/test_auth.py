@@ -363,6 +363,40 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("Булева алгебра".encode(), page.data)
         self.assertIn("Операция ИЛИ".encode(), page.data)
 
+    def test_fourth_chapter_introduces_logic_gates_after_prior_chapters(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            title, content = database.execute(
+                """
+                SELECT title, content FROM chapters
+                WHERE course_id = 1 AND position = 4
+                """
+            ).fetchone()
+
+        self.assertEqual(title, "Логические элементы")
+        self.assertIn("## Элементы NAND и NOR", content)
+        self.assertIn("¬(A ∧ A) = ¬A", content)
+        self.assertIn("2⁴ = 16 строк", content)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self.client.get("/course/4").status_code, 403)
+        for chapter_id in (1, 2, 3):
+            response = self._post_json(
+                f"/api/progress/{chapter_id}",
+                {"completed": True},
+            )
+            self.assertEqual(response.status_code, 200)
+        page = self.client.get("/course/4")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("Элементы NAND и NOR".encode(), page.data)
+        self.assertIn("Исключающее ИЛИ".encode(), page.data)
+
     def test_first_chapter_material_is_seeded_into_existing_empty_chapter(self):
         database_path = os.path.join(self.temp_dir.name, "empty-chapter.sqlite3")
         with closing(sqlite3.connect(database_path)) as database:
