@@ -411,6 +411,10 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("## Комбинационные и последовательностные схемы", content)
         self.assertIn("## От условия задачи к таблице истинности", content)
         self.assertIn("## Последовательность проектирования", content)
+        self.assertIn("S = A ⊕ B", content)
+        self.assertIn("C = A ∧ B", content)
+        self.assertIn("Y = (¬S ∧ D₀) ∨ (S ∧ D₁)", content)
+        self.assertIn("Y₃ = A ∧ B", content)
         self.assertIn("2ⁿ строк", content)
 
         self.assertEqual(
