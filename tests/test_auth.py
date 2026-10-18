@@ -301,6 +301,8 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("110101₂", content)
         self.assertIn("45₁₀ = 101101₂", content)
         self.assertIn("173₁₀ = AD₁₆", content)
+        self.assertIn("## Проверьте себя", content)
+        self.assertIn("156₁₀ = 10011100₂", content)
         self.assertIn("## Восьмеричная и шестнадцатеричная системы", content)
 
         self.assertEqual(
