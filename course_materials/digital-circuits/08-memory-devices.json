@@ -1,0 +1,7 @@
+{
+  "course": "digital-circuits",
+  "position": 8,
+  "title": "Запоминающие устройства",
+  "description": "Познакомьтесь с адресуемой памятью, организацией слов и различиями между основными видами памяти.",
+  "content_file": "08-memory-devices.md"
+}
