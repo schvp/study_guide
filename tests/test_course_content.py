@@ -41,8 +41,29 @@ class CourseContentTests(unittest.TestCase):
                 content_file.write("## Основы\n\nТекст главы.")
 
     def test_loads_json_materials_in_filename_order(self):
+        course_directory = os.path.join(
+            self.content_directory,
+            "digital-circuits",
+        )
+        os.makedirs(course_directory)
         self.write_material("02-second.json", position=2, title="Вторая глава")
+        os.rename(
+            os.path.join(self.content_directory, "02-second.json"),
+            os.path.join(course_directory, "02-second.json"),
+        )
+        os.rename(
+            os.path.join(self.content_directory, "02-second.md"),
+            os.path.join(course_directory, "02-second.md"),
+        )
         self.write_material("01-first.json")
+        os.rename(
+            os.path.join(self.content_directory, "01-first.json"),
+            os.path.join(course_directory, "01-first.json"),
+        )
+        os.rename(
+            os.path.join(self.content_directory, "01-first.md"),
+            os.path.join(course_directory, "01-first.md"),
+        )
         with open(
             os.path.join(self.content_directory, "notes.txt"),
             "w",
@@ -94,6 +115,11 @@ class CourseContentTests(unittest.TestCase):
         self.write_material("02.json", title="Дубликат")
         with self.assertRaisesRegex(ValueError, "Duplicate course material"):
             load_course_materials(self.content_directory)
+
+    def test_rejects_missing_material_directory(self):
+        missing_directory = os.path.join(self.content_directory, "missing")
+        with self.assertRaisesRegex(FileNotFoundError, "does not exist"):
+            load_course_materials(missing_directory)
 
 
 if __name__ == "__main__":

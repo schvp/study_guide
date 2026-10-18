@@ -335,6 +335,31 @@ class AuthenticationTests(unittest.TestCase):
 
         with closing(sqlite3.connect(database_path)) as database:
             database.execute(
+                """
+                UPDATE chapters
+                SET description = ?, content = ''
+                WHERE id = 1
+                """,
+                ("Моё описание",),
+            )
+            database.commit()
+        create_app(
+            {
+                "TESTING": True,
+                "SECRET_KEY": "seed-content-secret",
+                "DATABASE": database_path,
+                "SEED_DEMO_USER": False,
+            }
+        )
+        with closing(sqlite3.connect(database_path)) as database:
+            preserved_description, reseeded_content = database.execute(
+                "SELECT description, content FROM chapters WHERE id = 1"
+            ).fetchone()
+        self.assertEqual(preserved_description, "Моё описание")
+        self.assertIn("Цель раздела", reseeded_content)
+
+        with closing(sqlite3.connect(database_path)) as database:
+            database.execute(
                 "UPDATE chapters SET content = ? WHERE id = 1",
                 ("Авторский материал",),
             )
