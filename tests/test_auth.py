@@ -415,6 +415,8 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("C = A ∧ B", content)
         self.assertIn("Y = (¬S ∧ D₀) ∨ (S ∧ D₁)", content)
         self.assertIn("Y₃ = A ∧ B", content)
+        self.assertIn("## Проверьте себя", content)
+        self.assertIn("2⁵ = 32 строки", content)
         self.assertIn("2ⁿ строк", content)
 
         self.assertEqual(
