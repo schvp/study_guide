@@ -30,6 +30,15 @@
         <p class="eyebrow">Учебный навигатор <span aria-hidden="true">/</span> Раздел приложения</p>
         <h1>{{ section.title }}</h1>
         <p class="section-description">{{ section.description }}</p>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="management-messages" aria-live="polite">
+                    {% for category, message in messages %}
+                        <li class="management-message is-{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
 
         {% if active_nav == "profile" and current_user %}
             <section class="profile-card" aria-label="Данные профиля">
@@ -51,6 +60,12 @@
             {% endif %}
             {% if current_user.role == "admin" %}
                 <a class="secondary-link section-course-link" href="{{ url_for('admin_users') }}">Пользователи и роли <span aria-hidden="true">→</span></a>
+            {% endif %}
+            {% if can_reset_course_progress %}
+                <form class="profile-reset-form" method="post" action="{{ url_for('reset_course_progress') }}" onsubmit="return confirm('Сбросить прогресс текущего курса? История завершённых глав останется в профиле.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button class="management-delete" type="submit">Сбросить прогресс курса</button>
+                </form>
             {% endif %}
             <section class="profile-history" aria-labelledby="profile-history-title">
                 <div class="profile-history-heading">

@@ -557,6 +557,7 @@ def create_app(test_config=None):
                     else 0
                 ),
                 completion_history=completion_history,
+                can_reset_course_progress=course is not None,
                 csrf_token=session["csrf_token"],
             )
         if active_nav == "library":
@@ -624,6 +625,32 @@ def create_app(test_config=None):
     @app.get("/profile")
     def profile():
         return render_app_section("profile")
+
+    @app.post("/profile/progress/reset")
+    @roles_required("student", "teacher", "admin")
+    @csrf_protected
+    def reset_course_progress():
+        user = current_user()
+        database = get_db()
+        database.execute(
+            """
+            DELETE FROM chapter_progress
+            WHERE user_id = ?
+                AND chapter_id IN (
+                    SELECT chapters.id
+                    FROM chapters
+                    JOIN courses ON courses.id = chapters.course_id
+                    WHERE courses.slug = ?
+                )
+            """,
+            (user["id"], COURSE_SLUG),
+        )
+        database.commit()
+        flash(
+            "Прогресс текущего курса сброшен. История завершённых глав сохранена.",
+            "success",
+        )
+        return redirect(url_for("profile"))
 
     @app.get("/admin/users")
     @roles_required("admin")

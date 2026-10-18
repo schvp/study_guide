@@ -666,6 +666,115 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("Учащийся".encode(), response.data)
         self.assertIn(b'aria-current="page">', response.data)
 
+    def test_profile_can_reset_current_course_progress_and_preserve_history(self):
+        anonymous_post = self.client.post(
+            "/profile/progress/reset",
+            data={"csrf_token": self.csrf_token},
+        )
+        self.assertEqual(anonymous_post.status_code, 401)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+
+        self.assertEqual(
+            self._post_json("/api/progress/1", {"completed": True}).status_code,
+            200,
+        )
+        self.assertEqual(
+            self._post_json("/api/progress/2", {"completed": True}).status_code,
+            200,
+        )
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            user_id = database.execute(
+                "SELECT id FROM users WHERE username = 'test'"
+            ).fetchone()[0]
+            database.execute(
+                """
+                INSERT INTO courses (id, slug, title, status)
+                VALUES (2, 'other-course', 'Другой курс', 'published')
+                """
+            )
+            database.execute(
+                """
+                INSERT INTO chapters (id, course_id, position, title, status)
+                VALUES (101, 2, 1, 'Глава другого курса', 'published')
+                """
+            )
+            database.execute(
+                """
+                INSERT INTO chapter_progress (user_id, chapter_id, completed)
+                VALUES (?, 101, 1)
+                """,
+                (user_id,),
+            )
+            database.execute(
+                """
+                INSERT INTO chapter_completion_history (user_id, chapter_id)
+                VALUES (?, 101)
+                """,
+                (user_id,),
+            )
+            database.commit()
+
+        profile = self.client.get("/profile")
+        self.assertIn("Сбросить прогресс курса".encode(), profile.data)
+        self.assertIn(b'action="/profile/progress/reset"', profile.data)
+        self.assertIn(b'name="csrf_token"', profile.data)
+
+        missing_csrf = self.client.post("/profile/progress/reset")
+        self.assertEqual(missing_csrf.status_code, 400)
+
+        reset = self.client.post(
+            "/profile/progress/reset",
+            data={"csrf_token": self.csrf_token},
+        )
+        self.assertEqual(reset.status_code, 302)
+        self.assertEqual(reset.headers["Location"], "/profile")
+        profile_after_reset = self.client.get("/profile", follow_redirects=True)
+        self.assertIn(
+            "История завершённых глав сохранена".encode(),
+            profile_after_reset.data,
+        )
+        self.assertIn("Пройденные разделы".encode(), profile_after_reset.data)
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            current_course_progress = database.execute(
+                """
+                SELECT COUNT(*)
+                FROM chapter_progress
+                WHERE user_id = ? AND chapter_id IN (
+                    SELECT chapters.id FROM chapters
+                    JOIN courses ON courses.id = chapters.course_id
+                    WHERE courses.slug = 'digital-circuits'
+                )
+                """,
+                (user_id,),
+            ).fetchone()[0]
+            other_course_progress = database.execute(
+                """
+                SELECT completed FROM chapter_progress
+                WHERE user_id = ? AND chapter_id = 101
+                """,
+                (user_id,),
+            ).fetchone()[0]
+            retained_history = database.execute(
+                """
+                SELECT chapter_id FROM chapter_completion_history
+                WHERE user_id = ? ORDER BY chapter_id
+                """,
+                (user_id,),
+            ).fetchall()
+        self.assertEqual(current_course_progress, 0)
+        self.assertEqual(other_course_progress, 1)
+        self.assertEqual(retained_history, [(1,), (2,), (101,)])
+        self.assertEqual(self.client.get("/course/1").status_code, 200)
+        self.assertEqual(self.client.get("/course/2").status_code, 403)
+
     def test_registration_cannot_choose_a_privileged_role(self):
         response = self._post_json(
             "/api/auth/register",

@@ -1458,6 +1458,10 @@ a.chapter-link:hover {
     font-size: 17px;
 }
 
+.profile-reset-form {
+    margin-top: 20px;
+}
+
 .profile-history {
     margin-top: 35px;
     padding: clamp(24px, 5vw, 42px);
