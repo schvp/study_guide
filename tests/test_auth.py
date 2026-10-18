@@ -270,6 +270,10 @@ class AuthenticationTests(unittest.TestCase):
         self.assertGreater(len(content), 1500)
         self.assertIn("## Цель раздела", content)
         self.assertIn("## Аналоговые и цифровые сигналы", content)
+        self.assertIn("## Практические задания с разбором", content)
+        self.assertIn("2⁴ = 16", content)
+        self.assertIn("2⁴ = 16 < 20 ≤ 32 = 2⁵", content)
+        self.assertIn("Задания для самостоятельной работы", content)
         self.assertIn("## Проверьте себя", content)
 
         self.assertEqual(
@@ -284,6 +288,7 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("Аналоговые и цифровые сигналы".encode(), page)
         self.assertIn("Проверьте себя".encode(), page)
         self.assertIn("Сколько различных комбинаций".encode(), page)
+        self.assertIn("Задания для самостоятельной работы".encode(), page)
 
     def test_second_chapter_is_seeded_from_versioned_course_material(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
