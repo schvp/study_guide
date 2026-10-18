@@ -326,6 +326,43 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("Читаем остатки снизу вверх".encode(), page.data)
         self.assertIn("110101₂".encode(), page.data)
 
+    def test_third_chapter_is_seeded_and_accessible_in_course_sequence(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            title, description, content = database.execute(
+                """
+                SELECT title, description, content
+                FROM chapters
+                WHERE course_id = 1 AND position = 3
+                """
+            ).fetchone()
+
+        self.assertEqual(title, "Основы булевой алгебры")
+        self.assertTrue(description)
+        self.assertIn("## Операция НЕ", content)
+        self.assertIn("## Операция И", content)
+        self.assertIn("## Основные законы булевой алгебры", content)
+        self.assertIn("2³ = 8 строк", content)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self.client.get("/course/3").status_code, 403)
+        for chapter_id in (1, 2):
+            response = self._post_json(
+                f"/api/progress/{chapter_id}",
+                {"completed": True},
+            )
+            self.assertEqual(response.status_code, 200)
+        page = self.client.get("/course/3")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("Булева алгебра".encode(), page.data)
+        self.assertIn("Операция ИЛИ".encode(), page.data)
+
     def test_first_chapter_material_is_seeded_into_existing_empty_chapter(self):
         database_path = os.path.join(self.temp_dir.name, "empty-chapter.sqlite3")
         with closing(sqlite3.connect(database_path)) as database:
