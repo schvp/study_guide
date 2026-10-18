@@ -285,6 +285,266 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("Проверьте себя".encode(), page)
         self.assertIn("Сколько различных комбинаций".encode(), page)
 
+    def test_second_chapter_is_seeded_from_versioned_course_material(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            title, description, content = database.execute(
+                """
+                SELECT title, description, content
+                FROM chapters
+                WHERE course_id = 1 AND position = 2
+                """
+            ).fetchone()
+
+        self.assertEqual(title, "Системы счисления и кодирование информации")
+        self.assertTrue(description)
+        self.assertIn("## Позиционная запись числа", content)
+        self.assertIn("110101₂", content)
+        self.assertIn("45₁₀ = 101101₂", content)
+        self.assertIn("173₁₀ = AD₁₆", content)
+        self.assertIn("## Проверьте себя", content)
+        self.assertIn("156₁₀ = 10011100₂", content)
+        self.assertIn("## Восьмеричная и шестнадцатеричная системы", content)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        page = self.client.get("/course/2")
+        self.assertEqual(page.status_code, 403)
+        self.assertIn("Раздел пока закрыт".encode(), page.data)
+        self.assertEqual(
+            self._post_json("/api/progress/1", {"completed": True}).status_code,
+            200,
+        )
+        page = self.client.get("/course/2")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("Позиционная запись числа".encode(), page.data)
+        self.assertIn("Читаем остатки снизу вверх".encode(), page.data)
+        self.assertIn("110101₂".encode(), page.data)
+
+    def test_third_chapter_is_seeded_and_accessible_in_course_sequence(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            title, description, content = database.execute(
+                """
+                SELECT title, description, content
+                FROM chapters
+                WHERE course_id = 1 AND position = 3
+                """
+            ).fetchone()
+
+        self.assertEqual(title, "Основы булевой алгебры")
+        self.assertTrue(description)
+        self.assertIn("## Операция НЕ", content)
+        self.assertIn("## Операция И", content)
+        self.assertIn("## Основные законы булевой алгебры", content)
+        self.assertIn("2³ = 8 строк", content)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self.client.get("/course/3").status_code, 403)
+        for chapter_id in (1, 2):
+            response = self._post_json(
+                f"/api/progress/{chapter_id}",
+                {"completed": True},
+            )
+            self.assertEqual(response.status_code, 200)
+        page = self.client.get("/course/3")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("Булева алгебра".encode(), page.data)
+        self.assertIn("Операция ИЛИ".encode(), page.data)
+
+    def test_fourth_chapter_introduces_logic_gates_after_prior_chapters(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            title, content = database.execute(
+                """
+                SELECT title, content FROM chapters
+                WHERE course_id = 1 AND position = 4
+                """
+            ).fetchone()
+
+        self.assertEqual(title, "Логические элементы")
+        self.assertIn("## Элементы NAND и NOR", content)
+        self.assertIn("¬(A ∧ A) = ¬A", content)
+        self.assertIn("2⁴ = 16 строк", content)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self.client.get("/course/4").status_code, 403)
+        for chapter_id in (1, 2, 3):
+            response = self._post_json(
+                f"/api/progress/{chapter_id}",
+                {"completed": True},
+            )
+            self.assertEqual(response.status_code, 200)
+        page = self.client.get("/course/4")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("Элементы NAND и NOR".encode(), page.data)
+        self.assertIn("Исключающее ИЛИ".encode(), page.data)
+
+    def test_fifth_chapter_introduces_combinational_design_in_sequence(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            title, description, content = database.execute(
+                """
+                SELECT title, description, content FROM chapters
+                WHERE course_id = 1 AND position = 5
+                """
+            ).fetchone()
+
+        self.assertEqual(title, "Комбинационные цифровые устройства")
+        self.assertTrue(description)
+        self.assertIn("## Комбинационные и последовательностные схемы", content)
+        self.assertIn("## От условия задачи к таблице истинности", content)
+        self.assertIn("## Последовательность проектирования", content)
+        self.assertIn("S = A ⊕ B", content)
+        self.assertIn("C = A ∧ B", content)
+        self.assertIn("Y = (¬S ∧ D₀) ∨ (S ∧ D₁)", content)
+        self.assertIn("Y₃ = A ∧ B", content)
+        self.assertIn("## Проверьте себя", content)
+        self.assertIn("2⁵ = 32 строки", content)
+        self.assertIn("2ⁿ строк", content)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self.client.get("/course/5").status_code, 403)
+        for chapter_id in range(1, 5):
+            response = self._post_json(
+                f"/api/progress/{chapter_id}",
+                {"completed": True},
+            )
+            self.assertEqual(response.status_code, 200)
+        page = self.client.get("/course/5")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("таблицу истинности".encode(), page.data)
+
+    def test_sixth_chapter_introduces_triggers_after_combinational_design(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            title, description, content = database.execute(
+                """
+                SELECT title, description, content FROM chapters
+                WHERE course_id = 1 AND position = 6
+                """
+            ).fetchone()
+
+        self.assertEqual(title, "Триггеры")
+        self.assertTrue(description)
+        self.assertIn("Q(next) = D", content)
+        self.assertIn("J K = 00", content)
+        self.assertIn("Q(next) = ¬Q", content)
+        self.assertIn("До первого фронта вход D меняется на 1", content)
+        self.assertIn("0 переходит в 1, а 1 — в 0", content)
+        self.assertIn("## Проверьте себя", content)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self.client.get("/course/6").status_code, 403)
+        for chapter_id in range(1, 6):
+            response = self._post_json(
+                f"/api/progress/{chapter_id}",
+                {"completed": True},
+            )
+            self.assertEqual(response.status_code, 200)
+        page = self.client.get("/course/6")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("Защёлка и триггер с тактовым фронтом".encode(), page.data)
+
+    def test_seventh_chapter_introduces_registers_and_counters_in_sequence(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            title, description, content = database.execute(
+                """
+                SELECT title, description, content FROM chapters
+                WHERE course_id = 1 AND position = 7
+                """
+            ).fetchone()
+
+        self.assertEqual(title, "Регистры и счётчики")
+        self.assertTrue(description)
+        self.assertIn("2⁴ = 16 двоичных слов", content)
+        self.assertIn("0111 → 1000", content)
+        self.assertIn("2² < 6 и 2³ ≥ 6", content)
+        self.assertIn("## Проверьте себя", content)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self.client.get("/course/7").status_code, 403)
+        for chapter_id in range(1, 7):
+            response = self._post_json(
+                f"/api/progress/{chapter_id}",
+                {"completed": True},
+            )
+            self.assertEqual(response.status_code, 200)
+        page = self.client.get("/course/7")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("Параллельные регистры".encode(), page.data)
+
+    def test_eighth_chapter_introduces_memory_after_registers_and_counters(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            title, description, content = database.execute(
+                """
+                SELECT title, description, content FROM chapters
+                WHERE course_id = 1 AND position = 8
+                """
+            ).fetchone()
+
+        self.assertEqual(title, "Запоминающие устройства")
+        self.assertTrue(description)
+        self.assertIn("2¹⁰ = 1024 слова", content)
+        self.assertIn("1024 × 8", content)
+        self.assertIn("энергозависимо", content)
+        self.assertIn("## Проверьте себя", content)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self.client.get("/course/8").status_code, 403)
+        for chapter_id in range(1, 8):
+            response = self._post_json(
+                f"/api/progress/{chapter_id}",
+                {"completed": True},
+            )
+            self.assertEqual(response.status_code, 200)
+        page = self.client.get("/course/8")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("Ячейки, слова и адреса".encode(), page.data)
+
     def test_first_chapter_material_is_seeded_into_existing_empty_chapter(self):
         database_path = os.path.join(self.temp_dir.name, "empty-chapter.sqlite3")
         with closing(sqlite3.connect(database_path)) as database:
@@ -332,6 +592,31 @@ class AuthenticationTests(unittest.TestCase):
             ).fetchone()
         self.assertTrue(seeded_content[0])
         self.assertIn("Цель раздела", seeded_content[1])
+
+        with closing(sqlite3.connect(database_path)) as database:
+            database.execute(
+                """
+                UPDATE chapters
+                SET description = ?, content = ''
+                WHERE id = 1
+                """,
+                ("Моё описание",),
+            )
+            database.commit()
+        create_app(
+            {
+                "TESTING": True,
+                "SECRET_KEY": "seed-content-secret",
+                "DATABASE": database_path,
+                "SEED_DEMO_USER": False,
+            }
+        )
+        with closing(sqlite3.connect(database_path)) as database:
+            preserved_description, reseeded_content = database.execute(
+                "SELECT description, content FROM chapters WHERE id = 1"
+            ).fetchone()
+        self.assertEqual(preserved_description, "Моё описание")
+        self.assertIn("Цель раздела", reseeded_content)
 
         with closing(sqlite3.connect(database_path)) as database:
             database.execute(
