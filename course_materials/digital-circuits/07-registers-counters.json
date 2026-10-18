@@ -1,0 +1,7 @@
+{
+  "course": "digital-circuits",
+  "position": 7,
+  "title": "Регистры и счётчики",
+  "description": "Изучите, как группы триггеров хранят слова данных, сдвигают их и формируют последовательность состояний.",
+  "content_file": "07-registers-counters.md"
+}
