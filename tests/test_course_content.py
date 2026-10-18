@@ -20,7 +20,7 @@ class CourseContentTests(unittest.TestCase):
             "position": 1,
             "title": "Введение",
             "description": "Описание",
-            "content": "## Основы\n\nТекст главы.",
+            "content_file": f"{filename.removesuffix('.json')}.md",
         }
         material.update(overrides)
         with open(
@@ -29,6 +29,16 @@ class CourseContentTests(unittest.TestCase):
             encoding="utf-8",
         ) as material_file:
             json.dump(material, material_file, ensure_ascii=False)
+        if (
+            "content_file" in material
+            and os.path.basename(material["content_file"]) == material["content_file"]
+        ):
+            with open(
+                os.path.join(self.content_directory, material["content_file"]),
+                "w",
+                encoding="utf-8",
+            ) as content_file:
+                content_file.write("## Основы\n\nТекст главы.")
 
     def test_loads_json_materials_in_filename_order(self):
         self.write_material("02-second.json", position=2, title="Вторая глава")
@@ -46,6 +56,7 @@ class CourseContentTests(unittest.TestCase):
             [(item["position"], item["title"]) for item in materials],
             [(1, "Введение"), (2, "Вторая глава")],
         )
+        self.assertEqual(materials[0]["content"], "## Основы\n\nТекст главы.")
 
     def test_rejects_invalid_json_and_missing_fields(self):
         with open(
@@ -66,6 +77,11 @@ class CourseContentTests(unittest.TestCase):
         ) as material_file:
             json.dump({"course": "digital-circuits"}, material_file)
         with self.assertRaisesRegex(ValueError, "missing required fields"):
+            load_course_materials(self.content_directory)
+
+        os.remove(os.path.join(self.content_directory, "missing.json"))
+        self.write_material("unsafe.json", content_file="../outside.md")
+        with self.assertRaisesRegex(ValueError, "invalid field values"):
             load_course_materials(self.content_directory)
 
     def test_rejects_invalid_positions_and_duplicate_chapters(self):

@@ -7,7 +7,7 @@ REQUIRED_FIELDS = {
     "position",
     "title",
     "description",
-    "content",
+    "content_file",
 }
 
 
@@ -39,10 +39,17 @@ def load_course_materials(content_directory):
             or not isinstance(material["title"], str)
             or not material["title"].strip()
             or not isinstance(material["description"], str)
-            or not isinstance(material["content"], str)
-            or not material["content"].strip()
+            or not isinstance(material["content_file"], str)
+            or not material["content_file"].endswith(".md")
+            or os.path.basename(material["content_file"]) != material["content_file"]
         ):
             raise ValueError(f"Course material {path!r} contains invalid field values.")
+
+        content_path = os.path.join(content_directory, material["content_file"])
+        with open(content_path, encoding="utf-8") as content_file:
+            material["content"] = content_file.read()
+        if not material["content"].strip():
+            raise ValueError(f"Course material {path!r} has an empty Markdown file.")
 
         key = material["course"], material["position"]
         if key in seen_positions:
