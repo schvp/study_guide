@@ -299,6 +299,8 @@ class AuthenticationTests(unittest.TestCase):
         self.assertTrue(description)
         self.assertIn("## Позиционная запись числа", content)
         self.assertIn("110101₂", content)
+        self.assertIn("45₁₀ = 101101₂", content)
+        self.assertIn("173₁₀ = AD₁₆", content)
         self.assertIn("## Восьмеричная и шестнадцатеричная системы", content)
 
         self.assertEqual(
@@ -319,6 +321,7 @@ class AuthenticationTests(unittest.TestCase):
         page = self.client.get("/course/2")
         self.assertEqual(page.status_code, 200)
         self.assertIn("Позиционная запись числа".encode(), page.data)
+        self.assertIn("Читаем остатки снизу вверх".encode(), page.data)
         self.assertIn("110101₂".encode(), page.data)
 
     def test_first_chapter_material_is_seeded_into_existing_empty_chapter(self):
