@@ -452,6 +452,8 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("Q(next) = D", content)
         self.assertIn("J K = 00", content)
         self.assertIn("Q(next) = ¬Q", content)
+        self.assertIn("До первого фронта вход D меняется на 1", content)
+        self.assertIn("0 переходит в 1, а 1 — в 0", content)
         self.assertIn("## Проверьте себя", content)
 
         self.assertEqual(
