@@ -397,6 +397,41 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("Элементы NAND и NOR".encode(), page.data)
         self.assertIn("Исключающее ИЛИ".encode(), page.data)
 
+    def test_fifth_chapter_introduces_combinational_design_in_sequence(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            title, description, content = database.execute(
+                """
+                SELECT title, description, content FROM chapters
+                WHERE course_id = 1 AND position = 5
+                """
+            ).fetchone()
+
+        self.assertEqual(title, "Комбинационные цифровые устройства")
+        self.assertTrue(description)
+        self.assertIn("## Комбинационные и последовательностные схемы", content)
+        self.assertIn("## От условия задачи к таблице истинности", content)
+        self.assertIn("## Последовательность проектирования", content)
+        self.assertIn("2ⁿ строк", content)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self.client.get("/course/5").status_code, 403)
+        for chapter_id in range(1, 5):
+            response = self._post_json(
+                f"/api/progress/{chapter_id}",
+                {"completed": True},
+            )
+            self.assertEqual(response.status_code, 200)
+        page = self.client.get("/course/5")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("таблицу истинности".encode(), page.data)
+
     def test_first_chapter_material_is_seeded_into_existing_empty_chapter(self):
         database_path = os.path.join(self.temp_dir.name, "empty-chapter.sqlite3")
         with closing(sqlite3.connect(database_path)) as database:
