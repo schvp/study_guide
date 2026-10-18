@@ -1,0 +1,7 @@
+{
+  "course": "digital-circuits",
+  "position": 6,
+  "title": "Триггеры",
+  "description": "Разберитесь, как триггеры хранят один бит и чем отличаются основные типы элементов памяти.",
+  "content_file": "06-triggers.md"
+}

@@ -438,6 +438,41 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertIn("таблицу истинности".encode(), page.data)
 
+    def test_sixth_chapter_introduces_triggers_after_combinational_design(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            title, description, content = database.execute(
+                """
+                SELECT title, description, content FROM chapters
+                WHERE course_id = 1 AND position = 6
+                """
+            ).fetchone()
+
+        self.assertEqual(title, "Триггеры")
+        self.assertTrue(description)
+        self.assertIn("Q(next) = D", content)
+        self.assertIn("J K = 00", content)
+        self.assertIn("Q(next) = ¬Q", content)
+        self.assertIn("## Проверьте себя", content)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self.client.get("/course/6").status_code, 403)
+        for chapter_id in range(1, 6):
+            response = self._post_json(
+                f"/api/progress/{chapter_id}",
+                {"completed": True},
+            )
+            self.assertEqual(response.status_code, 200)
+        page = self.client.get("/course/6")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("Защёлка и триггер с тактовым фронтом".encode(), page.data)
+
     def test_first_chapter_material_is_seeded_into_existing_empty_chapter(self):
         database_path = os.path.join(self.temp_dir.name, "empty-chapter.sqlite3")
         with closing(sqlite3.connect(database_path)) as database:
