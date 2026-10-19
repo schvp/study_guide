@@ -1306,6 +1306,16 @@ def create_app(test_config=None):
                 if chapter_by_id["position"] == 3
                 else None
             ),
+            gate_lab_rows=(
+                [
+                    {"a": 0, "b": 0, "expected": GATE_LAB_TARGET[0]},
+                    {"a": 0, "b": 1, "expected": GATE_LAB_TARGET[1]},
+                    {"a": 1, "b": 0, "expected": GATE_LAB_TARGET[2]},
+                    {"a": 1, "b": 1, "expected": GATE_LAB_TARGET[3]},
+                ]
+                if chapter_by_id["position"] == 4
+                else None
+            ),
             course=course,
             csrf_token=session["csrf_token"],
         )

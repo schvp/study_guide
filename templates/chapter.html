@@ -341,6 +341,160 @@
                     </section>
                 {% endif %}
 
+                {% if gate_lab_rows %}
+                    <section
+                        class="gate-lab"
+                        aria-labelledby="gate-lab-title"
+                        data-gate-lab
+                        data-submit-url="{{ url_for('submit_nand_gate_lab') }}"
+                    >
+                        <p class="eyebrow">ЛОГИЧЕСКИЙ КВЕСТ · ЛАБОРАТОРИЯ</p>
+                        <h2 id="gate-lab-title">Разблокируй шлюз</h2>
+                        {% if completed %}
+                            <p class="gate-lab-success" role="status">
+                                Шлюз открыт! Три NAND-элемента собраны в схему ИЛИ, а все четыре
+                                комбинации входов проверены.
+                            </p>
+                        {% else %}
+                            <p class="gate-lab-instructions">
+                                За шлюзом находится следующий раздел. Сигнал должен пройти, если
+                                активен A или B. В распоряжении только три элемента NAND и провода:
+                                соберите схему ИЛИ из трёх NAND. Проверяйте каждый набор входов —
+                                таблица покажет, совпал ли выход.
+                            </p>
+                            <div class="gate-lab-inputs" role="group" aria-label="Переключатели схемы">
+                                <button type="button" data-gate-input="a" aria-pressed="false">
+                                    Вход A <strong data-gate-input-value="a">0</strong>
+                                </button>
+                                <button type="button" data-gate-input="b" aria-pressed="false">
+                                    Вход B <strong data-gate-input-value="b">0</strong>
+                                </button>
+                                <p class="gate-lab-indicator" data-gate-indicator="0" aria-live="polite">
+                                    <span class="gate-lab-light" aria-hidden="true"></span>
+                                    <span data-gate-indicator-label>Шлюз закрыт</span>
+                                </p>
+                            </div>
+                            <div class="gate-lab-circuit" aria-label="Схема из трёх логических элементов">
+                                <fieldset class="gate-block" data-gate-block="first">
+                                    <legend>Элемент 1</legend>
+                                    <label>
+                                        Вход 1
+                                        <select data-gate-wire="first_left">
+                                            <option value="a">A</option>
+                                            <option value="b">B</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Вход 2
+                                        <select data-gate-wire="first_right">
+                                            <option value="a">A</option>
+                                            <option value="b">B</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Элемент
+                                        <select data-gate-type="first">
+                                            <option value="nand">NAND</option>
+                                            <option value="nor">NOR</option>
+                                        </select>
+                                    </label>
+                                    <output data-gate-output="first">1</output>
+                                </fieldset>
+                                <span class="gate-lab-connector" aria-hidden="true">→</span>
+                                <fieldset class="gate-block" data-gate-block="second">
+                                    <legend>Элемент 2</legend>
+                                    <label>
+                                        Вход 1
+                                        <select data-gate-wire="second_left">
+                                            <option value="a">A</option>
+                                            <option value="b" selected>B</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Вход 2
+                                        <select data-gate-wire="second_right">
+                                            <option value="a">A</option>
+                                            <option value="b" selected>B</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Элемент
+                                        <select data-gate-type="second">
+                                            <option value="nand">NAND</option>
+                                            <option value="nor">NOR</option>
+                                        </select>
+                                    </label>
+                                    <output data-gate-output="second">1</output>
+                                </fieldset>
+                                <span class="gate-lab-connector" aria-hidden="true">→</span>
+                                <fieldset class="gate-block" data-gate-block="output">
+                                    <legend>Выходной элемент</legend>
+                                    <label>
+                                        Вход 1
+                                        <select data-gate-wire="output_left">
+                                            <option value="first">Элемент 1</option>
+                                            <option value="second">Элемент 2</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Вход 2
+                                        <select data-gate-wire="output_right">
+                                            <option value="first">Элемент 1</option>
+                                            <option value="second" selected>Элемент 2</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Элемент
+                                        <select data-gate-type="output">
+                                            <option value="nand">NAND</option>
+                                            <option value="nor">NOR</option>
+                                        </select>
+                                    </label>
+                                    <output data-gate-output="output">0</output>
+                                </fieldset>
+                            </div>
+                            <div class="gate-lab-table-wrap">
+                                <table class="gate-lab-table">
+                                    <caption>Автоматическая проверка полной таблицы истинности</caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">A</th>
+                                            <th scope="col">B</th>
+                                            <th scope="col">Ожидаемый выход</th>
+                                            <th scope="col">Выход схемы</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for row in gate_lab_rows %}
+                                            <tr
+                                                data-gate-row
+                                                data-a="{{ row.a }}"
+                                                data-b="{{ row.b }}"
+                                                data-expected="{{ row.expected }}"
+                                            >
+                                                <th scope="row">{{ row.a }}</th>
+                                                <td>{{ row.b }}</td>
+                                                <td>{{ row.expected }}</td>
+                                                <td data-gate-row-output>0</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="gate-lab-actions">
+                                <button class="primary-link" type="button" data-gate-check>
+                                    Проверить схему <span aria-hidden="true">→</span>
+                                </button>
+                                <button class="logic-hint-button" type="button" data-gate-hint>
+                                    Подсказка
+                                </button>
+                                <p data-gate-status aria-live="polite" role="status"></p>
+                            </div>
+                            <p class="gate-lab-hint" data-gate-hint-text aria-live="polite" hidden></p>
+                        {% endif %}
+                    </section>
+                {% endif %}
+
                 <div class="lesson-actions">
                     {% if completed %}
                         <p class="lesson-complete-status"><span aria-hidden="true">✓</span> Раздел пройден</p>
@@ -352,7 +506,7 @@
                             <p class="course-finished">Вы прошли все разделы курса.</p>
                         {% endif %}
                     {% else %}
-                        {% if byte_exercise_target or octal_exercise_target or logic_exercise_target %}
+                        {% if byte_exercise_target or octal_exercise_target or logic_exercise_target or gate_lab_rows %}
                             <p class="lesson-action-note">Выполните практическое задание выше, чтобы открыть следующий раздел.</p>
                         {% else %}
                             <p class="lesson-action-note">После изучения материала отметьте раздел пройденным, чтобы открыть следующий.</p>
@@ -380,6 +534,9 @@
     {% endif %}
     {% if access_state == "available" and chapter.position == 3 and not completed %}
         <script src="{{ url_for('static', filename='logic-exercise.js') }}" defer></script>
+    {% endif %}
+    {% if access_state == "available" and chapter.position == 4 and not completed %}
+        <script src="{{ url_for('static', filename='gate-lab.js') }}" defer></script>
     {% endif %}
 </body>
 </html>

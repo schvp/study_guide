@@ -469,6 +469,10 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertIn("Элементы NAND и NOR".encode(), page.data)
         self.assertIn("Исключающее ИЛИ".encode(), page.data)
+        self.assertIn("Разблокируй шлюз".encode(), page.data)
+        self.assertEqual(page.data.count(b"data-gate-row\n"), 4)
+        self.assertIn(b"/static/gate-lab.js", page.data)
+        self.assertNotIn(b"data-complete-chapter", page.data)
 
     def test_fifth_chapter_introduces_combinational_design_in_sequence(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
@@ -2109,6 +2113,9 @@ class AuthenticationTests(unittest.TestCase):
         self.assertTrue(correct.json["correct"])
         self.assertEqual(correct.json["chapter_id"], 4)
         self.assertEqual(self.client.get("/course/5").status_code, 200)
+        completed_page = self.client.get("/course/4")
+        self.assertIn("Шлюз открыт!".encode(), completed_page.data)
+        self.assertNotIn(b"data-gate-check", completed_page.data)
         completed_page = self.client.get("/course/3")
         self.assertIn("Вы построили исключающее ИЛИ".encode(), completed_page.data)
         self.assertNotIn(b"data-logic-submit", completed_page.data)
