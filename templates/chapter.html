@@ -823,6 +823,124 @@
                     </section>
                 {% endif %}
 
+                {% if memory_lab_rom %}
+                    <section
+                        class="memory-lab"
+                        aria-labelledby="memory-lab-title"
+                        data-memory-lab
+                        data-rom="{{ memory_lab_rom|join(',') }}"
+                        data-submit-url="{{ url_for('submit_memory_lab') }}"
+                    >
+                        <p class="eyebrow">МИССИЯ · ЭНЕРГОНЕЗАВИСИМАЯ ПАМЯТЬ</p>
+                        <h2 id="memory-lab-title">Спаси данные при отключении питания</h2>
+                        {% if completed %}
+                            <p class="memory-lab-success" role="status">
+                                Данные RAM записаны и прочитаны, затем исчезли после отключения питания.
+                                Слово ROM по адресу 01 сохранилось — память ведёт себя ожидаемо.
+                            </p>
+                        {% else %}
+                            <p class="memory-lab-instructions">
+                                Запишите слово <strong>1101</strong> в RAM по адресу <strong>10</strong>
+                                и прочитайте его. Сравните с ROM по адресу <strong>01</strong>, затем
+                                выключите и снова включите питание. Проверьте, какие данные переживут
+                                перезапуск.
+                            </p>
+                            <div class="memory-lab-power" role="group" aria-label="Питание памяти">
+                                <span data-memory-power-state="on">Питание включено</span>
+                                <button type="button" data-memory-power aria-pressed="true">
+                                    Выключить питание
+                                </button>
+                            </div>
+                            <div class="memory-lab-workbench">
+                                <div class="memory-lab-controls">
+                                    <label>
+                                        Адрес
+                                        <select data-memory-address>
+                                            {% for cell in memory_lab_cells %}
+                                                <option value="{{ cell.address }}">{{ cell.binary }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </label>
+                                    <div class="memory-lab-type" role="group" aria-label="Тип памяти">
+                                        <button type="button" data-memory-type="ram" aria-pressed="true">RAM</button>
+                                        <button type="button" data-memory-type="rom" aria-pressed="false">ROM</button>
+                                    </div>
+                                    <div class="memory-lab-data" role="group" aria-label="Входное слово">
+                                        <span>Входные данные</span>
+                                        <div>
+                                            {% for bit in range(4) %}
+                                                <button
+                                                    type="button"
+                                                    data-memory-data-bit="{{ bit }}"
+                                                    aria-label="Переключить бит {{ bit }}"
+                                                    aria-pressed="false"
+                                                >0</button>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="memory-lab-actions">
+                                        <button type="button" data-memory-read>Читать</button>
+                                        <button type="button" data-memory-write>Записать в RAM</button>
+                                        <button type="button" data-memory-reset>Сбросить эксперимент</button>
+                                    </div>
+                                    <p class="memory-lab-readout" data-memory-readout aria-live="polite">
+                                        Выберите адрес и выполните чтение.
+                                    </p>
+                                </div>
+                                <div class="memory-lab-banks">
+                                    <section class="memory-bank" aria-labelledby="ram-bank-title">
+                                        <h3 id="ram-bank-title">RAM · энергозависимая</h3>
+                                        <p>Очищается при отключении питания</p>
+                                        <div class="memory-cells">
+                                            {% for cell in memory_lab_cells %}
+                                                <div data-memory-cell="ram-{{ cell.address }}">
+                                                    <span>{{ cell.binary }}</span>
+                                                    <strong>0000</strong>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    </section>
+                                    <section class="memory-bank" aria-labelledby="rom-bank-title">
+                                        <h3 id="rom-bank-title">ROM · энергонезависимая</h3>
+                                        <p>Сохраняет данные без питания</p>
+                                        <div class="memory-cells">
+                                            {% for cell in memory_lab_cells %}
+                                                <div data-memory-cell="rom-{{ cell.address }}">
+                                                    <span>{{ cell.binary }}</span>
+                                                    <strong>{{ cell.word }}</strong>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    </section>
+                                </div>
+                            </div>
+                            <p class="memory-lab-progress" data-memory-progress aria-live="polite">
+                                Выполнено проверок: 0 из 4
+                            </p>
+                            <div class="memory-lab-history-wrap">
+                                <table class="memory-lab-history">
+                                    <caption>История операций с памятью</caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Шаг</th>
+                                            <th scope="col">Операция</th>
+                                            <th scope="col">Адрес</th>
+                                            <th scope="col">Результат</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody data-memory-history></tbody>
+                                </table>
+                            </div>
+                            <div class="memory-lab-check">
+                                <button class="primary-link" type="button" data-memory-check disabled>
+                                    Проверить эксперимент <span aria-hidden="true">→</span>
+                                </button>
+                                <p data-memory-status aria-live="polite" role="status"></p>
+                            </div>
+                        {% endif %}
+                    </section>
+                {% endif %}
+
                 <div class="lesson-actions">
                     {% if completed %}
                         <p class="lesson-complete-status"><span aria-hidden="true">✓</span> Раздел пройден</p>
@@ -834,7 +952,7 @@
                             <p class="course-finished">Вы прошли все разделы курса.</p>
                         {% endif %}
                     {% else %}
-                        {% if byte_exercise_target or octal_exercise_target or logic_exercise_target or gate_lab_rows or mux_lab_rows or trigger_lab_target or register_counter_target %}
+                        {% if byte_exercise_target or octal_exercise_target or logic_exercise_target or gate_lab_rows or mux_lab_rows or trigger_lab_target or register_counter_target or memory_lab_rom %}
                             <p class="lesson-action-note">Выполните практическое задание выше, чтобы открыть следующий раздел.</p>
                         {% else %}
                             <p class="lesson-action-note">После изучения материала отметьте раздел пройденным, чтобы открыть следующий.</p>
@@ -885,6 +1003,9 @@
     {% endif %}
     {% if access_state == "available" and chapter.position == 7 and not completed %}
         <script src="{{ url_for('static', filename='register-counter-lab.js') }}" defer></script>
+    {% endif %}
+    {% if access_state == "available" and chapter.position == 8 and not completed %}
+        <script src="{{ url_for('static', filename='memory-lab.js') }}" defer></script>
     {% endif %}
 </body>
 </html>

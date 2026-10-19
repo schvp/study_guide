@@ -873,6 +873,22 @@ class AuthenticationTests(unittest.TestCase):
         page = self.client.get("/course/8")
         self.assertEqual(page.status_code, 200)
         self.assertIn("Ячейки, слова и адреса".encode(), page.data)
+        self.assertIn("Спаси данные при отключении питания".encode(), page.data)
+        self.assertEqual(page.data.count(b"data-memory-cell="), 8)
+        self.assertIn(b"/static/memory-lab.js", page.data)
+        self.assertNotIn(b"data-complete-chapter", page.data)
+        self.assertNotIn(b"data-development-skip", page.data)
+        self.assertEqual(self._complete_chapter(8).status_code, 200)
+        completed_page = self.client.get("/course/8")
+        self.assertIn("исчезли после отключения питания".encode(), completed_page.data)
+        self.assertIn("Спаси данные при отключении питания".encode(), page.data)
+        self.assertEqual(page.data.count(b"data-memory-cell="), 8)
+        self.assertIn(b"/static/memory-lab.js", page.data)
+        self.assertNotIn(b"data-complete-chapter", page.data)
+        self.assertNotIn(b"data-development-skip", page.data)
+        self.assertEqual(self._complete_chapter(8).status_code, 200)
+        completed_page = self.client.get("/course/8")
+        self.assertIn("исчезли после отключения питания".encode(), completed_page.data)
 
     def test_memory_lab_verifies_ram_write_and_rom_power_retention(self):
         self.assertEqual(
