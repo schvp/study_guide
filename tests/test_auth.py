@@ -429,6 +429,10 @@ class AuthenticationTests(unittest.TestCase):
         self.assertGreater(len(content), 1500)
         self.assertIn("## Цель раздела", content)
         self.assertIn("## Аналоговые и цифровые сигналы", content)
+        self.assertIn("## Практические задания с разбором", content)
+        self.assertIn("2⁴ = 16", content)
+        self.assertIn("2⁴ = 16 < 20 ≤ 32 = 2⁵", content)
+        self.assertIn("Задания для самостоятельной работы", content)
         self.assertIn("## Проверьте себя", content)
 
         self.assertEqual(
@@ -448,6 +452,7 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn(b'data-byte-decimal>0</dd>', page)
         self.assertIn(b"/static/byte-exercise.js", page)
         self.assertNotIn(b"data-complete-chapter", page)
+        self.assertIn("Задания для самостоятельной работы".encode(), page)
 
     def test_second_chapter_is_seeded_from_versioned_course_material(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
@@ -465,6 +470,12 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("110101₂", content)
         self.assertIn("45₁₀ = 101101₂", content)
         self.assertIn("173₁₀ = AD₁₆", content)
+        self.assertIn("## Практические задания с разбором", content)
+        self.assertIn("94₁₀ = 5E₁₆", content)
+        self.assertIn("10110110₂ = B6₁₆", content)
+        self.assertIn("642₈ = 110100010₂", content)
+        self.assertIn("## Задания для самостоятельной работы", content)
+        self.assertIn("203₁₀ = 313₈", content)
         self.assertIn("## Проверьте себя", content)
         self.assertIn("156₁₀ = 10011100₂", content)
         self.assertIn("## Восьмеричная и шестнадцатеричная системы", content)
@@ -490,6 +501,8 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(page.data.count(b"data-octal-step="), 3)
         self.assertIn(b"/static/octal-exercise.js", page.data)
         self.assertNotIn(b"data-complete-chapter", page.data)
+        self.assertIn("10110110₂ = B6₁₆".encode(), page.data)
+        self.assertIn("Задания для самостоятельной работы".encode(), page.data)
 
     def test_third_chapter_is_seeded_and_accessible_in_course_sequence(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
@@ -506,6 +519,11 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("## Операция НЕ", content)
         self.assertIn("## Операция И", content)
         self.assertIn("## Основные законы булевой алгебры", content)
+        self.assertIn("## Практические задания с разбором", content)
+        self.assertIn("¬(A ∧ B) = ¬A ∨ ¬B", content)
+        self.assertIn("(A ∧ B) ∨ (A ∧ ¬B)", content)
+        self.assertIn("## Задания для самостоятельной работы", content)
+        self.assertIn("выходы равны 0, 0, 1, 0", content)
         self.assertIn("2³ = 8 строк", content)
 
         self.assertEqual(
@@ -529,6 +547,8 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn(b"/static/logic-exercise.js", page.data)
         self.assertIn(b"data-logic-hint", page.data)
         self.assertNotIn(b"data-complete-chapter", page.data)
+        self.assertIn("Практические задания с разбором".encode(), page.data)
+        self.assertIn("Задания для самостоятельной работы".encode(), page.data)
 
     def test_fourth_chapter_introduces_logic_gates_after_prior_chapters(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
