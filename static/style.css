@@ -2217,6 +2217,296 @@ a.chapter-link:hover {
     color: #426d49;
 }
 
+.memory-lab {
+    margin: 10px 0 24px;
+    padding: clamp(20px, 4vw, 32px);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+}
+
+.memory-lab h2 {
+    margin: 0 0 8px;
+    color: var(--ink);
+    font-size: clamp(20px, 3vw, 25px);
+    letter-spacing: -0.04em;
+}
+
+.memory-lab .eyebrow {
+    margin: 0 0 8px;
+}
+
+.memory-lab-instructions,
+.memory-lab-success {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+.memory-lab-instructions strong {
+    color: var(--ink);
+    font: 700 13px "DM Mono", Consolas, monospace;
+    letter-spacing: 0.12em;
+}
+
+.memory-lab-success {
+    color: #426d49;
+    font-weight: 700;
+}
+
+.memory-lab-power {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 18px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: #fff;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.memory-lab-power [data-state="on"] {
+    color: #426d49;
+}
+
+.memory-lab-power [data-state="off"] {
+    color: #a04535;
+}
+
+.memory-lab-power button,
+.memory-lab-actions button,
+.memory-lab-type button,
+.memory-lab-data button {
+    padding: 8px 11px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: #fff;
+    color: var(--ink);
+    cursor: pointer;
+    font: inherit;
+    font-size: 10px;
+}
+
+.memory-lab-power button:hover,
+.memory-lab-actions button:hover {
+    background: #f1f3eb;
+}
+
+.memory-lab-workbench {
+    display: grid;
+    grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1.5fr);
+    gap: 14px;
+    margin-top: 12px;
+}
+
+.memory-lab-controls,
+.memory-bank {
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: #fff;
+}
+
+.memory-lab-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+}
+
+.memory-lab-controls > label,
+.memory-lab-data {
+    display: grid;
+    gap: 7px;
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.memory-lab-controls select {
+    min-width: 90px;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: #fff;
+    color: var(--ink);
+    font: 700 12px "DM Mono", Consolas, monospace;
+}
+
+.memory-lab-controls select:focus-visible,
+.memory-lab-power button:focus-visible,
+.memory-lab-actions button:focus-visible,
+.memory-lab-type button:focus-visible,
+.memory-lab-data button:focus-visible {
+    outline: 3px solid var(--orange);
+    outline-offset: 3px;
+}
+
+.memory-lab-type {
+    display: flex;
+    gap: 6px;
+}
+
+.memory-lab-type button[aria-pressed="true"] {
+    border-color: var(--ink);
+    background: var(--lime);
+    font-weight: 800;
+}
+
+.memory-lab-data > div {
+    display: flex;
+    gap: 6px;
+}
+
+.memory-lab-data button {
+    min-width: 34px;
+    font: 700 13px "DM Mono", Consolas, monospace;
+}
+
+.memory-lab-data button[aria-pressed="true"] {
+    border-color: var(--ink);
+    background: var(--lime);
+}
+
+.memory-lab-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.memory-lab-actions button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.memory-lab-readout {
+    min-height: 30px;
+    margin: 0;
+    color: var(--ink);
+    font: 700 11px "DM Mono", Consolas, monospace;
+    line-height: 1.6;
+}
+
+.memory-lab-banks {
+    display: grid;
+    gap: 12px;
+}
+
+.memory-bank h3 {
+    margin: 0;
+    color: var(--ink);
+    font-size: 12px;
+}
+
+.memory-bank > p {
+    margin: 4px 0 12px;
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.memory-cells {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 7px;
+}
+
+.memory-cells > div {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    min-width: 0;
+    padding: 8px 4px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: #f7f8f3;
+}
+
+.memory-cells span {
+    color: var(--muted);
+    font: 600 9px "DM Mono", Consolas, monospace;
+}
+
+.memory-cells strong {
+    color: var(--ink);
+    font: 700 12px "DM Mono", Consolas, monospace;
+    letter-spacing: 0.04em;
+}
+
+.memory-lab-progress {
+    margin: 14px 0 0;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.memory-lab-history-wrap {
+    overflow-x: auto;
+    margin-top: 14px;
+}
+
+.memory-lab-history {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--ink);
+    font-size: 10px;
+    text-align: center;
+}
+
+.memory-lab-history caption {
+    margin-bottom: 7px;
+    color: var(--muted);
+    text-align: left;
+}
+
+.memory-lab-history th,
+.memory-lab-history td {
+    padding: 7px;
+    border: 1px solid var(--line);
+}
+
+.memory-lab-history thead th {
+    background: #f1f3eb;
+}
+
+.memory-lab-check {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.memory-lab-check button {
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.memory-lab-check button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+[data-memory-status] {
+    margin: 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+[data-memory-status][data-state="error"] {
+    color: #a04535;
+}
+
+[data-memory-status][data-state="success"] {
+    color: #426d49;
+}
+
 .logic-simulator {
     display: flex;
     align-items: center;
@@ -2630,6 +2920,10 @@ a.chapter-link:hover {
     }
 
     .register-counter-displays {
+        grid-template-columns: 1fr;
+    }
+
+    .memory-lab-workbench {
         grid-template-columns: 1fr;
     }
 
