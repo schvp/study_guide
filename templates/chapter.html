@@ -496,6 +496,163 @@
                     </section>
                 {% endif %}
 
+                {% if mux_lab_rows %}
+                    <section
+                        class="mux-lab"
+                        aria-labelledby="mux-lab-title"
+                        data-mux-lab
+                        data-submit-url="{{ url_for('submit_multiplexer_lab') }}"
+                    >
+                        <p class="eyebrow">КОНСТРУКТОР · КОМБИНАЦИОННЫЕ СХЕМЫ</p>
+                        <h2 id="mux-lab-title">Настрой маршрутизатор данных</h2>
+                        {% if completed %}
+                            <p class="mux-lab-success" role="status">
+                                Маршрутизатор передаёт выбранный сигнал: при S = 0 — D₀, при S = 1 — D₁.
+                                Все восемь комбинаций проверены.
+                            </p>
+                        {% else %}
+                            <p class="mux-lab-instructions">
+                                Соберите мультиплексор 2 к 1 из инвертора, двух элементов И и элемента ИЛИ.
+                                При S = 0 на выход должен проходить D₀, при S = 1 — D₁.
+                                Настройте провода и проверьте все восемь сочетаний входов.
+                            </p>
+                            <div class="mux-lab-inputs" role="group" aria-label="Входные сигналы мультиплексора">
+                                <button type="button" data-mux-input="d0" aria-pressed="false">
+                                    Данные D₀ <strong data-mux-input-value="d0">0</strong>
+                                </button>
+                                <button type="button" data-mux-input="d1" aria-pressed="false">
+                                    Данные D₁ <strong data-mux-input-value="d1">0</strong>
+                                </button>
+                                <button type="button" data-mux-input="s" aria-pressed="false">
+                                    Выбор S <strong data-mux-input-value="s">0</strong>
+                                </button>
+                                <p class="mux-lab-indicator" data-mux-indicator="0" aria-live="polite">
+                                    <span class="mux-lab-light" aria-hidden="true"></span>
+                                    <span data-mux-indicator-label>На выходе: 0</span>
+                                </p>
+                            </div>
+                            <div class="mux-lab-circuit" aria-label="Соедините логические элементы мультиплексора">
+                                <fieldset class="mux-block">
+                                    <legend>Инвертор ¬S</legend>
+                                    <label>
+                                        Вход
+                                        <select data-mux-wire="not_input">
+                                            <option value="d0">D₀</option>
+                                            <option value="d1">D₁</option>
+                                            <option value="s">S</option>
+                                        </select>
+                                    </label>
+                                    <output data-mux-output="not_s">1</output>
+                                </fieldset>
+                                <fieldset class="mux-block">
+                                    <legend>Ветвь данных D₀ · И</legend>
+                                    <label>
+                                        Вход 1
+                                        <select data-mux-wire="zero_left">
+                                            <option value="d0">D₀</option>
+                                            <option value="d1">D₁</option>
+                                            <option value="s">S</option>
+                                            <option value="not_s">¬S</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Вход 2
+                                        <select data-mux-wire="zero_right">
+                                            <option value="d0">D₀</option>
+                                            <option value="d1">D₁</option>
+                                            <option value="s">S</option>
+                                            <option value="not_s" selected>¬S</option>
+                                        </select>
+                                    </label>
+                                    <output data-mux-output="zero_term">0</output>
+                                </fieldset>
+                                <fieldset class="mux-block">
+                                    <legend>Ветвь данных D₁ · И</legend>
+                                    <label>
+                                        Вход 1
+                                        <select data-mux-wire="one_left">
+                                            <option value="d0">D₀</option>
+                                            <option value="d1">D₁</option>
+                                            <option value="s" selected>S</option>
+                                            <option value="not_s">¬S</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Вход 2
+                                        <select data-mux-wire="one_right">
+                                            <option value="d0">D₀</option>
+                                            <option value="d1">D₁</option>
+                                            <option value="s">S</option>
+                                            <option value="not_s">¬S</option>
+                                        </select>
+                                    </label>
+                                    <output data-mux-output="one_term">0</output>
+                                </fieldset>
+                                <fieldset class="mux-block">
+                                    <legend>Выход · ИЛИ</legend>
+                                    <label>
+                                        Вход 1
+                                        <select data-mux-wire="output_left">
+                                            <option value="zero_term">Ветвь D₀</option>
+                                            <option value="one_term">Ветвь D₁</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Вход 2
+                                        <select data-mux-wire="output_right">
+                                            <option value="zero_term">Ветвь D₀</option>
+                                            <option value="one_term" selected>Ветвь D₁</option>
+                                        </select>
+                                    </label>
+                                    <output data-mux-output="output">0</output>
+                                </fieldset>
+                            </div>
+                            <p class="mux-lab-score" data-mux-score aria-live="polite"></p>
+                            <div class="mux-lab-table-wrap">
+                                <table class="mux-lab-table">
+                                    <caption>Проверка поведения маршрутизатора по полной таблице истинности</caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">D₀</th>
+                                            <th scope="col">D₁</th>
+                                            <th scope="col">S</th>
+                                            <th scope="col">Ожидаемый выход</th>
+                                            <th scope="col">Выход схемы</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for row in mux_lab_rows %}
+                                            <tr
+                                                data-mux-row
+                                                data-d0="{{ row.d0 }}"
+                                                data-d1="{{ row.d1 }}"
+                                                data-s="{{ row.s }}"
+                                                data-expected="{{ row.expected }}"
+                                            >
+                                                <th scope="row">{{ row.d0 }}</th>
+                                                <td>{{ row.d1 }}</td>
+                                                <td>{{ row.s }}</td>
+                                                <td>{{ row.expected }}</td>
+                                                <td data-mux-row-output>0</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="mux-lab-actions">
+                                <button class="primary-link" type="button" data-mux-check>
+                                    Проверить маршрутизатор <span aria-hidden="true">→</span>
+                                </button>
+                                <button class="logic-hint-button" type="button" data-mux-hint>
+                                    Подсказка
+                                </button>
+                                <p data-mux-status aria-live="polite" role="status"></p>
+                            </div>
+                            <p class="mux-lab-hint" data-mux-hint-text aria-live="polite" hidden></p>
+                        {% endif %}
+                    </section>
+                {% endif %}
+
                 <div class="lesson-actions">
                     {% if completed %}
                         <p class="lesson-complete-status"><span aria-hidden="true">✓</span> Раздел пройден</p>
@@ -507,7 +664,7 @@
                             <p class="course-finished">Вы прошли все разделы курса.</p>
                         {% endif %}
                     {% else %}
-                        {% if byte_exercise_target or octal_exercise_target or logic_exercise_target or gate_lab_rows %}
+                        {% if byte_exercise_target or octal_exercise_target or logic_exercise_target or gate_lab_rows or mux_lab_rows %}
                             <p class="lesson-action-note">Выполните практическое задание выше, чтобы открыть следующий раздел.</p>
                         {% else %}
                             <p class="lesson-action-note">После изучения материала отметьте раздел пройденным, чтобы открыть следующий.</p>
@@ -538,6 +695,9 @@
     {% endif %}
     {% if access_state == "available" and chapter.position == 4 and not completed %}
         <script src="{{ url_for('static', filename='gate-lab.js') }}" defer></script>
+    {% endif %}
+    {% if access_state == "available" and chapter.position == 5 and not completed %}
+        <script src="{{ url_for('static', filename='multiplexer-lab.js') }}" defer></script>
     {% endif %}
 </body>
 </html>

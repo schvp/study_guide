@@ -1521,6 +1521,256 @@ a.chapter-link:hover {
     color: #426d49;
 }
 
+.mux-lab {
+    margin: 10px 0 24px;
+    padding: clamp(20px, 4vw, 32px);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+}
+
+.mux-lab h2 {
+    margin: 0 0 8px;
+    color: var(--ink);
+    font-size: clamp(20px, 3vw, 25px);
+    letter-spacing: -0.04em;
+}
+
+.mux-lab .eyebrow {
+    margin: 0 0 8px;
+}
+
+.mux-lab-instructions,
+.mux-lab-success {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+.mux-lab-success {
+    color: #426d49;
+    font-weight: 700;
+}
+
+.mux-lab-inputs {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 18px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: #fff;
+}
+
+.mux-lab-inputs button {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: #fff;
+    color: var(--ink);
+    cursor: pointer;
+    font: inherit;
+    font-size: 11px;
+}
+
+.mux-lab-inputs button[aria-pressed="true"] {
+    border-color: var(--ink);
+    background: var(--lime);
+}
+
+.mux-lab-inputs button:focus-visible,
+.mux-block select:focus-visible,
+.mux-lab-actions button:focus-visible {
+    outline: 3px solid var(--orange);
+    outline-offset: 3px;
+}
+
+.mux-lab-inputs strong,
+.mux-block output {
+    font-family: "DM Mono", Consolas, monospace;
+}
+
+.mux-lab-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 0 auto;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.mux-lab-light {
+    width: 13px;
+    height: 13px;
+    border: 1px solid #8a9690;
+    border-radius: 50%;
+    background: #e5e9e3;
+}
+
+.mux-lab-indicator[data-mux-indicator="1"] .mux-lab-light {
+    border-color: #789c23;
+    background: var(--lime);
+    box-shadow: 0 0 12px #d8f078;
+}
+
+.mux-lab-circuit {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.mux-block {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    min-width: 0;
+    margin: 0;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: #fff;
+}
+
+.mux-block legend {
+    padding: 0 5px;
+    color: var(--ink);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.mux-block label {
+    display: grid;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.mux-block select {
+    width: 100%;
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: #fff;
+    color: var(--ink);
+    font: 600 11px "DM Mono", Consolas, monospace;
+}
+
+.mux-block output {
+    grid-column: 1 / -1;
+    justify-self: center;
+    min-width: 34px;
+    padding: 5px 8px;
+    border-radius: 3px;
+    background: #f1f3eb;
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.mux-lab-table-wrap {
+    overflow-x: auto;
+    margin-top: 18px;
+}
+
+.mux-lab-score {
+    margin: 12px 0 0;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.mux-lab-score[data-complete="true"] {
+    color: #426d49;
+}
+
+.mux-lab-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--ink);
+    font-size: 11px;
+    text-align: center;
+}
+
+.mux-lab-table caption {
+    margin-bottom: 8px;
+    color: var(--muted);
+    text-align: left;
+}
+
+.mux-lab-table th,
+.mux-lab-table td {
+    padding: 8px;
+    border: 1px solid var(--line);
+}
+
+.mux-lab-table thead th {
+    background: #f1f3eb;
+}
+
+.mux-lab-table tbody tr[data-matches="false"] {
+    background: #fff4ef;
+    color: #8b3b2f;
+}
+
+.mux-lab-table tbody tr[data-error="true"] {
+    outline: 2px solid var(--orange);
+    outline-offset: -2px;
+}
+
+.mux-lab-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.mux-lab-actions button {
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.mux-lab-actions button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.mux-lab-hint {
+    margin: 12px 0 0;
+    padding: 11px 13px;
+    border-left: 3px solid var(--lime);
+    background: #f1f3eb;
+    color: var(--ink);
+    font-size: 11px;
+    line-height: 1.6;
+}
+
+[data-mux-status] {
+    margin: 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+[data-mux-status][data-state="error"] {
+    color: #a04535;
+}
+
+[data-mux-status][data-state="success"] {
+    color: #426d49;
+}
+
 .logic-simulator {
     display: flex;
     align-items: center;
@@ -1893,6 +2143,12 @@ a.chapter-link:hover {
     color: #426d49;
 }
 
+@media (max-width: 850px) {
+    .mux-lab-circuit {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 @media (max-width: 600px) {
     .byte-bits {
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1906,12 +2162,20 @@ a.chapter-link:hover {
         grid-template-columns: 1fr;
     }
 
+    .mux-lab-circuit {
+        grid-template-columns: 1fr;
+    }
+
     .gate-lab-connector {
         justify-self: center;
         transform: rotate(90deg);
     }
 
     .gate-lab-indicator {
+        margin-left: 0;
+    }
+
+    .mux-lab-indicator {
         margin-left: 0;
     }
 

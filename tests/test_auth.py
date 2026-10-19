@@ -96,6 +96,22 @@ class AuthenticationTests(unittest.TestCase):
             },
         )
 
+    def _submit_multiplexer_lab(self, circuit=None):
+        return self._post_json(
+            "/api/exercises/multiplexer-lab",
+            circuit
+            if circuit is not None
+            else {
+                "not_input": "s",
+                "zero_left": "d0",
+                "zero_right": "not_s",
+                "one_left": "s",
+                "one_right": "d1",
+                "output_left": "zero_term",
+                "output_right": "one_term",
+            },
+        )
+
     def _complete_chapter(self, chapter_id):
         if chapter_id == 1:
             return self._submit_byte_exercise()
@@ -105,6 +121,8 @@ class AuthenticationTests(unittest.TestCase):
             return self._submit_logic_exercise()
         if chapter_id == 4:
             return self._submit_nand_gate_lab()
+        if chapter_id == 5:
+            return self._submit_multiplexer_lab()
         return self._post_json(
             f"/api/progress/{chapter_id}",
             {"completed": True},
@@ -512,6 +530,10 @@ class AuthenticationTests(unittest.TestCase):
         page = self.client.get("/course/5")
         self.assertEqual(page.status_code, 200)
         self.assertIn("таблицу истинности".encode(), page.data)
+        self.assertIn("Настрой маршрутизатор данных".encode(), page.data)
+        self.assertEqual(page.data.count(b"data-mux-row\n"), 8)
+        self.assertIn(b"/static/multiplexer-lab.js", page.data)
+        self.assertNotIn(b"data-complete-chapter", page.data)
 
     def test_sixth_chapter_introduces_triggers_after_combinational_design(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
@@ -546,6 +568,49 @@ class AuthenticationTests(unittest.TestCase):
         page = self.client.get("/course/6")
         self.assertEqual(page.status_code, 200)
         self.assertIn("Защёлка и триггер с тактовым фронтом".encode(), page.data)
+
+    def test_multiplexer_lab_verifies_all_input_combinations_and_blocks_bypass(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self._submit_multiplexer_lab().status_code, 403)
+        for chapter_id in range(1, 5):
+            self.assertEqual(self._complete_chapter(chapter_id).status_code, 200)
+
+        malformed = self._submit_multiplexer_lab({"not_input": "unknown"})
+        incorrect = self._submit_multiplexer_lab(
+            {
+                "not_input": "s",
+                "zero_left": "d1",
+                "zero_right": "not_s",
+                "one_left": "s",
+                "one_right": "d1",
+                "output_left": "zero_term",
+                "output_right": "one_term",
+            }
+        )
+        bypass = self._post_json("/api/progress/5", {"completed": True})
+
+        self.assertEqual(malformed.status_code, 400)
+        self.assertEqual(incorrect.status_code, 422)
+        self.assertGreater(len(incorrect.json["mismatches"]), 0)
+        self.assertEqual(bypass.status_code, 403)
+        self.assertEqual(self.client.get("/course/6").status_code, 403)
+
+        correct = self._submit_multiplexer_lab()
+
+        self.assertEqual(correct.status_code, 200)
+        self.assertTrue(correct.json["correct"])
+        self.assertEqual(correct.json["chapter_id"], 5)
+        self.assertEqual(self.client.get("/course/6").status_code, 200)
+        completed_page = self.client.get("/course/5")
+        self.assertIn("Маршрутизатор передаёт выбранный сигнал".encode(), completed_page.data)
+        self.assertNotIn(b"data-mux-check", completed_page.data)
 
     def test_seventh_chapter_introduces_registers_and_counters_in_sequence(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:

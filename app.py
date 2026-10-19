@@ -1316,6 +1316,21 @@ def create_app(test_config=None):
                 if chapter_by_id["position"] == 4
                 else None
             ),
+            mux_lab_rows=(
+                [
+                    {
+                        "d0": d0,
+                        "d1": d1,
+                        "s": selector,
+                        "expected": d1 if selector else d0,
+                    }
+                    for d0 in (0, 1)
+                    for d1 in (0, 1)
+                    for selector in (0, 1)
+                ]
+                if chapter_by_id["position"] == 5
+                else None
+            ),
             course=course,
             csrf_token=session["csrf_token"],
         )
@@ -1817,6 +1832,127 @@ def create_app(test_config=None):
         database.commit()
         return jsonify(correct=True, completed=True, chapter_id=chapter["id"])
 
+    @app.post("/api/exercises/multiplexer-lab")
+    @csrf_protected
+    def submit_multiplexer_lab():
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы сохранить результат задания."), 401
+
+        payload = json_payload()
+        if payload is None:
+            return jsonify(error="Некорректный запрос."), 400
+        if (
+            not isinstance(payload.get("not_input"), str)
+            or payload["not_input"] not in {"d0", "d1", "s"}
+            or any(
+                not isinstance(payload.get(field), str)
+                or payload[field] not in {"d0", "d1", "s", "not_s"}
+                for field in (
+                    "zero_left",
+                    "zero_right",
+                    "one_left",
+                    "one_right",
+                )
+            )
+            or any(
+                not isinstance(payload.get(field), str)
+                or payload[field] not in {"zero_term", "one_term"}
+                for field in ("output_left", "output_right")
+            )
+        ):
+            return jsonify(error="Проверьте подключения сигналов мультиплексора."), 400
+
+        database = get_db()
+        chapter = database.execute(
+            """
+            SELECT chapters.id, chapters.course_id, chapters.position
+            FROM chapters
+            JOIN courses ON courses.id = chapters.course_id
+            WHERE courses.slug = ? AND courses.status = 'published'
+                AND chapters.position = 5 AND chapters.status = 'published'
+            """,
+            (COURSE_SLUG,),
+        ).fetchone()
+        if chapter is None:
+            return jsonify(error="Практическая лаборатория сейчас недоступна."), 404
+
+        completed_chapters = {
+            row["chapter_id"]
+            for row in database.execute(
+                """
+                SELECT chapter_id FROM chapter_progress
+                WHERE user_id = ? AND completed = 1
+                """,
+                (user["id"],),
+            ).fetchall()
+        }
+        chapters = get_course_chapters(chapter["course_id"])
+        if any(
+            previous["id"] not in completed_chapters
+            for previous in chapters
+            if previous["position"] < chapter["position"]
+        ):
+            return jsonify(error="Сначала завершите предыдущие разделы курса."), 403
+
+        mismatches = []
+        for d0 in (0, 1):
+            for d1 in (0, 1):
+                for selector in (0, 1):
+                    inputs = {"d0": d0, "d1": d1, "s": selector}
+                    inputs["not_s"] = 1 - inputs[payload["not_input"]]
+                    zero_term = int(
+                        inputs[payload["zero_left"]]
+                        and inputs[payload["zero_right"]]
+                    )
+                    one_term = int(
+                        inputs[payload["one_left"]]
+                        and inputs[payload["one_right"]]
+                    )
+                    terms = {"zero_term": zero_term, "one_term": one_term}
+                    actual = int(
+                        terms[payload["output_left"]]
+                        or terms[payload["output_right"]]
+                    )
+                    expected = d1 if selector else d0
+                    if actual != expected:
+                        mismatches.append(
+                            {
+                                "d0": d0,
+                                "d1": d1,
+                                "s": selector,
+                                "expected": expected,
+                                "actual": actual,
+                            }
+                        )
+
+        if mismatches:
+            return jsonify(
+                correct=False,
+                mismatches=mismatches,
+                message="Маршрутизатор пока передаёт неверный сигнал в некоторых случаях.",
+            ), 422
+
+        database.execute(
+            """
+            INSERT INTO chapter_progress (user_id, chapter_id, completed)
+            VALUES (?, ?, 1)
+            ON CONFLICT (user_id, chapter_id) DO UPDATE SET
+                completed = 1,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.execute(
+            """
+            INSERT OR IGNORE INTO chapter_completion_history (user_id, chapter_id)
+            VALUES (?, ?)
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.commit()
+        return jsonify(correct=True, completed=True, chapter_id=chapter["id"])
+
     @app.post("/api/progress/<int:chapter_id>")
     @csrf_protected
     def update_progress(chapter_id):
@@ -1866,13 +2002,14 @@ def create_app(test_config=None):
         if (
             chapter["course_slug"] == COURSE_SLUG
             and chapter_id not in completed_chapters
-            and chapter["position"] in (1, 2, 3, 4)
+            and chapter["position"] in (1, 2, 3, 4, 5)
         ):
             exercise_messages = {
                 1: "Сначала выполните интерактивное задание «Собери байт».",
                 2: "Сначала выполните интерактивное задание по переводу в восьмеричную систему.",
                 3: "Сначала соберите и проверьте логическую схему.",
                 4: "Сначала постройте и проверьте схему из NAND-элементов.",
+                5: "Сначала соберите и проверьте маршрутизатор данных.",
             }
             return jsonify(error=exercise_messages[chapter["position"]]), 403
 
