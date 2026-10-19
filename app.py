@@ -12,6 +12,7 @@ from migrations import migrate_database
 
 
 COURSE_SLUG = "digital-circuits"
+BYTE_EXERCISE_TARGET = 173
 COURSE_TITLE = "Схемотехника цифровых систем"
 COURSE_DESCRIPTION = (
     "Пособие знакомит с принципами построения цифровых устройств "
@@ -1369,6 +1370,89 @@ def create_app(test_config=None):
         session.clear()
         return jsonify(success=True)
 
+    @app.post("/api/exercises/byte")
+    @csrf_protected
+    def submit_byte_exercise():
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы сохранить результат задания."), 401
+
+        payload = json_payload()
+        if payload is None:
+            return jsonify(error="Некорректный запрос."), 400
+        bits = payload.get("bits")
+        if (
+            not isinstance(bits, list)
+            or len(bits) != 8
+            or any(type(bit) is not int or bit not in (0, 1) for bit in bits)
+        ):
+            return jsonify(error="Укажите ровно восемь двоичных разрядов."), 400
+
+        database = get_db()
+        chapter = database.execute(
+            """
+            SELECT chapters.id, chapters.course_id, chapters.position,
+                courses.slug AS course_slug
+            FROM chapters
+            JOIN courses ON courses.id = chapters.course_id
+            WHERE courses.slug = ? AND courses.status = 'published'
+                AND chapters.position = 1 AND chapters.status = 'published'
+            """,
+            (COURSE_SLUG,),
+        ).fetchone()
+        if chapter is None:
+            return jsonify(error="Практическое задание сейчас недоступно."), 404
+
+        completed_chapters = {
+            row["chapter_id"]
+            for row in database.execute(
+                """
+                SELECT chapter_id FROM chapter_progress
+                WHERE user_id = ? AND completed = 1
+                """,
+                (user["id"],),
+            ).fetchall()
+        }
+        chapters = get_course_chapters(chapter["course_id"])
+        if any(
+            previous["id"] not in completed_chapters
+            for previous in chapters
+            if previous["position"] < chapter["position"]
+        ):
+            return jsonify(error="Сначала завершите предыдущие разделы курса."), 403
+
+        value = sum(bit << (7 - index) for index, bit in enumerate(bits))
+        if value != BYTE_EXERCISE_TARGET:
+            return jsonify(
+                correct=False,
+                value=value,
+                message="Пока не получилось. Измените разряды и попробуйте ещё раз.",
+            ), 422
+
+        database.execute(
+            """
+            INSERT INTO chapter_progress (user_id, chapter_id, completed)
+            VALUES (?, ?, 1)
+            ON CONFLICT (user_id, chapter_id) DO UPDATE SET
+                completed = 1,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.execute(
+            """
+            INSERT OR IGNORE INTO chapter_completion_history (user_id, chapter_id)
+            VALUES (?, ?)
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.commit()
+        return jsonify(
+            correct=True,
+            completed=True,
+            chapter_id=chapter["id"],
+        )
+
     @app.post("/api/progress/<int:chapter_id>")
     @csrf_protected
     def update_progress(chapter_id):
@@ -1377,7 +1461,8 @@ def create_app(test_config=None):
             return jsonify(error="Войдите, чтобы сохранять прогресс обучения."), 401
         chapter = get_db().execute(
             """
-            SELECT chapters.id, chapters.course_id, chapters.position
+            SELECT chapters.id, chapters.course_id, chapters.position,
+                courses.slug AS course_slug
             FROM chapters
             JOIN courses ON courses.id = chapters.course_id
             WHERE chapters.id = ?
@@ -1414,6 +1499,14 @@ def create_app(test_config=None):
             if previous["position"] < chapter["position"]
         ):
             return jsonify(error="Сначала завершите предыдущие разделы курса."), 403
+        if (
+            chapter["course_slug"] == COURSE_SLUG
+            and chapter["position"] == 1
+            and chapter_id not in completed_chapters
+        ):
+            return jsonify(
+                error="Сначала выполните интерактивное задание «Собери байт»."
+            ), 403
 
         get_db().execute(
             """
