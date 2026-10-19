@@ -1236,6 +1236,252 @@ a.chapter-link:hover {
     outline-offset: 3px;
 }
 
+.logic-exercise {
+    margin: 10px 0 24px;
+    padding: clamp(20px, 4vw, 32px);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+}
+
+.logic-exercise h2 {
+    margin: 0 0 8px;
+    color: var(--ink);
+    font-size: clamp(20px, 3vw, 25px);
+    letter-spacing: -0.04em;
+}
+
+.logic-exercise .eyebrow {
+    margin: 0 0 8px;
+}
+
+.logic-exercise-instructions,
+.logic-exercise-success {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+.logic-exercise-success {
+    color: #426d49;
+    font-weight: 700;
+}
+
+.logic-simulator {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: #fff;
+}
+
+.logic-switches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.logic-switches button {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: #fff;
+    color: var(--ink);
+    cursor: pointer;
+    font: inherit;
+    font-size: 11px;
+}
+
+.logic-switches button[aria-pressed="true"] {
+    border-color: var(--ink);
+    background: var(--lime);
+}
+
+.logic-switches button:focus-visible,
+.logic-term select:focus-visible,
+.logic-output-gate select:focus-visible,
+.logic-exercise-actions button:focus-visible {
+    outline: 3px solid var(--orange);
+    outline-offset: 3px;
+}
+
+.logic-switches strong {
+    min-width: 16px;
+    font-family: "DM Mono", Consolas, monospace;
+}
+
+.logic-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.logic-indicator-light {
+    width: 13px;
+    height: 13px;
+    border: 1px solid #8a9690;
+    border-radius: 50%;
+    background: #e5e9e3;
+}
+
+.logic-indicator[data-logic-indicator="1"] .logic-indicator-light {
+    border-color: #789c23;
+    background: var(--lime);
+    box-shadow: 0 0 12px #d8f078;
+}
+
+.logic-builder {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(130px, 0.65fr);
+    align-items: stretch;
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.logic-term {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    min-width: 0;
+    margin: 0;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+}
+
+.logic-term legend {
+    padding: 0 5px;
+    color: var(--ink);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.logic-term label,
+.logic-output-gate {
+    display: grid;
+    align-content: start;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.logic-term select,
+.logic-output-gate select {
+    width: 100%;
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: #fff;
+    color: var(--ink);
+    font: 600 11px "DM Mono", Consolas, monospace;
+}
+
+.logic-output-gate {
+    align-content: center;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+}
+
+.logic-expression {
+    margin: 14px 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+}
+
+.logic-expression strong {
+    color: var(--ink);
+    font-family: "DM Mono", Consolas, monospace;
+}
+
+.logic-table-wrap {
+    overflow-x: auto;
+}
+
+.logic-truth-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--ink);
+    font-size: 11px;
+    text-align: center;
+}
+
+.logic-truth-table caption {
+    margin-bottom: 8px;
+    color: var(--muted);
+    text-align: left;
+}
+
+.logic-truth-table th,
+.logic-truth-table td {
+    padding: 8px;
+    border: 1px solid var(--line);
+}
+
+.logic-truth-table thead th {
+    background: #f1f3eb;
+    font-weight: 700;
+}
+
+.logic-truth-table tbody tr[data-matches="false"] {
+    background: #fff4ef;
+    color: #8b3b2f;
+}
+
+.logic-truth-table tbody tr[data-error="true"] {
+    outline: 2px solid var(--orange);
+    outline-offset: -2px;
+}
+
+.logic-exercise-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 16px;
+}
+
+.logic-exercise-actions button {
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.logic-exercise-actions button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+[data-logic-status] {
+    margin: 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+[data-logic-status][data-state="error"] {
+    color: #a04535;
+}
+
+[data-logic-status][data-state="success"] {
+    color: #426d49;
+}
+
 .octal-result {
     margin-bottom: 16px;
 }
@@ -1378,6 +1624,10 @@ a.chapter-link:hover {
 @media (max-width: 600px) {
     .byte-bits {
         grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .logic-builder {
+        grid-template-columns: 1fr;
     }
 
     .octal-steps {

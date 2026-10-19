@@ -1292,6 +1292,19 @@ def create_app(test_config=None):
             octal_exercise_target=(
                 OCTAL_EXERCISE_TARGET if chapter_by_id["position"] == 2 else None
             ),
+            logic_exercise_target=(
+                LOGIC_EXERCISE_TARGET if chapter_by_id["position"] == 3 else None
+            ),
+            logic_exercise_rows=(
+                [
+                    {"a": 0, "b": 0, "expected": LOGIC_EXERCISE_TARGET[0]},
+                    {"a": 0, "b": 1, "expected": LOGIC_EXERCISE_TARGET[1]},
+                    {"a": 1, "b": 0, "expected": LOGIC_EXERCISE_TARGET[2]},
+                    {"a": 1, "b": 1, "expected": LOGIC_EXERCISE_TARGET[3]},
+                ]
+                if chapter_by_id["position"] == 3
+                else None
+            ),
             course=course,
             csrf_token=session["csrf_token"],
         )

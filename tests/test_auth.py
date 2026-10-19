@@ -413,6 +413,10 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertIn("Булева алгебра".encode(), page.data)
         self.assertIn("Операция ИЛИ".encode(), page.data)
+        self.assertIn("Почини индикатор пропуска".encode(), page.data)
+        self.assertEqual(page.data.count(b"data-logic-row"), 4)
+        self.assertIn(b"/static/logic-exercise.js", page.data)
+        self.assertNotIn(b"data-complete-chapter", page.data)
 
     def test_fourth_chapter_introduces_logic_gates_after_prior_chapters(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
@@ -2038,6 +2042,9 @@ class AuthenticationTests(unittest.TestCase):
         self.assertTrue(correct.json["correct"])
         self.assertEqual(correct.json["chapter_id"], 3)
         self.assertEqual(self.client.get("/course/4").status_code, 200)
+        completed_page = self.client.get("/course/3")
+        self.assertIn("Вы построили исключающее ИЛИ".encode(), completed_page.data)
+        self.assertNotIn(b"data-logic-submit", completed_page.data)
 
     def test_correct_octal_route_completes_second_chapter(self):
         self.assertEqual(

@@ -204,6 +204,139 @@
                     </section>
                 {% endif %}
 
+                {% if logic_exercise_target %}
+                    <section
+                        class="logic-exercise"
+                        aria-labelledby="logic-exercise-title"
+                        data-logic-exercise
+                        data-submit-url="{{ url_for('submit_boolean_circuit_exercise') }}"
+                    >
+                        <p class="eyebrow">МИССИЯ · РЕМОНТ СХЕМЫ</p>
+                        <h2 id="logic-exercise-title">Почини индикатор пропуска</h2>
+                        {% if completed %}
+                            <p class="logic-exercise-success" role="status">
+                                Схема работает: индикатор включается, когда переключатели A и B различаются.
+                                Вы построили исключающее ИЛИ.
+                            </p>
+                        {% else %}
+                            <p class="logic-exercise-instructions">
+                                На входе — два переключателя. Настройте схему так, чтобы индикатор
+                                загорался, когда включён ровно один переключатель, и гас, когда
+                                включены оба или ни одного. Переключайте A и B, стройте схему и
+                                сверяйтесь со всеми строками таблицы.
+                            </p>
+                            <div class="logic-simulator">
+                                <div class="logic-switches" role="group" aria-label="Тестовые входы схемы">
+                                    <button type="button" data-logic-input="a" aria-pressed="false">
+                                        Вход A <strong data-logic-input-value="a">0</strong>
+                                    </button>
+                                    <button type="button" data-logic-input="b" aria-pressed="false">
+                                        Вход B <strong data-logic-input-value="b">0</strong>
+                                    </button>
+                                </div>
+                                <p class="logic-indicator" data-logic-indicator="0" aria-live="polite">
+                                    <span class="logic-indicator-light" aria-hidden="true"></span>
+                                    <span data-logic-indicator-label>Индикатор выключен</span>
+                                </p>
+                            </div>
+                            <div class="logic-builder" aria-label="Конструктор логической схемы">
+                                <fieldset class="logic-term" data-logic-term="first">
+                                    <legend>Ветвь 1</legend>
+                                    <label>
+                                        Сигнал A
+                                        <select data-logic-literal="first-a">
+                                            <option value="a">A</option>
+                                            <option value="not-a">¬A</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Сигнал B
+                                        <select data-logic-literal="first-b">
+                                            <option value="b">B</option>
+                                            <option value="not-b">¬B</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Элемент ветви
+                                        <select data-logic-gate="first">
+                                            <option value="and" selected>И</option>
+                                            <option value="or">ИЛИ</option>
+                                        </select>
+                                    </label>
+                                </fieldset>
+                                <fieldset class="logic-term" data-logic-term="second">
+                                    <legend>Ветвь 2</legend>
+                                    <label>
+                                        Сигнал A
+                                        <select data-logic-literal="second-a">
+                                            <option value="a">A</option>
+                                            <option value="not-a">¬A</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Сигнал B
+                                        <select data-logic-literal="second-b">
+                                            <option value="b">B</option>
+                                            <option value="not-b">¬B</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Элемент ветви
+                                        <select data-logic-gate="second">
+                                            <option value="and" selected>И</option>
+                                            <option value="or">ИЛИ</option>
+                                        </select>
+                                    </label>
+                                </fieldset>
+                                <label class="logic-output-gate">
+                                    Объединить ветви
+                                    <select data-logic-gate="output">
+                                        <option value="and">И</option>
+                                        <option value="or" selected>ИЛИ</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <p class="logic-expression" aria-live="polite">
+                                Текущая формула: <strong data-logic-expression></strong>
+                            </p>
+                            <div class="logic-table-wrap">
+                                <table class="logic-truth-table">
+                                    <caption>Проверка четырёх возможных наборов</caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">A</th>
+                                            <th scope="col">B</th>
+                                            <th scope="col">Нужно</th>
+                                            <th scope="col">Схема</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for row in logic_exercise_rows %}
+                                            <tr
+                                                data-logic-row
+                                                data-a="{{ row.a }}"
+                                                data-b="{{ row.b }}"
+                                                data-expected="{{ row.expected }}"
+                                            >
+                                                <th scope="row">{{ row.a }}</th>
+                                                <td>{{ row.b }}</td>
+                                                <td>{{ row.expected }}</td>
+                                                <td data-logic-actual>0</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="logic-exercise-actions">
+                                <button class="primary-link" type="button" data-logic-submit>
+                                    Проверить все комбинации <span aria-hidden="true">→</span>
+                                </button>
+                                <p data-logic-status aria-live="polite" role="status"></p>
+                            </div>
+                        {% endif %}
+                    </section>
+                {% endif %}
+
                 <div class="lesson-actions">
                     {% if completed %}
                         <p class="lesson-complete-status"><span aria-hidden="true">✓</span> Раздел пройден</p>
@@ -215,7 +348,7 @@
                             <p class="course-finished">Вы прошли все разделы курса.</p>
                         {% endif %}
                     {% else %}
-                        {% if byte_exercise_target or octal_exercise_target %}
+                        {% if byte_exercise_target or octal_exercise_target or logic_exercise_target %}
                             <p class="lesson-action-note">Выполните практическое задание выше, чтобы открыть следующий раздел.</p>
                         {% else %}
                             <p class="lesson-action-note">После изучения материала отметьте раздел пройденным, чтобы открыть следующий.</p>
@@ -240,6 +373,9 @@
     {% endif %}
     {% if access_state == "available" and chapter.position == 2 and not completed %}
         <script src="{{ url_for('static', filename='octal-exercise.js') }}" defer></script>
+    {% endif %}
+    {% if access_state == "available" and chapter.position == 3 and not completed %}
+        <script src="{{ url_for('static', filename='logic-exercise.js') }}" defer></script>
     {% endif %}
 </body>
 </html>
