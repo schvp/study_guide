@@ -1432,6 +1432,17 @@ a.chapter-link:hover {
     margin-top: 18px;
 }
 
+.gate-lab-score {
+    margin: 12px 0 0;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.gate-lab-score[data-complete="true"] {
+    color: #426d49;
+}
+
 .gate-lab-table {
     width: 100%;
     border-collapse: collapse;

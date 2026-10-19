@@ -85,6 +85,12 @@ if (gateLab) {
             row.dataset.matches = String(result === Number(row.dataset.expected));
             row.removeAttribute("data-error");
         });
+        const matchingRows = gateRows.filter(
+            (row) => row.dataset.matches === "true",
+        ).length;
+        const score = gateLab.querySelector("[data-gate-score]");
+        score.textContent = `Совпало комбинаций: ${matchingRows} из ${gateRows.length}`;
+        score.dataset.complete = String(matchingRows === gateRows.length);
     }
 
     gateLab.querySelectorAll("[data-gate-input]").forEach((button) => {

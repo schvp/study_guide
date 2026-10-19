@@ -472,6 +472,7 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("Разблокируй шлюз".encode(), page.data)
         self.assertEqual(page.data.count(b"data-gate-row\n"), 4)
         self.assertIn(b"/static/gate-lab.js", page.data)
+        self.assertIn(b"data-gate-score", page.data)
         self.assertNotIn(b"data-complete-chapter", page.data)
 
     def test_fifth_chapter_introduces_combinational_design_in_sequence(self):
