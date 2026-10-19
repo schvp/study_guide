@@ -735,6 +735,94 @@
                     </section>
                 {% endif %}
 
+                {% if register_counter_target %}
+                    <section
+                        class="register-counter-lab"
+                        aria-labelledby="register-counter-lab-title"
+                        data-register-counter-lab
+                        data-target-bits="{{ register_counter_target|join }}"
+                        data-submit-url="{{ url_for('submit_register_counter_lab') }}"
+                    >
+                        <p class="eyebrow">ПАНЕЛЬ ПЕРЕДАЧИ · РЕГИСТР И СЧЁТЧИК</p>
+                        <h2 id="register-counter-lab-title">Передай пакет данных</h2>
+                        {% if completed %}
+                            <p class="register-counter-success" role="status">
+                                Пакет 10110110 передан. Последние четыре бита собраны в слове 0110,
+                                а счётчик по модулю 6 прошёл через переход 5 → 0.
+                            </p>
+                        {% else %}
+                            <p class="register-counter-instructions">
+                                Передайте пакет <strong>10110110</strong> по одному биту за такт.
+                                Меняйте последовательный вход D, затем поднимайте CLK — сдвиговый
+                                регистр сохранит новый бит и передвинет остальные. Счётчик отмечает
+                                импульсы от 0 до 5 и затем начинает цикл заново.
+                            </p>
+                            <div class="register-counter-controls" role="group" aria-label="Управление передачей пакета">
+                                <button type="button" data-register-input aria-pressed="false">
+                                    Последовательный вход D <strong data-register-data>0</strong>
+                                </button>
+                                <button type="button" data-register-clock aria-pressed="false">
+                                    Тактовый импульс CLK <strong data-register-clock-value>0</strong>
+                                </button>
+                                <button class="secondary-link" type="button" data-register-reset>
+                                    Сбросить передачу
+                                </button>
+                            </div>
+                            <div class="register-counter-displays">
+                                <section class="register-display" aria-labelledby="register-display-title">
+                                    <p class="register-display-label" id="register-display-title">
+                                        Сдвиговый регистр · 4 бита
+                                    </p>
+                                    <div class="register-bits" role="group" aria-label="Содержимое регистра">
+                                        <span data-register-bit="0">0</span>
+                                        <span data-register-bit="1">0</span>
+                                        <span data-register-bit="2">0</span>
+                                        <span data-register-bit="3">0</span>
+                                    </div>
+                                    <p class="register-word" data-register-word>0000</p>
+                                </section>
+                                <section class="counter-display" aria-labelledby="counter-display-title">
+                                    <p class="register-display-label" id="counter-display-title">
+                                        Счётчик по модулю 6
+                                    </p>
+                                    <output data-counter-state="0">
+                                        <span data-counter-binary>000</span>
+                                        <strong data-counter-decimal>0</strong>
+                                    </output>
+                                    <p data-counter-progress>Импульсов: 0 из 8</p>
+                                </section>
+                            </div>
+                            <div class="register-counter-timeline-wrap">
+                                <table class="register-counter-timeline">
+                                    <caption>Состояния после каждого тактового фронта</caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Такт</th>
+                                            <th scope="col">Вход D</th>
+                                            <th scope="col">Регистр</th>
+                                            <th scope="col">Счётчик</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody data-register-timeline>
+                                        <tr>
+                                            <th scope="row">0</th>
+                                            <td>—</td>
+                                            <td>0000</td>
+                                            <td>000 (0)</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="register-counter-actions">
+                                <button class="primary-link" type="button" data-register-check disabled>
+                                    Проверить передачу <span aria-hidden="true">→</span>
+                                </button>
+                                <p data-register-status aria-live="polite" role="status"></p>
+                            </div>
+                        {% endif %}
+                    </section>
+                {% endif %}
+
                 <div class="lesson-actions">
                     {% if completed %}
                         <p class="lesson-complete-status"><span aria-hidden="true">✓</span> Раздел пройден</p>
@@ -746,7 +834,7 @@
                             <p class="course-finished">Вы прошли все разделы курса.</p>
                         {% endif %}
                     {% else %}
-                        {% if byte_exercise_target or octal_exercise_target or logic_exercise_target or gate_lab_rows or mux_lab_rows or trigger_lab_target %}
+                        {% if byte_exercise_target or octal_exercise_target or logic_exercise_target or gate_lab_rows or mux_lab_rows or trigger_lab_target or register_counter_target %}
                             <p class="lesson-action-note">Выполните практическое задание выше, чтобы открыть следующий раздел.</p>
                         {% else %}
                             <p class="lesson-action-note">После изучения материала отметьте раздел пройденным, чтобы открыть следующий.</p>
@@ -794,6 +882,9 @@
     {% endif %}
     {% if access_state == "available" and chapter.position == 6 and not completed %}
         <script src="{{ url_for('static', filename='trigger-lab.js') }}" defer></script>
+    {% endif %}
+    {% if access_state == "available" and chapter.position == 7 and not completed %}
+        <script src="{{ url_for('static', filename='register-counter-lab.js') }}" defer></script>
     {% endif %}
 </body>
 </html>

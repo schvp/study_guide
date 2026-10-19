@@ -765,6 +765,14 @@ class AuthenticationTests(unittest.TestCase):
         page = self.client.get("/course/7")
         self.assertEqual(page.status_code, 200)
         self.assertIn("Параллельные регистры".encode(), page.data)
+        self.assertIn("Передай пакет данных".encode(), page.data)
+        self.assertEqual(page.data.count(b"data-register-input"), 1)
+        self.assertIn(b"/static/register-counter-lab.js", page.data)
+        self.assertNotIn(b"data-complete-chapter", page.data)
+        self.assertNotIn(b"data-development-skip", page.data)
+        self.assertEqual(self._complete_chapter(7).status_code, 200)
+        completed_page = self.client.get("/course/7")
+        self.assertIn("Последние четыре бита собраны в слове".encode(), completed_page.data)
 
     def test_register_counter_lab_verifies_serial_word_and_modulo_six(self):
         self.assertEqual(
