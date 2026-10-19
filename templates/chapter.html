@@ -82,6 +82,63 @@
                     {% endif %}
                 </div>
 
+                {% if byte_exercise_target %}
+                    <section
+                        class="byte-exercise"
+                        aria-labelledby="byte-exercise-title"
+                        data-byte-exercise
+                        data-submit-url="{{ url_for('submit_byte_exercise') }}"
+                    >
+                        <p class="eyebrow">ИНТЕРАКТИВНАЯ ПРАКТИКА</p>
+                        <h2 id="byte-exercise-title">Собери байт</h2>
+                        {% if completed %}
+                            <p class="byte-exercise-success" role="status">
+                                Задание выполнено: 173₁₀ = 10101101₂ = AD₁₆. Следующий раздел открыт.
+                            </p>
+                        {% else %}
+                            <p class="byte-exercise-instructions">
+                                Контроллер ждёт код {{ byte_exercise_target }}. Переключайте разряды,
+                                чтобы собрать байт, и отправьте результат на проверку.
+                            </p>
+                            <div class="byte-bits" role="group" aria-label="Восемь битов байта от старшего к младшему">
+                                {% for weight in [128, 64, 32, 16, 8, 4, 2, 1] %}
+                                    <button
+                                        class="byte-bit"
+                                        type="button"
+                                        data-byte-bit
+                                        data-weight="{{ weight }}"
+                                        aria-pressed="false"
+                                        aria-label="Разряд {{ weight }}, значение 0"
+                                    >
+                                        <span class="byte-bit-weight">{{ weight }}</span>
+                                        <span data-byte-bit-value>0</span>
+                                    </button>
+                                {% endfor %}
+                            </div>
+                            <dl class="byte-readouts">
+                                <div>
+                                    <dt>Двоичный код</dt>
+                                    <dd data-byte-binary>00000000</dd>
+                                </div>
+                                <div>
+                                    <dt>Десятичное значение</dt>
+                                    <dd data-byte-decimal>0</dd>
+                                </div>
+                                <div>
+                                    <dt>Шестнадцатеричный код</dt>
+                                    <dd data-byte-hex>00</dd>
+                                </div>
+                            </dl>
+                            <div class="byte-exercise-actions">
+                                <button class="primary-link" type="button" data-byte-submit>
+                                    Проверить байт <span aria-hidden="true">→</span>
+                                </button>
+                                <p data-byte-status aria-live="polite" role="status"></p>
+                            </div>
+                        {% endif %}
+                    </section>
+                {% endif %}
+
                 <div class="lesson-actions">
                     {% if completed %}
                         <p class="lesson-complete-status"><span aria-hidden="true">✓</span> Раздел пройден</p>
@@ -93,11 +150,15 @@
                             <p class="course-finished">Вы прошли все разделы курса.</p>
                         {% endif %}
                     {% else %}
-                        <p class="lesson-action-note">После изучения материала отметьте раздел пройденным, чтобы открыть следующий.</p>
-                        <button class="primary-link lesson-complete-button" type="button" data-complete-chapter="{{ chapter_id }}">
-                            Отметить раздел пройденным <span aria-hidden="true">→</span>
-                        </button>
-                        <p class="lesson-action-status" data-complete-status aria-live="polite"></p>
+                        {% if byte_exercise_target %}
+                            <p class="lesson-action-note">Выполните практическое задание выше, чтобы открыть следующий раздел.</p>
+                        {% else %}
+                            <p class="lesson-action-note">После изучения материала отметьте раздел пройденным, чтобы открыть следующий.</p>
+                            <button class="primary-link lesson-complete-button" type="button" data-complete-chapter="{{ chapter_id }}">
+                                Отметить раздел пройденным <span aria-hidden="true">→</span>
+                            </button>
+                            <p class="lesson-action-status" data-complete-status aria-live="polite"></p>
+                        {% endif %}
                     {% endif %}
                 </div>
             </article>
@@ -109,5 +170,8 @@
         <span>Учебное пособие <span aria-hidden="true">·</span> Учитесь видеть логику</span>
     </footer>
     <script src="{{ url_for('static', filename='auth.js') }}" defer></script>
+    {% if access_state == "available" and chapter.position == 1 and not completed %}
+        <script src="{{ url_for('static', filename='byte-exercise.js') }}" defer></script>
+    {% endif %}
 </body>
 </html>

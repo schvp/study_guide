@@ -1117,6 +1117,146 @@ a.chapter-link:hover {
     white-space: pre-wrap;
 }
 
+.byte-exercise {
+    margin: 10px 0 24px;
+    padding: clamp(20px, 4vw, 32px);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+}
+
+.byte-exercise h2 {
+    margin: 0 0 8px;
+    color: var(--ink);
+    font-size: clamp(20px, 3vw, 25px);
+    letter-spacing: -0.04em;
+}
+
+.byte-exercise .eyebrow {
+    margin: 0 0 8px;
+}
+
+.byte-exercise-instructions,
+.byte-exercise-success {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+.byte-exercise-success {
+    color: #426d49;
+    font-weight: 700;
+}
+
+.byte-bits {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 20px;
+}
+
+.byte-bit {
+    display: grid;
+    min-width: 0;
+    min-height: 72px;
+    align-content: center;
+    justify-items: center;
+    gap: 6px;
+    padding: 8px 3px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: #fff;
+    color: var(--ink);
+    cursor: pointer;
+    font-family: "DM Mono", Consolas, monospace;
+}
+
+.byte-bit[aria-pressed="true"] {
+    border-color: var(--ink);
+    background: var(--lime);
+}
+
+.byte-bit:focus-visible,
+.byte-exercise-actions button:focus-visible {
+    outline: 3px solid var(--orange);
+    outline-offset: 3px;
+}
+
+.byte-bit-weight {
+    color: var(--muted);
+    font-size: 9px;
+}
+
+[data-byte-bit-value] {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.byte-readouts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 30px;
+    margin: 20px 0;
+}
+
+.byte-readouts div {
+    display: grid;
+    gap: 4px;
+}
+
+.byte-readouts dt {
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.byte-readouts dd {
+    margin: 0;
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.byte-exercise-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+
+.byte-exercise-actions button {
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.byte-exercise-actions button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+[data-byte-status] {
+    margin: 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+[data-byte-status][data-state="error"] {
+    color: #a04535;
+}
+
+[data-byte-status][data-state="success"] {
+    color: #426d49;
+}
+
+@media (max-width: 600px) {
+    .byte-bits {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
 .lesson-actions {
     display: flex;
     min-height: 52px;

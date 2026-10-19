@@ -290,6 +290,11 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("Аналоговые и цифровые сигналы".encode(), page)
         self.assertIn("Проверьте себя".encode(), page)
         self.assertIn("Сколько различных комбинаций".encode(), page)
+        self.assertIn("Собери байт".encode(), page)
+        self.assertIn(b'data-byte-bit', page)
+        self.assertIn(b'data-byte-decimal>0</dd>', page)
+        self.assertIn(b"/static/byte-exercise.js", page)
+        self.assertNotIn(b"data-complete-chapter", page)
 
     def test_second_chapter_is_seeded_from_versioned_course_material(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
@@ -1950,6 +1955,9 @@ class AuthenticationTests(unittest.TestCase):
             ).fetchone()[0]
         self.assertEqual(progress[0], 1)
         self.assertEqual(history_count, 1)
+        completed_page = self.client.get("/course/1")
+        self.assertIn("Задание выполнено".encode(), completed_page.data)
+        self.assertNotIn(b"data-byte-submit", completed_page.data)
 
     def test_chapter_pages_are_locked_in_sequence_until_previous_is_completed(self):
         anonymous_response = self.client.get("/course/1")

@@ -1284,6 +1284,9 @@ def create_app(test_config=None):
                     if previous["position"] < next_chapter["position"]
                 )
             ),
+            byte_exercise_target=(
+                BYTE_EXERCISE_TARGET if chapter_by_id["position"] == 1 else None
+            ),
             course=course,
             csrf_token=session["csrf_token"],
         )
@@ -1391,8 +1394,7 @@ def create_app(test_config=None):
         database = get_db()
         chapter = database.execute(
             """
-            SELECT chapters.id, chapters.course_id, chapters.position,
-                courses.slug AS course_slug
+            SELECT chapters.id, chapters.course_id, chapters.position
             FROM chapters
             JOIN courses ON courses.id = chapters.course_id
             WHERE courses.slug = ? AND courses.status = 'published'
