@@ -2005,6 +2005,218 @@ a.chapter-link:hover {
     font-weight: 700;
 }
 
+.register-counter-lab {
+    margin: 10px 0 24px;
+    padding: clamp(20px, 4vw, 32px);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+}
+
+.register-counter-lab h2 {
+    margin: 0 0 8px;
+    color: var(--ink);
+    font-size: clamp(20px, 3vw, 25px);
+    letter-spacing: -0.04em;
+}
+
+.register-counter-lab .eyebrow {
+    margin: 0 0 8px;
+}
+
+.register-counter-instructions,
+.register-counter-success {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+.register-counter-instructions strong {
+    color: var(--ink);
+    font: 700 13px "DM Mono", Consolas, monospace;
+    letter-spacing: 0.12em;
+}
+
+.register-counter-success {
+    color: #426d49;
+    font-weight: 700;
+}
+
+.register-counter-controls {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 18px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: #fff;
+}
+
+.register-counter-controls button {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: #fff;
+    color: var(--ink);
+    cursor: pointer;
+    font: inherit;
+    font-size: 11px;
+}
+
+.register-counter-controls button[aria-pressed="true"] {
+    border-color: var(--ink);
+    background: var(--lime);
+}
+
+.register-counter-controls button:focus-visible,
+.register-counter-actions button:focus-visible {
+    outline: 3px solid var(--orange);
+    outline-offset: 3px;
+}
+
+.register-counter-controls button:disabled,
+.register-counter-actions button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.register-counter-controls strong {
+    font: 700 14px "DM Mono", Consolas, monospace;
+}
+
+.register-counter-displays {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(160px, 1fr);
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.register-display,
+.counter-display {
+    min-width: 0;
+    padding: 15px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: #fff;
+}
+
+.register-display-label {
+    margin: 0 0 12px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.register-bits {
+    display: flex;
+    gap: 8px;
+}
+
+.register-bits span {
+    display: grid;
+    width: clamp(38px, 8vw, 52px);
+    height: clamp(42px, 9vw, 56px);
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: #f1f3eb;
+    color: var(--ink);
+    font: 700 20px "DM Mono", Consolas, monospace;
+}
+
+.register-word {
+    margin: 10px 0 0;
+    color: var(--muted);
+    font: 700 11px "DM Mono", Consolas, monospace;
+    letter-spacing: 0.18em;
+}
+
+.counter-display output {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 190px;
+    padding: 10px 12px;
+    border-radius: 3px;
+    background: #f1f3eb;
+    color: var(--ink);
+    font: 700 20px "DM Mono", Consolas, monospace;
+}
+
+.counter-display output strong {
+    color: #557d5c;
+}
+
+.counter-display p:last-child {
+    margin: 10px 0 0;
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.register-counter-timeline-wrap {
+    overflow-x: auto;
+    margin-top: 16px;
+}
+
+.register-counter-timeline {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--ink);
+    font-size: 11px;
+    text-align: center;
+}
+
+.register-counter-timeline caption {
+    margin-bottom: 8px;
+    color: var(--muted);
+    text-align: left;
+}
+
+.register-counter-timeline th,
+.register-counter-timeline td {
+    padding: 8px;
+    border: 1px solid var(--line);
+}
+
+.register-counter-timeline thead th {
+    background: #f1f3eb;
+}
+
+.register-counter-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.register-counter-actions button {
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+[data-register-status] {
+    margin: 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+[data-register-status][data-state="error"] {
+    color: #a04535;
+}
+
+[data-register-status][data-state="success"] {
+    color: #426d49;
+}
+
 .logic-simulator {
     display: flex;
     align-items: center;
@@ -2415,6 +2627,10 @@ a.chapter-link:hover {
 
     .mux-lab-indicator {
         margin-left: 0;
+    }
+
+    .register-counter-displays {
+        grid-template-columns: 1fr;
     }
 
     .octal-steps {
