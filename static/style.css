@@ -1149,6 +1149,130 @@ a.chapter-link:hover {
     font-weight: 700;
 }
 
+.octal-exercise {
+    margin: 10px 0 24px;
+    padding: clamp(20px, 4vw, 32px);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+}
+
+.octal-exercise h2 {
+    margin: 0 0 8px;
+    color: var(--ink);
+    font-size: clamp(20px, 3vw, 25px);
+    letter-spacing: -0.04em;
+}
+
+.octal-exercise .eyebrow {
+    margin: 0 0 8px;
+}
+
+.octal-exercise-instructions,
+.octal-exercise-success,
+.octal-result {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+.octal-exercise-success {
+    color: #426d49;
+    font-weight: 700;
+}
+
+.octal-steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin: 20px 0 12px;
+}
+
+.octal-step {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    min-width: 0;
+    margin: 0;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+}
+
+.octal-step[data-error="true"] {
+    border-color: var(--orange);
+    background: #fff7f3;
+}
+
+.octal-step legend {
+    padding: 0 5px;
+    color: var(--ink);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.octal-step label {
+    display: grid;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.octal-step input {
+    width: 100%;
+    min-width: 0;
+    padding: 9px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: #fff;
+    color: var(--ink);
+    font: 700 14px "DM Mono", Consolas, monospace;
+}
+
+.octal-step input:focus-visible,
+.octal-exercise-actions button:focus-visible {
+    outline: 3px solid var(--orange);
+    outline-offset: 3px;
+}
+
+.octal-result {
+    margin-bottom: 16px;
+}
+
+.octal-exercise-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+
+.octal-exercise-actions button {
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.octal-exercise-actions button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+[data-octal-status] {
+    margin: 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+[data-octal-status][data-state="error"] {
+    color: #a04535;
+}
+
+[data-octal-status][data-state="success"] {
+    color: #426d49;
+}
+
 .byte-bits {
     display: grid;
     grid-template-columns: repeat(8, minmax(0, 1fr));
@@ -1254,6 +1378,10 @@ a.chapter-link:hover {
 @media (max-width: 600px) {
     .byte-bits {
         grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .octal-steps {
+        grid-template-columns: 1fr;
     }
 }
 

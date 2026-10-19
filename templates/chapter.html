@@ -139,6 +139,71 @@
                     </section>
                 {% endif %}
 
+                {% if octal_exercise_target %}
+                    <section
+                        class="octal-exercise"
+                        aria-labelledby="octal-exercise-title"
+                        data-octal-exercise
+                        data-target="{{ octal_exercise_target }}"
+                        data-submit-url="{{ url_for('submit_octal_conversion_exercise') }}"
+                    >
+                        <p class="eyebrow">МИССИЯ СВЯЗИ · ПРАКТИКА</p>
+                        <h2 id="octal-exercise-title">Прокладываем восьмеричный маршрут</h2>
+                        {% if completed %}
+                            <p class="octal-exercise-success" role="status">
+                                Маршрут построен: 173₁₀ = 255₈. Следующий раздел открыт.
+                            </p>
+                        {% else %}
+                            <p class="octal-exercise-instructions">
+                                Архивный блок отвечает по адресу 173₁₀, но пульт принимает только
+                                восьмеричный код. Разделите число на 8 три раза, заполните частное
+                                и остаток для каждого шага, затем отправьте маршрут на проверку.
+                            </p>
+                            <div class="octal-steps" role="group" aria-label="Три деления на восемь">
+                                {% for step in range(1, 4) %}
+                                    <fieldset class="octal-step" data-octal-step="{{ step }}">
+                                        <legend>Шаг {{ step }} · деление на 8</legend>
+                                        <label>
+                                            Частное
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="1"
+                                                inputmode="numeric"
+                                                required
+                                                data-octal-quotient
+                                                aria-label="Шаг {{ step }}: частное"
+                                            >
+                                        </label>
+                                        <label>
+                                            Остаток
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max="7"
+                                                step="1"
+                                                inputmode="numeric"
+                                                required
+                                                data-octal-remainder
+                                                aria-label="Шаг {{ step }}: остаток"
+                                            >
+                                        </label>
+                                    </fieldset>
+                                {% endfor %}
+                            </div>
+                            <p class="octal-result">
+                                Считайте остатки снизу вверх — так получится восьмеричный адрес.
+                            </p>
+                            <div class="octal-exercise-actions">
+                                <button class="primary-link" type="button" data-octal-submit>
+                                    Проверить маршрут <span aria-hidden="true">→</span>
+                                </button>
+                                <p data-octal-status aria-live="polite" role="status"></p>
+                            </div>
+                        {% endif %}
+                    </section>
+                {% endif %}
+
                 <div class="lesson-actions">
                     {% if completed %}
                         <p class="lesson-complete-status"><span aria-hidden="true">✓</span> Раздел пройден</p>
@@ -150,7 +215,7 @@
                             <p class="course-finished">Вы прошли все разделы курса.</p>
                         {% endif %}
                     {% else %}
-                        {% if byte_exercise_target %}
+                        {% if byte_exercise_target or octal_exercise_target %}
                             <p class="lesson-action-note">Выполните практическое задание выше, чтобы открыть следующий раздел.</p>
                         {% else %}
                             <p class="lesson-action-note">После изучения материала отметьте раздел пройденным, чтобы открыть следующий.</p>
@@ -172,6 +237,9 @@
     <script src="{{ url_for('static', filename='auth.js') }}" defer></script>
     {% if access_state == "available" and chapter.position == 1 and not completed %}
         <script src="{{ url_for('static', filename='byte-exercise.js') }}" defer></script>
+    {% endif %}
+    {% if access_state == "available" and chapter.position == 2 and not completed %}
+        <script src="{{ url_for('static', filename='octal-exercise.js') }}" defer></script>
     {% endif %}
 </body>
 </html>

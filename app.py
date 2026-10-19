@@ -13,6 +13,7 @@ from migrations import migrate_database
 
 COURSE_SLUG = "digital-circuits"
 BYTE_EXERCISE_TARGET = 173
+OCTAL_EXERCISE_TARGET = 173
 COURSE_TITLE = "Схемотехника цифровых систем"
 COURSE_DESCRIPTION = (
     "Пособие знакомит с принципами построения цифровых устройств "
@@ -1287,6 +1288,9 @@ def create_app(test_config=None):
             byte_exercise_target=(
                 BYTE_EXERCISE_TARGET if chapter_by_id["position"] == 1 else None
             ),
+            octal_exercise_target=(
+                OCTAL_EXERCISE_TARGET if chapter_by_id["position"] == 2 else None
+            ),
             course=course,
             csrf_token=session["csrf_token"],
         )
@@ -1455,6 +1459,107 @@ def create_app(test_config=None):
             chapter_id=chapter["id"],
         )
 
+    @app.post("/api/exercises/octal-conversion")
+    @csrf_protected
+    def submit_octal_conversion_exercise():
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы сохранить результат задания."), 401
+
+        payload = json_payload()
+        steps = payload.get("steps") if payload is not None else None
+        if (
+            not isinstance(steps, list)
+            or len(steps) != 3
+            or any(
+                not isinstance(step, dict)
+                or type(step.get("quotient")) is not int
+                or type(step.get("remainder")) is not int
+                or step["quotient"] < 0
+                or not 0 <= step["remainder"] < 8
+                for step in steps
+            )
+        ):
+            return jsonify(
+                error="Заполните частное и остаток для всех трёх делений на 8."
+            ), 400
+
+        database = get_db()
+        chapter = database.execute(
+            """
+            SELECT chapters.id, chapters.course_id, chapters.position
+            FROM chapters
+            JOIN courses ON courses.id = chapters.course_id
+            WHERE courses.slug = ? AND courses.status = 'published'
+                AND chapters.position = 2 AND chapters.status = 'published'
+            """,
+            (COURSE_SLUG,),
+        ).fetchone()
+        if chapter is None:
+            return jsonify(error="Практическое задание сейчас недоступно."), 404
+
+        completed_chapters = {
+            row["chapter_id"]
+            for row in database.execute(
+                """
+                SELECT chapter_id FROM chapter_progress
+                WHERE user_id = ? AND completed = 1
+                """,
+                (user["id"],),
+            ).fetchall()
+        }
+        chapters = get_course_chapters(chapter["course_id"])
+        if any(
+            previous["id"] not in completed_chapters
+            for previous in chapters
+            if previous["position"] < chapter["position"]
+        ):
+            return jsonify(error="Сначала завершите предыдущие разделы курса."), 403
+
+        number = OCTAL_EXERCISE_TARGET
+        for index, step in enumerate(steps):
+            expected_quotient, expected_remainder = divmod(number, 8)
+            if (
+                step["quotient"] != expected_quotient
+                or step["remainder"] != expected_remainder
+            ):
+                return jsonify(
+                    correct=False,
+                    step=index + 1,
+                    expected_quotient=expected_quotient,
+                    expected_remainder=expected_remainder,
+                    message=(
+                        f"Проверьте деление {index + 1}: "
+                        f"{number} = 8 × частное + остаток."
+                    ),
+                ), 422
+            number = expected_quotient
+
+        database.execute(
+            """
+            INSERT INTO chapter_progress (user_id, chapter_id, completed)
+            VALUES (?, ?, 1)
+            ON CONFLICT (user_id, chapter_id) DO UPDATE SET
+                completed = 1,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.execute(
+            """
+            INSERT OR IGNORE INTO chapter_completion_history (user_id, chapter_id)
+            VALUES (?, ?)
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.commit()
+        return jsonify(
+            correct=True,
+            completed=True,
+            chapter_id=chapter["id"],
+            octal=format(OCTAL_EXERCISE_TARGET, "o"),
+        )
+
     @app.post("/api/progress/<int:chapter_id>")
     @csrf_protected
     def update_progress(chapter_id):
@@ -1503,11 +1608,15 @@ def create_app(test_config=None):
             return jsonify(error="Сначала завершите предыдущие разделы курса."), 403
         if (
             chapter["course_slug"] == COURSE_SLUG
-            and chapter["position"] == 1
             and chapter_id not in completed_chapters
+            and chapter["position"] in (1, 2)
         ):
             return jsonify(
-                error="Сначала выполните интерактивное задание «Собери байт»."
+                error=(
+                    "Сначала выполните интерактивное задание «Собери байт»."
+                    if chapter["position"] == 1
+                    else "Сначала выполните интерактивное задание по переводу в восьмеричную систему."
+                )
             ), 403
 
         get_db().execute(

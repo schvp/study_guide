@@ -48,6 +48,30 @@ class AuthenticationTests(unittest.TestCase):
             {"bits": bits if bits is not None else [1, 0, 1, 0, 1, 1, 0, 1]},
         )
 
+    def _submit_octal_exercise(self, steps=None):
+        return self._post_json(
+            "/api/exercises/octal-conversion",
+            {
+                "steps": steps
+                if steps is not None
+                else [
+                    {"quotient": 21, "remainder": 5},
+                    {"quotient": 2, "remainder": 5},
+                    {"quotient": 0, "remainder": 2},
+                ]
+            },
+        )
+
+    def _complete_chapter(self, chapter_id):
+        if chapter_id == 1:
+            return self._submit_byte_exercise()
+        if chapter_id == 2:
+            return self._submit_octal_exercise()
+        return self._post_json(
+            f"/api/progress/{chapter_id}",
+            {"completed": True},
+        )
+
     def _set_demo_user_role(self, role):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
             database.execute(
@@ -333,6 +357,10 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("Позиционная запись числа".encode(), page.data)
         self.assertIn("Читаем остатки снизу вверх".encode(), page.data)
         self.assertIn("110101₂".encode(), page.data)
+        self.assertIn("Прокладываем восьмеричный маршрут".encode(), page.data)
+        self.assertEqual(page.data.count(b"data-octal-step="), 3)
+        self.assertIn(b"/static/octal-exercise.js", page.data)
+        self.assertNotIn(b"data-complete-chapter", page.data)
 
     def test_third_chapter_is_seeded_and_accessible_in_course_sequence(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
@@ -361,14 +389,7 @@ class AuthenticationTests(unittest.TestCase):
         self.csrf_token = self._load_csrf_token()
         self.assertEqual(self.client.get("/course/3").status_code, 403)
         for chapter_id in (1, 2):
-            if chapter_id == 1:
-                response = self._submit_byte_exercise()
-                self.assertEqual(response.status_code, 200)
-                continue
-            response = self._post_json(
-                f"/api/progress/{chapter_id}",
-                {"completed": True},
-            )
+            response = self._complete_chapter(chapter_id)
             self.assertEqual(response.status_code, 200)
         page = self.client.get("/course/3")
         self.assertEqual(page.status_code, 200)
@@ -399,14 +420,7 @@ class AuthenticationTests(unittest.TestCase):
         self.csrf_token = self._load_csrf_token()
         self.assertEqual(self.client.get("/course/4").status_code, 403)
         for chapter_id in (1, 2, 3):
-            if chapter_id == 1:
-                response = self._submit_byte_exercise()
-                self.assertEqual(response.status_code, 200)
-                continue
-            response = self._post_json(
-                f"/api/progress/{chapter_id}",
-                {"completed": True},
-            )
+            response = self._complete_chapter(chapter_id)
             self.assertEqual(response.status_code, 200)
         page = self.client.get("/course/4")
         self.assertEqual(page.status_code, 200)
@@ -445,14 +459,7 @@ class AuthenticationTests(unittest.TestCase):
         self.csrf_token = self._load_csrf_token()
         self.assertEqual(self.client.get("/course/5").status_code, 403)
         for chapter_id in range(1, 5):
-            if chapter_id == 1:
-                response = self._submit_byte_exercise()
-                self.assertEqual(response.status_code, 200)
-                continue
-            response = self._post_json(
-                f"/api/progress/{chapter_id}",
-                {"completed": True},
-            )
+            response = self._complete_chapter(chapter_id)
             self.assertEqual(response.status_code, 200)
         page = self.client.get("/course/5")
         self.assertEqual(page.status_code, 200)
@@ -486,14 +493,7 @@ class AuthenticationTests(unittest.TestCase):
         self.csrf_token = self._load_csrf_token()
         self.assertEqual(self.client.get("/course/6").status_code, 403)
         for chapter_id in range(1, 6):
-            if chapter_id == 1:
-                response = self._submit_byte_exercise()
-                self.assertEqual(response.status_code, 200)
-                continue
-            response = self._post_json(
-                f"/api/progress/{chapter_id}",
-                {"completed": True},
-            )
+            response = self._complete_chapter(chapter_id)
             self.assertEqual(response.status_code, 200)
         page = self.client.get("/course/6")
         self.assertEqual(page.status_code, 200)
@@ -525,14 +525,7 @@ class AuthenticationTests(unittest.TestCase):
         self.csrf_token = self._load_csrf_token()
         self.assertEqual(self.client.get("/course/7").status_code, 403)
         for chapter_id in range(1, 7):
-            if chapter_id == 1:
-                response = self._submit_byte_exercise()
-                self.assertEqual(response.status_code, 200)
-                continue
-            response = self._post_json(
-                f"/api/progress/{chapter_id}",
-                {"completed": True},
-            )
+            response = self._complete_chapter(chapter_id)
             self.assertEqual(response.status_code, 200)
         page = self.client.get("/course/7")
         self.assertEqual(page.status_code, 200)
@@ -564,14 +557,7 @@ class AuthenticationTests(unittest.TestCase):
         self.csrf_token = self._load_csrf_token()
         self.assertEqual(self.client.get("/course/8").status_code, 403)
         for chapter_id in range(1, 8):
-            if chapter_id == 1:
-                response = self._submit_byte_exercise()
-                self.assertEqual(response.status_code, 200)
-                continue
-            response = self._post_json(
-                f"/api/progress/{chapter_id}",
-                {"completed": True},
-            )
+            response = self._complete_chapter(chapter_id)
             self.assertEqual(response.status_code, 200)
         page = self.client.get("/course/8")
         self.assertEqual(page.status_code, 200)
@@ -1001,7 +987,7 @@ class AuthenticationTests(unittest.TestCase):
 
         self.assertEqual(self._submit_byte_exercise().status_code, 200)
         self.assertEqual(
-            self._post_json("/api/progress/2", {"completed": True}).status_code,
+            self._submit_octal_exercise().status_code,
             200,
         )
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
@@ -1921,6 +1907,98 @@ class AuthenticationTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
 
+    def test_octal_exercise_requires_authentication_and_csrf(self):
+        anonymous = self._submit_octal_exercise()
+        self.assertEqual(anonymous.status_code, 401)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        response = self.client.post(
+            "/api/exercises/octal-conversion",
+            json={
+                "steps": [
+                    {"quotient": 21, "remainder": 5},
+                    {"quotient": 2, "remainder": 5},
+                    {"quotient": 0, "remainder": 2},
+                ]
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_octal_exercise_checks_each_division_step_and_blocks_bypass(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self._submit_byte_exercise().status_code, 200)
+
+        malformed = self._submit_octal_exercise(
+            [{"quotient": 21, "remainder": 5}]
+        )
+        incorrect = self._submit_octal_exercise(
+            [
+                {"quotient": 20, "remainder": 13},
+                {"quotient": 2, "remainder": 5},
+                {"quotient": 0, "remainder": 2},
+            ]
+        )
+        direct_completion = self._post_json(
+            "/api/progress/2",
+            {"completed": True},
+        )
+
+        self.assertEqual(malformed.status_code, 400)
+        self.assertEqual(incorrect.status_code, 400)
+        self.assertEqual(direct_completion.status_code, 403)
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            progress = database.execute(
+                "SELECT COUNT(*) FROM chapter_progress WHERE chapter_id = 2"
+            ).fetchone()[0]
+        self.assertEqual(progress, 0)
+
+        valid_but_wrong = self._submit_octal_exercise(
+            [
+                {"quotient": 21, "remainder": 5},
+                {"quotient": 2, "remainder": 4},
+                {"quotient": 0, "remainder": 2},
+            ]
+        )
+        self.assertEqual(valid_but_wrong.status_code, 422)
+        self.assertEqual(valid_but_wrong.json["step"], 2)
+        self.assertEqual(valid_but_wrong.json["expected_quotient"], 2)
+        self.assertEqual(valid_but_wrong.json["expected_remainder"], 5)
+
+    def test_correct_octal_route_completes_second_chapter(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self._submit_byte_exercise().status_code, 200)
+
+        response = self._submit_octal_exercise()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json["correct"])
+        self.assertEqual(response.json["octal"], "255")
+        self.assertEqual(self.client.get("/course/3").status_code, 200)
+        completed_page = self.client.get("/course/2")
+        self.assertIn("Маршрут построен: 173₁₀ = 255₈".encode(), completed_page.data)
+        self.assertNotIn(b"data-octal-submit", completed_page.data)
+
     def test_correct_byte_exercise_completes_first_chapter_and_unlocks_next(self):
         self.assertEqual(
             self._post_json(
@@ -2137,7 +2215,7 @@ class AuthenticationTests(unittest.TestCase):
     def test_login_and_progress_are_persisted_per_user(self):
         self.assertEqual(self._register().status_code, 201)
         first_response = self._submit_byte_exercise()
-        response = self._post_json("/api/progress/2", {"completed": True})
+        response = self._submit_octal_exercise()
         self.assertEqual(first_response.status_code, 200)
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"<strong data-progress-count>2</strong>", self.client.get("/").data)
