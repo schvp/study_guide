@@ -1345,6 +1345,18 @@ def create_app(test_config=None):
             memory_lab_rom=(
                 MEMORY_LAB_ROM if chapter_by_id["position"] == 8 else None
             ),
+            memory_lab_cells=(
+                [
+                    {
+                        "address": address,
+                        "binary": format(address, "02b"),
+                        "word": word,
+                    }
+                    for address, word in enumerate(MEMORY_LAB_ROM)
+                ]
+                if chapter_by_id["position"] == 8
+                else None
+            ),
             development_mode=app.debug,
             course=course,
             csrf_token=session["csrf_token"],
