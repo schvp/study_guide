@@ -42,6 +42,165 @@ class AuthenticationTests(unittest.TestCase):
             headers={"X-CSRF-Token": self.csrf_token},
         )
 
+    def _submit_byte_exercise(self, bits=None):
+        return self._post_json(
+            "/api/exercises/byte",
+            {"bits": bits if bits is not None else [1, 0, 1, 0, 1, 1, 0, 1]},
+        )
+
+    def _submit_octal_exercise(self, steps=None):
+        return self._post_json(
+            "/api/exercises/octal-conversion",
+            {
+                "steps": steps
+                if steps is not None
+                else [
+                    {"quotient": 21, "remainder": 5},
+                    {"quotient": 2, "remainder": 5},
+                    {"quotient": 0, "remainder": 2},
+                ]
+            },
+        )
+
+    def _submit_logic_exercise(self, circuit=None):
+        return self._post_json(
+            "/api/exercises/boolean-circuit",
+            circuit
+            if circuit is not None
+            else {
+                "first_a_inverted": False,
+                "first_b_inverted": True,
+                "first_gate": "and",
+                "second_a_inverted": True,
+                "second_b_inverted": False,
+                "second_gate": "and",
+                "output_gate": "or",
+            },
+        )
+
+    def _submit_nand_gate_lab(self, circuit=None):
+        return self._post_json(
+            "/api/exercises/nand-gate-lab",
+            circuit
+            if circuit is not None
+            else {
+                "first_left": "a",
+                "first_right": "a",
+                "first_gate": "nand",
+                "second_left": "b",
+                "second_right": "b",
+                "second_gate": "nand",
+                "output_left": "first",
+                "output_right": "second",
+                "output_gate": "nand",
+            },
+        )
+
+    def _submit_multiplexer_lab(self, circuit=None):
+        return self._post_json(
+            "/api/exercises/multiplexer-lab",
+            circuit
+            if circuit is not None
+            else {
+                "not_input": "s",
+                "zero_left": "d0",
+                "zero_right": "not_s",
+                "one_left": "s",
+                "one_right": "d1",
+                "output_left": "zero_term",
+                "output_right": "one_term",
+            },
+        )
+
+    def _submit_trigger_lab(self, events=None):
+        return self._post_json(
+            "/api/exercises/trigger-lab",
+            {
+                "events": events
+                if events is not None
+                else [
+                    {"type": "data", "value": 1},
+                    {"type": "clock", "value": 1},
+                    {"type": "data", "value": 0},
+                    {"type": "clock", "value": 0},
+                    {"type": "clock", "value": 1},
+                    {"type": "clock", "value": 0},
+                    {"type": "data", "value": 1},
+                    {"type": "clock", "value": 1},
+                ]
+            },
+        )
+
+    def _submit_register_counter_lab(self, bits=None):
+        data_bits = bits if bits is not None else [1, 0, 1, 1, 0, 1, 1, 0]
+        events = []
+        current_data = 0
+        for bit in data_bits:
+            if bit != current_data:
+                events.append({"type": "data", "value": bit})
+                current_data = bit
+            events.extend(
+                (
+                    {"type": "clock", "value": 1},
+                    {"type": "clock", "value": 0},
+                )
+            )
+        return self._post_json(
+            "/api/exercises/register-counter-lab",
+            {"events": events},
+        )
+
+    def _submit_memory_lab(self, include_power_cycle=True):
+        events = [
+            {"type": "address", "value": 2},
+            {"type": "data", "value": "1101"},
+            {"type": "write"},
+            {"type": "read", "memory": "ram"},
+            {"type": "address", "value": 1},
+            {"type": "read", "memory": "rom"},
+        ]
+        if include_power_cycle:
+            events.extend(
+                (
+                    {"type": "power"},
+                    {"type": "power"},
+                )
+            )
+        events.extend(
+            (
+                {"type": "address", "value": 2},
+                {"type": "read", "memory": "ram"},
+                {"type": "address", "value": 1},
+                {"type": "read", "memory": "rom"},
+            )
+        )
+        return self._post_json(
+            "/api/exercises/memory-lab",
+            {"events": events},
+        )
+
+    def _complete_chapter(self, chapter_id):
+        if chapter_id == 1:
+            return self._submit_byte_exercise()
+        if chapter_id == 2:
+            return self._submit_octal_exercise()
+        if chapter_id == 3:
+            return self._submit_logic_exercise()
+        if chapter_id == 4:
+            return self._submit_nand_gate_lab()
+        if chapter_id == 5:
+            return self._submit_multiplexer_lab()
+        if chapter_id == 6:
+            return self._submit_trigger_lab()
+        if chapter_id == 7:
+            return self._submit_register_counter_lab()
+        if chapter_id == 8:
+            return self._submit_memory_lab()
+        return self._post_json(
+            f"/api/progress/{chapter_id}",
+            {"completed": True},
+        )
+
     def _set_demo_user_role(self, role):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
             database.execute(
@@ -288,6 +447,11 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("Аналоговые и цифровые сигналы".encode(), page)
         self.assertIn("Проверьте себя".encode(), page)
         self.assertIn("Сколько различных комбинаций".encode(), page)
+        self.assertIn("Собери байт".encode(), page)
+        self.assertIn(b'data-byte-bit', page)
+        self.assertIn(b'data-byte-decimal>0</dd>', page)
+        self.assertIn(b"/static/byte-exercise.js", page)
+        self.assertNotIn(b"data-complete-chapter", page)
         self.assertIn("Задания для самостоятельной работы".encode(), page)
 
     def test_second_chapter_is_seeded_from_versioned_course_material(self):
@@ -327,15 +491,16 @@ class AuthenticationTests(unittest.TestCase):
         page = self.client.get("/course/2")
         self.assertEqual(page.status_code, 403)
         self.assertIn("Раздел пока закрыт".encode(), page.data)
-        self.assertEqual(
-            self._post_json("/api/progress/1", {"completed": True}).status_code,
-            200,
-        )
+        self.assertEqual(self._submit_byte_exercise().status_code, 200)
         page = self.client.get("/course/2")
         self.assertEqual(page.status_code, 200)
         self.assertIn("Позиционная запись числа".encode(), page.data)
         self.assertIn("Читаем остатки снизу вверх".encode(), page.data)
         self.assertIn("110101₂".encode(), page.data)
+        self.assertIn("Прокладываем восьмеричный маршрут".encode(), page.data)
+        self.assertEqual(page.data.count(b"data-octal-step="), 3)
+        self.assertIn(b"/static/octal-exercise.js", page.data)
+        self.assertNotIn(b"data-complete-chapter", page.data)
         self.assertIn("10110110₂ = B6₁₆".encode(), page.data)
         self.assertIn("Задания для самостоятельной работы".encode(), page.data)
 
@@ -371,15 +536,17 @@ class AuthenticationTests(unittest.TestCase):
         self.csrf_token = self._load_csrf_token()
         self.assertEqual(self.client.get("/course/3").status_code, 403)
         for chapter_id in (1, 2):
-            response = self._post_json(
-                f"/api/progress/{chapter_id}",
-                {"completed": True},
-            )
+            response = self._complete_chapter(chapter_id)
             self.assertEqual(response.status_code, 200)
         page = self.client.get("/course/3")
         self.assertEqual(page.status_code, 200)
         self.assertIn("Булева алгебра".encode(), page.data)
         self.assertIn("Операция ИЛИ".encode(), page.data)
+        self.assertIn("Почини индикатор пропуска".encode(), page.data)
+        self.assertEqual(page.data.count(b"data-logic-row"), 4)
+        self.assertIn(b"/static/logic-exercise.js", page.data)
+        self.assertIn(b"data-logic-hint", page.data)
+        self.assertNotIn(b"data-complete-chapter", page.data)
         self.assertIn("Практические задания с разбором".encode(), page.data)
         self.assertIn("Задания для самостоятельной работы".encode(), page.data)
 
@@ -407,15 +574,17 @@ class AuthenticationTests(unittest.TestCase):
         self.csrf_token = self._load_csrf_token()
         self.assertEqual(self.client.get("/course/4").status_code, 403)
         for chapter_id in (1, 2, 3):
-            response = self._post_json(
-                f"/api/progress/{chapter_id}",
-                {"completed": True},
-            )
+            response = self._complete_chapter(chapter_id)
             self.assertEqual(response.status_code, 200)
         page = self.client.get("/course/4")
         self.assertEqual(page.status_code, 200)
         self.assertIn("Элементы NAND и NOR".encode(), page.data)
         self.assertIn("Исключающее ИЛИ".encode(), page.data)
+        self.assertIn("Разблокируй шлюз".encode(), page.data)
+        self.assertEqual(page.data.count(b"data-gate-row\n"), 4)
+        self.assertIn(b"/static/gate-lab.js", page.data)
+        self.assertIn(b"data-gate-score", page.data)
+        self.assertNotIn(b"data-complete-chapter", page.data)
 
     def test_fifth_chapter_introduces_combinational_design_in_sequence(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
@@ -449,14 +618,15 @@ class AuthenticationTests(unittest.TestCase):
         self.csrf_token = self._load_csrf_token()
         self.assertEqual(self.client.get("/course/5").status_code, 403)
         for chapter_id in range(1, 5):
-            response = self._post_json(
-                f"/api/progress/{chapter_id}",
-                {"completed": True},
-            )
+            response = self._complete_chapter(chapter_id)
             self.assertEqual(response.status_code, 200)
         page = self.client.get("/course/5")
         self.assertEqual(page.status_code, 200)
         self.assertIn("таблицу истинности".encode(), page.data)
+        self.assertIn("Настрой маршрутизатор данных".encode(), page.data)
+        self.assertEqual(page.data.count(b"data-mux-row\n"), 8)
+        self.assertIn(b"/static/multiplexer-lab.js", page.data)
+        self.assertNotIn(b"data-complete-chapter", page.data)
 
     def test_sixth_chapter_introduces_triggers_after_combinational_design(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
@@ -486,14 +656,134 @@ class AuthenticationTests(unittest.TestCase):
         self.csrf_token = self._load_csrf_token()
         self.assertEqual(self.client.get("/course/6").status_code, 403)
         for chapter_id in range(1, 6):
-            response = self._post_json(
-                f"/api/progress/{chapter_id}",
-                {"completed": True},
-            )
+            response = self._complete_chapter(chapter_id)
             self.assertEqual(response.status_code, 200)
         page = self.client.get("/course/6")
         self.assertEqual(page.status_code, 200)
         self.assertIn("Защёлка и триггер с тактовым фронтом".encode(), page.data)
+        self.assertIn("Поймай тактовый фронт".encode(), page.data)
+        self.assertEqual(page.data.count(b"data-trigger-input"), 2)
+        self.assertIn(b"/static/trigger-lab.js", page.data)
+        self.assertNotIn(b"data-complete-chapter", page.data)
+        self.assertNotIn(b"data-development-skip", page.data)
+
+    def test_trigger_lab_checks_clock_edges_and_holds_between_them(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self._submit_trigger_lab().status_code, 403)
+        for chapter_id in range(1, 6):
+            self.assertEqual(self._complete_chapter(chapter_id).status_code, 200)
+
+        malformed = self._submit_trigger_lab(
+            [{"type": ["clock"], "value": 1}]
+        )
+        no_hold = self._submit_trigger_lab(
+            [
+                {"type": "data", "value": 1},
+                {"type": "clock", "value": 1},
+                {"type": "clock", "value": 0},
+                {"type": "data", "value": 0},
+                {"type": "clock", "value": 1},
+                {"type": "clock", "value": 0},
+                {"type": "data", "value": 1},
+                {"type": "clock", "value": 1},
+            ]
+        )
+        bypass = self._post_json("/api/progress/6", {"completed": True})
+
+        self.assertEqual(malformed.status_code, 400)
+        self.assertEqual(no_hold.status_code, 422)
+        self.assertEqual(no_hold.json["captured"], [1, 0, 1])
+        self.assertFalse(no_hold.json["held_data_change"])
+        self.assertEqual(bypass.status_code, 403)
+        self.assertEqual(self.client.get("/course/7").status_code, 403)
+
+        complete = self._submit_trigger_lab()
+
+        self.assertEqual(complete.status_code, 200)
+        self.assertTrue(complete.json["correct"])
+        self.assertEqual(complete.json["chapter_id"], 6)
+        self.assertEqual(self.client.get("/course/7").status_code, 200)
+        completed_page = self.client.get("/course/6")
+        self.assertIn("D-триггер запомнил вход только".encode(), completed_page.data)
+        self.assertNotIn(b"data-trigger-check", completed_page.data)
+
+    def test_development_skip_button_and_endpoint_are_debug_only(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(
+            self._post_json("/api/development/skip-chapter/1", {}).status_code,
+            404,
+        )
+        for chapter_id in range(1, 6):
+            self.assertEqual(self._complete_chapter(chapter_id).status_code, 200)
+
+        self.app.config["DEBUG"] = True
+        page = self.client.get("/course/6")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b"data-development-skip=\"6\"", page.data)
+        self.assertIn("ПРОПУСТИТЬ".encode(), page.data)
+
+        skipped = self._post_json("/api/development/skip-chapter/6", {})
+
+        self.assertEqual(skipped.status_code, 200)
+        self.assertEqual(skipped.json["chapter_id"], 6)
+        self.assertEqual(self.client.get("/course/7").status_code, 200)
+
+    def test_multiplexer_lab_verifies_all_input_combinations_and_blocks_bypass(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self._submit_multiplexer_lab().status_code, 403)
+        for chapter_id in range(1, 5):
+            self.assertEqual(self._complete_chapter(chapter_id).status_code, 200)
+
+        malformed = self._submit_multiplexer_lab({"not_input": "unknown"})
+        incorrect = self._submit_multiplexer_lab(
+            {
+                "not_input": "s",
+                "zero_left": "d1",
+                "zero_right": "not_s",
+                "one_left": "s",
+                "one_right": "d1",
+                "output_left": "zero_term",
+                "output_right": "one_term",
+            }
+        )
+        bypass = self._post_json("/api/progress/5", {"completed": True})
+
+        self.assertEqual(malformed.status_code, 400)
+        self.assertEqual(incorrect.status_code, 422)
+        self.assertGreater(len(incorrect.json["mismatches"]), 0)
+        self.assertEqual(bypass.status_code, 403)
+        self.assertEqual(self.client.get("/course/6").status_code, 403)
+
+        correct = self._submit_multiplexer_lab()
+
+        self.assertEqual(correct.status_code, 200)
+        self.assertTrue(correct.json["correct"])
+        self.assertEqual(correct.json["chapter_id"], 5)
+        self.assertEqual(self.client.get("/course/6").status_code, 200)
+        completed_page = self.client.get("/course/5")
+        self.assertIn("Маршрутизатор передаёт выбранный сигнал".encode(), completed_page.data)
+        self.assertNotIn(b"data-mux-check", completed_page.data)
 
     def test_seventh_chapter_introduces_registers_and_counters_in_sequence(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
@@ -521,14 +811,56 @@ class AuthenticationTests(unittest.TestCase):
         self.csrf_token = self._load_csrf_token()
         self.assertEqual(self.client.get("/course/7").status_code, 403)
         for chapter_id in range(1, 7):
-            response = self._post_json(
-                f"/api/progress/{chapter_id}",
-                {"completed": True},
-            )
+            response = self._complete_chapter(chapter_id)
             self.assertEqual(response.status_code, 200)
         page = self.client.get("/course/7")
         self.assertEqual(page.status_code, 200)
         self.assertIn("Параллельные регистры".encode(), page.data)
+        self.assertIn("Передай пакет данных".encode(), page.data)
+        self.assertEqual(page.data.count(b"data-register-input"), 1)
+        self.assertIn(b"/static/register-counter-lab.js", page.data)
+        self.assertNotIn(b"data-complete-chapter", page.data)
+        self.assertNotIn(b"data-development-skip", page.data)
+        self.assertEqual(self._complete_chapter(7).status_code, 200)
+        completed_page = self.client.get("/course/7")
+        self.assertIn("Последние четыре бита собраны в слове".encode(), completed_page.data)
+
+    def test_register_counter_lab_verifies_serial_word_and_modulo_six(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self._submit_register_counter_lab().status_code, 403)
+        for chapter_id in range(1, 7):
+            self.assertEqual(self._complete_chapter(chapter_id).status_code, 200)
+
+        malformed = self._post_json(
+            "/api/exercises/register-counter-lab",
+            {"events": [{"type": "clock", "value": True}]},
+        )
+        wrong_word = self._submit_register_counter_lab([1, 0, 1, 1, 0, 1, 0, 0])
+        bypass = self._post_json("/api/progress/7", {"completed": True})
+
+        self.assertEqual(malformed.status_code, 400)
+        self.assertEqual(wrong_word.status_code, 422)
+        self.assertEqual(wrong_word.json["sampled_bits"], [1, 0, 1, 1, 0, 1, 0, 0])
+        self.assertEqual(wrong_word.json["register"], "0100")
+        self.assertEqual(wrong_word.json["counter_states"][-1], 2)
+        self.assertEqual(bypass.status_code, 403)
+        self.assertEqual(self.client.get("/course/8").status_code, 403)
+
+        complete = self._submit_register_counter_lab()
+
+        self.assertEqual(complete.status_code, 200)
+        self.assertTrue(complete.json["correct"])
+        self.assertEqual(complete.json["chapter_id"], 7)
+        self.assertEqual(complete.json["register"], "0110")
+        self.assertEqual(complete.json["counter_states"], [0, 1, 2, 3, 4, 5, 0, 1, 2])
+        self.assertEqual(self.client.get("/course/8").status_code, 200)
 
     def test_eighth_chapter_introduces_memory_after_registers_and_counters(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
@@ -556,14 +888,90 @@ class AuthenticationTests(unittest.TestCase):
         self.csrf_token = self._load_csrf_token()
         self.assertEqual(self.client.get("/course/8").status_code, 403)
         for chapter_id in range(1, 8):
-            response = self._post_json(
-                f"/api/progress/{chapter_id}",
-                {"completed": True},
-            )
+            response = self._complete_chapter(chapter_id)
             self.assertEqual(response.status_code, 200)
         page = self.client.get("/course/8")
         self.assertEqual(page.status_code, 200)
         self.assertIn("Ячейки, слова и адреса".encode(), page.data)
+        self.assertIn("Спаси данные при отключении питания".encode(), page.data)
+        self.assertEqual(page.data.count(b"data-memory-cell="), 8)
+        self.assertIn(b"/static/memory-lab.js", page.data)
+        self.assertNotIn(b"data-complete-chapter", page.data)
+        self.assertNotIn(b"data-development-skip", page.data)
+        self.assertEqual(self._complete_chapter(8).status_code, 200)
+        completed_page = self.client.get("/course/8")
+        self.assertIn("исчезли после отключения питания".encode(), completed_page.data)
+        self.assertIn("Спаси данные при отключении питания".encode(), page.data)
+        self.assertEqual(page.data.count(b"data-memory-cell="), 8)
+        self.assertIn(b"/static/memory-lab.js", page.data)
+        self.assertNotIn(b"data-complete-chapter", page.data)
+        self.assertNotIn(b"data-development-skip", page.data)
+        self.assertEqual(self._complete_chapter(8).status_code, 200)
+        completed_page = self.client.get("/course/8")
+        self.assertIn("исчезли после отключения питания".encode(), completed_page.data)
+
+    def test_memory_lab_verifies_ram_write_and_rom_power_retention(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self._submit_memory_lab().status_code, 403)
+        for chapter_id in range(1, 8):
+            self.assertEqual(self._complete_chapter(chapter_id).status_code, 200)
+
+        malformed = self._post_json(
+            "/api/exercises/memory-lab",
+            {"events": [{"type": "address", "value": True}]},
+        )
+        missing_cycle = self._submit_memory_lab(include_power_cycle=False)
+        bypass = self._post_json("/api/progress/8", {"completed": True})
+
+        self.assertEqual(malformed.status_code, 400)
+        self.assertEqual(missing_cycle.status_code, 422)
+        self.assertEqual(bypass.status_code, 403)
+
+        complete = self._submit_memory_lab()
+
+        self.assertEqual(complete.status_code, 200)
+        self.assertTrue(complete.json["correct"])
+        self.assertEqual(complete.json["chapter_id"], 8)
+        self.assertEqual(complete.json["ram"], ["0000"] * 4)
+        self.assertEqual(complete.json["rom"], ["1010", "0110", "1101", "0011"])
+        self.assertTrue(
+            any(
+                read["memory"] == "ram"
+                and read["address"] == 2
+                and read["value"] == "1101"
+                for read in complete.json["read_history"]
+            )
+        )
+        self.assertTrue(
+            any(
+                read["memory"] == "ram"
+                and read["address"] == 2
+                and read["value"] == "0000"
+                and read["after_power_cycle"]
+                for read in complete.json["read_history"]
+            )
+        )
+        self.assertTrue(
+            any(
+                read["memory"] == "rom"
+                and read["address"] == 1
+                and read["value"] == "0110"
+                and read["after_power_cycle"]
+                for read in complete.json["read_history"]
+            )
+        )
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            progress = database.execute(
+                "SELECT completed FROM chapter_progress WHERE chapter_id = 8"
+            ).fetchone()
+        self.assertEqual(progress[0], 1)
 
     def test_first_chapter_material_is_seeded_into_existing_empty_chapter(self):
         database_path = os.path.join(self.temp_dir.name, "empty-chapter.sqlite3")
@@ -987,12 +1395,9 @@ class AuthenticationTests(unittest.TestCase):
         )
         self.csrf_token = self._load_csrf_token()
 
+        self.assertEqual(self._submit_byte_exercise().status_code, 200)
         self.assertEqual(
-            self._post_json("/api/progress/1", {"completed": True}).status_code,
-            200,
-        )
-        self.assertEqual(
-            self._post_json("/api/progress/2", {"completed": True}).status_code,
+            self._submit_octal_exercise().status_code,
             200,
         )
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
@@ -1830,10 +2235,7 @@ class AuthenticationTests(unittest.TestCase):
         )
         self.csrf_token = self._load_csrf_token()
 
-        first_completion = self._post_json(
-            "/api/progress/1",
-            {"completed": True},
-        )
+        first_completion = self._submit_byte_exercise()
         repeated_completion = self._post_json(
             "/api/progress/1",
             {"completed": True},
@@ -1866,6 +2268,280 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn(history[0][0].encode(), profile.data)
         self.assertIn(history[0][1].encode(), profile.data)
 
+    def test_byte_exercise_rejects_invalid_and_incorrect_answers_without_progress(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+
+        malformed = self._submit_byte_exercise([1, 0, 1])
+        incorrect = self._submit_byte_exercise([1, 0, 1, 0, 1, 1, 0, 0])
+        boolean_bit = self._submit_byte_exercise([True, 0, 1, 0, 1, 1, 0, 1])
+        direct_completion = self._post_json(
+            "/api/progress/1",
+            {"completed": True},
+        )
+
+        self.assertEqual(malformed.status_code, 400)
+        self.assertEqual(incorrect.status_code, 422)
+        self.assertEqual(incorrect.json["value"], 172)
+        self.assertFalse(incorrect.json["correct"])
+        self.assertEqual(boolean_bit.status_code, 400)
+        self.assertEqual(direct_completion.status_code, 403)
+        self.assertEqual(self.client.get("/course/2").status_code, 403)
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            progress = database.execute(
+                "SELECT COUNT(*) FROM chapter_progress WHERE chapter_id = 1"
+            ).fetchone()[0]
+        self.assertEqual(progress, 0)
+
+    def test_byte_exercise_requires_authentication_and_csrf(self):
+        anonymous = self._submit_byte_exercise()
+        self.assertEqual(anonymous.status_code, 401)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        response = self.client.post(
+            "/api/exercises/byte",
+            json={"bits": [1, 0, 1, 0, 1, 1, 0, 1]},
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_octal_exercise_requires_authentication_and_csrf(self):
+        anonymous = self._submit_octal_exercise()
+        self.assertEqual(anonymous.status_code, 401)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        response = self.client.post(
+            "/api/exercises/octal-conversion",
+            json={
+                "steps": [
+                    {"quotient": 21, "remainder": 5},
+                    {"quotient": 2, "remainder": 5},
+                    {"quotient": 0, "remainder": 2},
+                ]
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_octal_exercise_checks_each_division_step_and_blocks_bypass(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self._submit_byte_exercise().status_code, 200)
+
+        malformed = self._submit_octal_exercise(
+            [{"quotient": 21, "remainder": 5}]
+        )
+        incorrect = self._submit_octal_exercise(
+            [
+                {"quotient": 20, "remainder": 13},
+                {"quotient": 2, "remainder": 5},
+                {"quotient": 0, "remainder": 2},
+            ]
+        )
+        direct_completion = self._post_json(
+            "/api/progress/2",
+            {"completed": True},
+        )
+
+        self.assertEqual(malformed.status_code, 400)
+        self.assertEqual(incorrect.status_code, 400)
+        self.assertEqual(direct_completion.status_code, 403)
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            progress = database.execute(
+                "SELECT COUNT(*) FROM chapter_progress WHERE chapter_id = 2"
+            ).fetchone()[0]
+        self.assertEqual(progress, 0)
+
+        valid_but_wrong = self._submit_octal_exercise(
+            [
+                {"quotient": 21, "remainder": 5},
+                {"quotient": 2, "remainder": 4},
+                {"quotient": 0, "remainder": 2},
+            ]
+        )
+        self.assertEqual(valid_but_wrong.status_code, 422)
+        self.assertEqual(valid_but_wrong.json["step"], 2)
+        self.assertEqual(valid_but_wrong.json["expected_quotient"], 2)
+        self.assertEqual(valid_but_wrong.json["expected_remainder"], 5)
+
+    def test_boolean_circuit_requires_all_truth_table_rows_before_completing_chapter(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+
+        locked = self._submit_logic_exercise()
+        self.assertEqual(locked.status_code, 403)
+        self.assertEqual(self._complete_chapter(1).status_code, 200)
+        self.assertEqual(self._complete_chapter(2).status_code, 200)
+        invalid = self._submit_logic_exercise({"first_gate": []})
+        incorrect = self._submit_logic_exercise(
+            {
+                "first_a_inverted": False,
+                "first_b_inverted": False,
+                "first_gate": "and",
+                "second_a_inverted": False,
+                "second_b_inverted": False,
+                "second_gate": "and",
+                "output_gate": "or",
+            }
+        )
+        bypass = self._post_json(
+            "/api/progress/3",
+            {"completed": True},
+        )
+
+        self.assertEqual(invalid.status_code, 400)
+        self.assertEqual(incorrect.status_code, 422)
+        self.assertEqual(len(incorrect.json["mismatches"]), 3)
+        self.assertEqual(bypass.status_code, 403)
+        self.assertEqual(self.client.get("/course/4").status_code, 403)
+
+        correct = self._submit_logic_exercise()
+        self.assertEqual(correct.status_code, 200)
+        self.assertTrue(correct.json["correct"])
+        self.assertEqual(correct.json["chapter_id"], 3)
+        self.assertEqual(self.client.get("/course/4").status_code, 200)
+
+    def test_nand_gate_lab_verifies_wiring_and_requires_all_prior_chapters(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+
+        locked = self._submit_nand_gate_lab()
+        self.assertEqual(locked.status_code, 403)
+        for chapter_id in (1, 2, 3):
+            self.assertEqual(self._complete_chapter(chapter_id).status_code, 200)
+
+        malformed = self._submit_nand_gate_lab({"first_left": "source-code"})
+        incorrect = self._submit_nand_gate_lab(
+            {
+                "first_left": "a",
+                "first_right": "a",
+                "first_gate": "nand",
+                "second_left": "b",
+                "second_right": "b",
+                "second_gate": "nand",
+                "output_left": "first",
+                "output_right": "second",
+                "output_gate": "nor",
+            }
+        )
+        bypass = self._post_json(
+            "/api/progress/4",
+            {"completed": True},
+        )
+
+        self.assertEqual(malformed.status_code, 400)
+        self.assertEqual(incorrect.status_code, 422)
+        self.assertGreater(len(incorrect.json["mismatches"]), 0)
+        self.assertEqual(bypass.status_code, 403)
+        self.assertEqual(self.client.get("/course/5").status_code, 403)
+
+        correct = self._submit_nand_gate_lab()
+        self.assertEqual(correct.status_code, 200)
+        self.assertTrue(correct.json["correct"])
+        self.assertEqual(correct.json["chapter_id"], 4)
+        self.assertEqual(self.client.get("/course/5").status_code, 200)
+        completed_page = self.client.get("/course/4")
+        self.assertIn("Шлюз открыт!".encode(), completed_page.data)
+        self.assertNotIn(b"data-gate-check", completed_page.data)
+        completed_page = self.client.get("/course/3")
+        self.assertIn("Вы построили исключающее ИЛИ".encode(), completed_page.data)
+        self.assertNotIn(b"data-logic-submit", completed_page.data)
+
+    def test_correct_octal_route_completes_second_chapter(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self._submit_byte_exercise().status_code, 200)
+
+        response = self._submit_octal_exercise()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json["correct"])
+        self.assertEqual(response.json["octal"], "255")
+        self.assertEqual(self.client.get("/course/3").status_code, 200)
+        completed_page = self.client.get("/course/2")
+        self.assertIn("Маршрут построен: 173₁₀ = 255₈".encode(), completed_page.data)
+        self.assertNotIn(b"data-octal-submit", completed_page.data)
+
+    def test_correct_byte_exercise_completes_first_chapter_and_unlocks_next(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+
+        response = self._submit_byte_exercise()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json["correct"])
+        self.assertTrue(response.json["completed"])
+        self.assertEqual(response.json["chapter_id"], 1)
+        self.assertEqual(self.client.get("/course/2").status_code, 200)
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            progress = database.execute(
+                """
+                SELECT completed FROM chapter_progress
+                WHERE user_id = (SELECT id FROM users WHERE username = 'test')
+                    AND chapter_id = 1
+                """
+            ).fetchone()
+            history_count = database.execute(
+                """
+                SELECT COUNT(*) FROM chapter_completion_history
+                WHERE user_id = (SELECT id FROM users WHERE username = 'test')
+                    AND chapter_id = 1
+                """
+            ).fetchone()[0]
+        self.assertEqual(progress[0], 1)
+        self.assertEqual(history_count, 1)
+        completed_page = self.client.get("/course/1")
+        self.assertIn("Задание выполнено".encode(), completed_page.data)
+        self.assertNotIn(b"data-byte-submit", completed_page.data)
+
     def test_chapter_pages_are_locked_in_sequence_until_previous_is_completed(self):
         anonymous_response = self.client.get("/course/1")
         self.assertEqual(anonymous_response.status_code, 401)
@@ -1881,10 +2557,7 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(self.client.get("/course/1").status_code, 200)
         self.assertEqual(self.client.get("/course/2").status_code, 403)
 
-        response = self._post_json(
-            "/api/progress/1",
-            {"completed": True},
-        )
+        response = self._submit_byte_exercise()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(self.client.get("/course/2").status_code, 200)
         self.assertEqual(self.client.get("/course/3").status_code, 403)
@@ -2046,11 +2719,8 @@ class AuthenticationTests(unittest.TestCase):
 
     def test_login_and_progress_are_persisted_per_user(self):
         self.assertEqual(self._register().status_code, 201)
-        first_response = self._post_json(
-            "/api/progress/1",
-            {"completed": True},
-        )
-        response = self._post_json("/api/progress/2", {"completed": True})
+        first_response = self._submit_byte_exercise()
+        response = self._submit_octal_exercise()
         self.assertEqual(first_response.status_code, 200)
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"<strong data-progress-count>2</strong>", self.client.get("/").data)

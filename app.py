@@ -12,6 +12,15 @@ from migrations import migrate_database
 
 
 COURSE_SLUG = "digital-circuits"
+BYTE_EXERCISE_TARGET = 173
+OCTAL_EXERCISE_TARGET = 173
+LOGIC_EXERCISE_TARGET = (0, 1, 1, 0)
+GATE_LAB_TARGET = (0, 1, 1, 1)
+TRIGGER_LAB_TARGET = (1, 0, 1)
+REGISTER_COUNTER_TARGET = (1, 0, 1, 1, 0, 1, 1, 0)
+MEMORY_LAB_ROM = ("1010", "0110", "1101", "0011")
+MEMORY_LAB_TARGET_ADDRESS = 2
+MEMORY_LAB_TARGET_WORD = "1101"
 COURSE_TITLE = "Схемотехника цифровых систем"
 COURSE_DESCRIPTION = (
     "Пособие знакомит с принципами построения цифровых устройств "
@@ -1283,6 +1292,72 @@ def create_app(test_config=None):
                     if previous["position"] < next_chapter["position"]
                 )
             ),
+            byte_exercise_target=(
+                BYTE_EXERCISE_TARGET if chapter_by_id["position"] == 1 else None
+            ),
+            octal_exercise_target=(
+                OCTAL_EXERCISE_TARGET if chapter_by_id["position"] == 2 else None
+            ),
+            logic_exercise_target=(
+                LOGIC_EXERCISE_TARGET if chapter_by_id["position"] == 3 else None
+            ),
+            logic_exercise_rows=(
+                [
+                    {"a": 0, "b": 0, "expected": LOGIC_EXERCISE_TARGET[0]},
+                    {"a": 0, "b": 1, "expected": LOGIC_EXERCISE_TARGET[1]},
+                    {"a": 1, "b": 0, "expected": LOGIC_EXERCISE_TARGET[2]},
+                    {"a": 1, "b": 1, "expected": LOGIC_EXERCISE_TARGET[3]},
+                ]
+                if chapter_by_id["position"] == 3
+                else None
+            ),
+            gate_lab_rows=(
+                [
+                    {"a": 0, "b": 0, "expected": GATE_LAB_TARGET[0]},
+                    {"a": 0, "b": 1, "expected": GATE_LAB_TARGET[1]},
+                    {"a": 1, "b": 0, "expected": GATE_LAB_TARGET[2]},
+                    {"a": 1, "b": 1, "expected": GATE_LAB_TARGET[3]},
+                ]
+                if chapter_by_id["position"] == 4
+                else None
+            ),
+            mux_lab_rows=(
+                [
+                    {
+                        "d0": d0,
+                        "d1": d1,
+                        "s": selector,
+                        "expected": d1 if selector else d0,
+                    }
+                    for d0 in (0, 1)
+                    for d1 in (0, 1)
+                    for selector in (0, 1)
+                ]
+                if chapter_by_id["position"] == 5
+                else None
+            ),
+            trigger_lab_target=(
+                TRIGGER_LAB_TARGET if chapter_by_id["position"] == 6 else None
+            ),
+            register_counter_target=(
+                REGISTER_COUNTER_TARGET if chapter_by_id["position"] == 7 else None
+            ),
+            memory_lab_rom=(
+                MEMORY_LAB_ROM if chapter_by_id["position"] == 8 else None
+            ),
+            memory_lab_cells=(
+                [
+                    {
+                        "address": address,
+                        "binary": format(address, "02b"),
+                        "word": word,
+                    }
+                    for address, word in enumerate(MEMORY_LAB_ROM)
+                ]
+                if chapter_by_id["position"] == 8
+                else None
+            ),
+            development_mode=app.debug,
             course=course,
             csrf_token=session["csrf_token"],
         )
@@ -1369,6 +1444,1024 @@ def create_app(test_config=None):
         session.clear()
         return jsonify(success=True)
 
+    @app.post("/api/exercises/byte")
+    @csrf_protected
+    def submit_byte_exercise():
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы сохранить результат задания."), 401
+
+        payload = json_payload()
+        if payload is None:
+            return jsonify(error="Некорректный запрос."), 400
+        bits = payload.get("bits")
+        if (
+            not isinstance(bits, list)
+            or len(bits) != 8
+            or any(type(bit) is not int or bit not in (0, 1) for bit in bits)
+        ):
+            return jsonify(error="Укажите ровно восемь двоичных разрядов."), 400
+
+        database = get_db()
+        chapter = database.execute(
+            """
+            SELECT chapters.id, chapters.course_id, chapters.position
+            FROM chapters
+            JOIN courses ON courses.id = chapters.course_id
+            WHERE courses.slug = ? AND courses.status = 'published'
+                AND chapters.position = 1 AND chapters.status = 'published'
+            """,
+            (COURSE_SLUG,),
+        ).fetchone()
+        if chapter is None:
+            return jsonify(error="Практическое задание сейчас недоступно."), 404
+
+        completed_chapters = {
+            row["chapter_id"]
+            for row in database.execute(
+                """
+                SELECT chapter_id FROM chapter_progress
+                WHERE user_id = ? AND completed = 1
+                """,
+                (user["id"],),
+            ).fetchall()
+        }
+        chapters = get_course_chapters(chapter["course_id"])
+        if any(
+            previous["id"] not in completed_chapters
+            for previous in chapters
+            if previous["position"] < chapter["position"]
+        ):
+            return jsonify(error="Сначала завершите предыдущие разделы курса."), 403
+
+        value = sum(bit << (7 - index) for index, bit in enumerate(bits))
+        if value != BYTE_EXERCISE_TARGET:
+            return jsonify(
+                correct=False,
+                value=value,
+                message="Пока не получилось. Измените разряды и попробуйте ещё раз.",
+            ), 422
+
+        database.execute(
+            """
+            INSERT INTO chapter_progress (user_id, chapter_id, completed)
+            VALUES (?, ?, 1)
+            ON CONFLICT (user_id, chapter_id) DO UPDATE SET
+                completed = 1,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.execute(
+            """
+            INSERT OR IGNORE INTO chapter_completion_history (user_id, chapter_id)
+            VALUES (?, ?)
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.commit()
+        return jsonify(
+            correct=True,
+            completed=True,
+            chapter_id=chapter["id"],
+        )
+
+    @app.post("/api/exercises/octal-conversion")
+    @csrf_protected
+    def submit_octal_conversion_exercise():
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы сохранить результат задания."), 401
+
+        payload = json_payload()
+        steps = payload.get("steps") if payload is not None else None
+        if (
+            not isinstance(steps, list)
+            or len(steps) != 3
+            or any(
+                not isinstance(step, dict)
+                or type(step.get("quotient")) is not int
+                or type(step.get("remainder")) is not int
+                or step["quotient"] < 0
+                or not 0 <= step["remainder"] < 8
+                for step in steps
+            )
+        ):
+            return jsonify(
+                error="Заполните частное и остаток для всех трёх делений на 8."
+            ), 400
+
+        database = get_db()
+        chapter = database.execute(
+            """
+            SELECT chapters.id, chapters.course_id, chapters.position
+            FROM chapters
+            JOIN courses ON courses.id = chapters.course_id
+            WHERE courses.slug = ? AND courses.status = 'published'
+                AND chapters.position = 2 AND chapters.status = 'published'
+            """,
+            (COURSE_SLUG,),
+        ).fetchone()
+        if chapter is None:
+            return jsonify(error="Практическое задание сейчас недоступно."), 404
+
+        completed_chapters = {
+            row["chapter_id"]
+            for row in database.execute(
+                """
+                SELECT chapter_id FROM chapter_progress
+                WHERE user_id = ? AND completed = 1
+                """,
+                (user["id"],),
+            ).fetchall()
+        }
+        chapters = get_course_chapters(chapter["course_id"])
+        if any(
+            previous["id"] not in completed_chapters
+            for previous in chapters
+            if previous["position"] < chapter["position"]
+        ):
+            return jsonify(error="Сначала завершите предыдущие разделы курса."), 403
+
+        number = OCTAL_EXERCISE_TARGET
+        for index, step in enumerate(steps):
+            expected_quotient, expected_remainder = divmod(number, 8)
+            if (
+                step["quotient"] != expected_quotient
+                or step["remainder"] != expected_remainder
+            ):
+                return jsonify(
+                    correct=False,
+                    step=index + 1,
+                    expected_quotient=expected_quotient,
+                    expected_remainder=expected_remainder,
+                    message=(
+                        f"Проверьте деление {index + 1}: "
+                        f"{number} = 8 × частное + остаток."
+                    ),
+                ), 422
+            number = expected_quotient
+
+        database.execute(
+            """
+            INSERT INTO chapter_progress (user_id, chapter_id, completed)
+            VALUES (?, ?, 1)
+            ON CONFLICT (user_id, chapter_id) DO UPDATE SET
+                completed = 1,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.execute(
+            """
+            INSERT OR IGNORE INTO chapter_completion_history (user_id, chapter_id)
+            VALUES (?, ?)
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.commit()
+        return jsonify(
+            correct=True,
+            completed=True,
+            chapter_id=chapter["id"],
+            octal=format(OCTAL_EXERCISE_TARGET, "o"),
+        )
+
+    @app.post("/api/exercises/boolean-circuit")
+    @csrf_protected
+    def submit_boolean_circuit_exercise():
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы сохранить результат задания."), 401
+
+        payload = json_payload()
+        if payload is None:
+            return jsonify(error="Некорректный запрос."), 400
+
+        expected_boolean_fields = {
+            "first_a_inverted",
+            "first_b_inverted",
+            "second_a_inverted",
+            "second_b_inverted",
+        }
+        if (
+            not expected_boolean_fields.issubset(payload)
+            or any(type(payload[field]) is not bool for field in expected_boolean_fields)
+            or any(
+                not isinstance(payload.get(field), str)
+                or payload[field] not in {"and", "or"}
+                for field in ("first_gate", "second_gate", "output_gate")
+            )
+        ):
+            return jsonify(error="Проверьте настройки логических элементов схемы."), 400
+
+        database = get_db()
+        chapter = database.execute(
+            """
+            SELECT chapters.id, chapters.course_id, chapters.position
+            FROM chapters
+            JOIN courses ON courses.id = chapters.course_id
+            WHERE courses.slug = ? AND courses.status = 'published'
+                AND chapters.position = 3 AND chapters.status = 'published'
+            """,
+            (COURSE_SLUG,),
+        ).fetchone()
+        if chapter is None:
+            return jsonify(error="Практическое задание сейчас недоступно."), 404
+
+        completed_chapters = {
+            row["chapter_id"]
+            for row in database.execute(
+                """
+                SELECT chapter_id FROM chapter_progress
+                WHERE user_id = ? AND completed = 1
+                """,
+                (user["id"],),
+            ).fetchall()
+        }
+        chapters = get_course_chapters(chapter["course_id"])
+        if any(
+            previous["id"] not in completed_chapters
+            for previous in chapters
+            if previous["position"] < chapter["position"]
+        ):
+            return jsonify(error="Сначала завершите предыдущие разделы курса."), 403
+
+        def apply_gate(gate, left, right):
+            return int(left and right) if gate == "and" else int(left or right)
+
+        mismatches = []
+        for row, (a, b) in enumerate(((0, 0), (0, 1), (1, 0), (1, 1))):
+            first_a = 1 - a if payload["first_a_inverted"] else a
+            first_b = 1 - b if payload["first_b_inverted"] else b
+            second_a = 1 - a if payload["second_a_inverted"] else a
+            second_b = 1 - b if payload["second_b_inverted"] else b
+            first_term = apply_gate(payload["first_gate"], first_a, first_b)
+            second_term = apply_gate(payload["second_gate"], second_a, second_b)
+            actual = apply_gate(payload["output_gate"], first_term, second_term)
+            expected = LOGIC_EXERCISE_TARGET[row]
+            if actual != expected:
+                mismatches.append(
+                    {"a": a, "b": b, "expected": expected, "actual": actual}
+                )
+
+        if mismatches:
+            return jsonify(
+                correct=False,
+                mismatches=mismatches,
+                message="В некоторых строках схема даёт неверный выход.",
+            ), 422
+
+        database.execute(
+            """
+            INSERT INTO chapter_progress (user_id, chapter_id, completed)
+            VALUES (?, ?, 1)
+            ON CONFLICT (user_id, chapter_id) DO UPDATE SET
+                completed = 1,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.execute(
+            """
+            INSERT OR IGNORE INTO chapter_completion_history (user_id, chapter_id)
+            VALUES (?, ?)
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.commit()
+        return jsonify(correct=True, completed=True, chapter_id=chapter["id"])
+
+    @app.post("/api/exercises/nand-gate-lab")
+    @csrf_protected
+    def submit_nand_gate_lab():
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы сохранить результат задания."), 401
+
+        payload = json_payload()
+        if payload is None:
+            return jsonify(error="Некорректный запрос."), 400
+        wire_fields = (
+            "first_left",
+            "first_right",
+            "second_left",
+            "second_right",
+            "output_left",
+            "output_right",
+        )
+        if (
+            any(
+                not isinstance(payload.get(field), str)
+                for field in (*wire_fields, "first_gate", "second_gate", "output_gate")
+            )
+            or any(
+                payload[field] not in {"a", "b"}
+                for field in wire_fields[:4]
+            )
+            or any(
+                payload[field] not in {"first", "second"}
+                for field in wire_fields[4:]
+            )
+            or any(
+                payload[field] not in {"nand", "nor"}
+                for field in ("first_gate", "second_gate", "output_gate")
+            )
+        ):
+            return jsonify(error="Проверьте подключения проводов и типы элементов."), 400
+
+        database = get_db()
+        chapter = database.execute(
+            """
+            SELECT chapters.id, chapters.course_id, chapters.position
+            FROM chapters
+            JOIN courses ON courses.id = chapters.course_id
+            WHERE courses.slug = ? AND courses.status = 'published'
+                AND chapters.position = 4 AND chapters.status = 'published'
+            """,
+            (COURSE_SLUG,),
+        ).fetchone()
+        if chapter is None:
+            return jsonify(error="Практическая лаборатория сейчас недоступна."), 404
+
+        completed_chapters = {
+            row["chapter_id"]
+            for row in database.execute(
+                """
+                SELECT chapter_id FROM chapter_progress
+                WHERE user_id = ? AND completed = 1
+                """,
+                (user["id"],),
+            ).fetchall()
+        }
+        chapters = get_course_chapters(chapter["course_id"])
+        if any(
+            previous["id"] not in completed_chapters
+            for previous in chapters
+            if previous["position"] < chapter["position"]
+        ):
+            return jsonify(error="Сначала завершите предыдущие разделы курса."), 403
+
+        def evaluate_gate(gate, left, right):
+            if gate == "nand":
+                return int(not (left and right))
+            return int(not (left or right))
+
+        mismatches = []
+        for row, (a, b) in enumerate(((0, 0), (0, 1), (1, 0), (1, 1))):
+            inputs = {"a": a, "b": b}
+            first = evaluate_gate(
+                payload["first_gate"],
+                inputs[payload["first_left"]],
+                inputs[payload["first_right"]],
+            )
+            second = evaluate_gate(
+                payload["second_gate"],
+                inputs[payload["second_left"]],
+                inputs[payload["second_right"]],
+            )
+            intermediates = {"first": first, "second": second}
+            output = evaluate_gate(
+                payload["output_gate"],
+                intermediates[payload["output_left"]],
+                intermediates[payload["output_right"]],
+            )
+            expected = GATE_LAB_TARGET[row]
+            if output != expected:
+                mismatches.append(
+                    {"a": a, "b": b, "expected": expected, "actual": output}
+                )
+
+        if mismatches:
+            return jsonify(
+                correct=False,
+                mismatches=mismatches,
+                message="Схема пока не открывает шлюз для всех входных комбинаций.",
+            ), 422
+
+        database.execute(
+            """
+            INSERT INTO chapter_progress (user_id, chapter_id, completed)
+            VALUES (?, ?, 1)
+            ON CONFLICT (user_id, chapter_id) DO UPDATE SET
+                completed = 1,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.execute(
+            """
+            INSERT OR IGNORE INTO chapter_completion_history (user_id, chapter_id)
+            VALUES (?, ?)
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.commit()
+        return jsonify(correct=True, completed=True, chapter_id=chapter["id"])
+
+    @app.post("/api/exercises/multiplexer-lab")
+    @csrf_protected
+    def submit_multiplexer_lab():
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы сохранить результат задания."), 401
+
+        payload = json_payload()
+        if payload is None:
+            return jsonify(error="Некорректный запрос."), 400
+        if (
+            not isinstance(payload.get("not_input"), str)
+            or payload["not_input"] not in {"d0", "d1", "s"}
+            or any(
+                not isinstance(payload.get(field), str)
+                or payload[field] not in {"d0", "d1", "s", "not_s"}
+                for field in (
+                    "zero_left",
+                    "zero_right",
+                    "one_left",
+                    "one_right",
+                )
+            )
+            or any(
+                not isinstance(payload.get(field), str)
+                or payload[field] not in {"zero_term", "one_term"}
+                for field in ("output_left", "output_right")
+            )
+        ):
+            return jsonify(error="Проверьте подключения сигналов мультиплексора."), 400
+
+        database = get_db()
+        chapter = database.execute(
+            """
+            SELECT chapters.id, chapters.course_id, chapters.position
+            FROM chapters
+            JOIN courses ON courses.id = chapters.course_id
+            WHERE courses.slug = ? AND courses.status = 'published'
+                AND chapters.position = 5 AND chapters.status = 'published'
+            """,
+            (COURSE_SLUG,),
+        ).fetchone()
+        if chapter is None:
+            return jsonify(error="Практическая лаборатория сейчас недоступна."), 404
+
+        completed_chapters = {
+            row["chapter_id"]
+            for row in database.execute(
+                """
+                SELECT chapter_id FROM chapter_progress
+                WHERE user_id = ? AND completed = 1
+                """,
+                (user["id"],),
+            ).fetchall()
+        }
+        chapters = get_course_chapters(chapter["course_id"])
+        if any(
+            previous["id"] not in completed_chapters
+            for previous in chapters
+            if previous["position"] < chapter["position"]
+        ):
+            return jsonify(error="Сначала завершите предыдущие разделы курса."), 403
+
+        mismatches = []
+        for d0 in (0, 1):
+            for d1 in (0, 1):
+                for selector in (0, 1):
+                    inputs = {"d0": d0, "d1": d1, "s": selector}
+                    inputs["not_s"] = 1 - inputs[payload["not_input"]]
+                    zero_term = int(
+                        inputs[payload["zero_left"]]
+                        and inputs[payload["zero_right"]]
+                    )
+                    one_term = int(
+                        inputs[payload["one_left"]]
+                        and inputs[payload["one_right"]]
+                    )
+                    terms = {"zero_term": zero_term, "one_term": one_term}
+                    actual = int(
+                        terms[payload["output_left"]]
+                        or terms[payload["output_right"]]
+                    )
+                    expected = d1 if selector else d0
+                    if actual != expected:
+                        mismatches.append(
+                            {
+                                "d0": d0,
+                                "d1": d1,
+                                "s": selector,
+                                "expected": expected,
+                                "actual": actual,
+                            }
+                        )
+
+        if mismatches:
+            return jsonify(
+                correct=False,
+                mismatches=mismatches,
+                message="Маршрутизатор пока передаёт неверный сигнал в некоторых случаях.",
+            ), 422
+
+        database.execute(
+            """
+            INSERT INTO chapter_progress (user_id, chapter_id, completed)
+            VALUES (?, ?, 1)
+            ON CONFLICT (user_id, chapter_id) DO UPDATE SET
+                completed = 1,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.execute(
+            """
+            INSERT OR IGNORE INTO chapter_completion_history (user_id, chapter_id)
+            VALUES (?, ?)
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.commit()
+        return jsonify(correct=True, completed=True, chapter_id=chapter["id"])
+
+    @app.post("/api/exercises/trigger-lab")
+    @csrf_protected
+    def submit_trigger_lab():
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы сохранить результат задания."), 401
+
+        payload = json_payload()
+        if payload is None:
+            return jsonify(error="Некорректный запрос."), 400
+        events = payload.get("events")
+        if (
+            not isinstance(events, list)
+            or not events
+            or len(events) > 24
+            or any(
+                not isinstance(event, dict)
+                or set(event) != {"type", "value"}
+                or not isinstance(event["type"], str)
+                or event["type"] not in {"data", "clock"}
+                or type(event["value"]) is not int
+                or event["value"] not in (0, 1)
+                for event in events
+            )
+        ):
+            return jsonify(error="Укажите последовательность переключений D и CLK."), 400
+
+        database = get_db()
+        chapter = database.execute(
+            """
+            SELECT chapters.id, chapters.course_id, chapters.position
+            FROM chapters
+            JOIN courses ON courses.id = chapters.course_id
+            WHERE courses.slug = ? AND courses.status = 'published'
+                AND chapters.position = 6 AND chapters.status = 'published'
+            """,
+            (COURSE_SLUG,),
+        ).fetchone()
+        if chapter is None:
+            return jsonify(error="Практическая лаборатория сейчас недоступна."), 404
+
+        completed_chapters = {
+            row["chapter_id"]
+            for row in database.execute(
+                """
+                SELECT chapter_id FROM chapter_progress
+                WHERE user_id = ? AND completed = 1
+                """,
+                (user["id"],),
+            ).fetchall()
+        }
+        chapters = get_course_chapters(chapter["course_id"])
+        if any(
+            previous["id"] not in completed_chapters
+            for previous in chapters
+            if previous["position"] < chapter["position"]
+        ):
+            return jsonify(error="Сначала завершите предыдущие разделы курса."), 403
+
+        data = 0
+        clock = 0
+        output = 0
+        captured_values = []
+        held_data_change = False
+        for event in events:
+            value = event["value"]
+            if event["type"] == "data":
+                if clock == 1 and value != data and value != output:
+                    held_data_change = True
+                data = value
+            else:
+                previous_clock = clock
+                clock = value
+                if previous_clock == 0 and clock == 1:
+                    output = data
+                    captured_values.append(output)
+
+        if tuple(captured_values) != TRIGGER_LAB_TARGET or not held_data_change:
+            if tuple(captured_values) != TRIGGER_LAB_TARGET:
+                message = (
+                    "На положительных фронтах Q должна пройти последовательность "
+                    "1 → 0 → 1."
+                )
+            else:
+                message = (
+                    "Измените D между фронтами, когда CLK = 1, и убедитесь, "
+                    "что Q сохраняет прежнее значение."
+                )
+            return jsonify(
+                correct=False,
+                captured=captured_values,
+                held_data_change=held_data_change,
+                message=message,
+            ), 422
+
+        database.execute(
+            """
+            INSERT INTO chapter_progress (user_id, chapter_id, completed)
+            VALUES (?, ?, 1)
+            ON CONFLICT (user_id, chapter_id) DO UPDATE SET
+                completed = 1,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.execute(
+            """
+            INSERT OR IGNORE INTO chapter_completion_history (user_id, chapter_id)
+            VALUES (?, ?)
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.commit()
+        return jsonify(correct=True, completed=True, chapter_id=chapter["id"])
+
+    @app.post("/api/development/skip-chapter/<int:chapter_id>")
+    @csrf_protected
+    def development_skip_chapter(chapter_id):
+        if not app.debug:
+            return jsonify(error="Маршрут доступен только в режиме разработки."), 404
+
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы продолжить."), 401
+
+        database = get_db()
+        chapter = database.execute(
+            """
+            SELECT chapters.id, chapters.course_id, chapters.position
+            FROM chapters
+            JOIN courses ON courses.id = chapters.course_id
+            WHERE chapters.id = ? AND chapters.status = 'published'
+                AND courses.status = 'published'
+            """,
+            (chapter_id,),
+        ).fetchone()
+        if chapter is None:
+            return jsonify(error="Такого раздела не существует."), 404
+
+        chapters = get_course_chapters(chapter["course_id"])
+        completed_chapters = {
+            row["chapter_id"]
+            for row in database.execute(
+                """
+                SELECT chapter_id FROM chapter_progress
+                WHERE user_id = ? AND completed = 1
+                """,
+                (user["id"],),
+            ).fetchall()
+        }
+        if any(
+            previous["id"] not in completed_chapters
+            for previous in chapters
+            if previous["position"] < chapter["position"]
+        ):
+            return jsonify(error="Сначала откройте предыдущие разделы курса."), 403
+
+        database.execute(
+            """
+            INSERT INTO chapter_progress (user_id, chapter_id, completed)
+            VALUES (?, ?, 1)
+            ON CONFLICT (user_id, chapter_id) DO UPDATE SET
+                completed = 1,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.execute(
+            """
+            INSERT OR IGNORE INTO chapter_completion_history (user_id, chapter_id)
+            VALUES (?, ?)
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.commit()
+        return jsonify(completed=True, chapter_id=chapter["id"])
+
+    @app.post("/api/exercises/register-counter-lab")
+    @csrf_protected
+    def submit_register_counter_lab():
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы сохранить результат задания."), 401
+
+        payload = json_payload()
+        if payload is None:
+            return jsonify(error="Некорректный запрос."), 400
+        events = payload.get("events")
+        if (
+            not isinstance(events, list)
+            or not events
+            or len(events) > 32
+            or any(
+                not isinstance(event, dict)
+                or set(event) != {"type", "value"}
+                or not isinstance(event["type"], str)
+                or event["type"] not in {"data", "clock"}
+                or type(event["value"]) is not int
+                or event["value"] not in (0, 1)
+                for event in events
+            )
+        ):
+            return jsonify(error="Укажите последовательность битов и тактовых импульсов."), 400
+
+        database = get_db()
+        chapter = database.execute(
+            """
+            SELECT chapters.id, chapters.course_id, chapters.position
+            FROM chapters
+            JOIN courses ON courses.id = chapters.course_id
+            WHERE courses.slug = ? AND courses.status = 'published'
+                AND chapters.position = 7 AND chapters.status = 'published'
+            """,
+            (COURSE_SLUG,),
+        ).fetchone()
+        if chapter is None:
+            return jsonify(error="Практическая лаборатория сейчас недоступна."), 404
+
+        completed_chapters = {
+            row["chapter_id"]
+            for row in database.execute(
+                """
+                SELECT chapter_id FROM chapter_progress
+                WHERE user_id = ? AND completed = 1
+                """,
+                (user["id"],),
+            ).fetchall()
+        }
+        chapters = get_course_chapters(chapter["course_id"])
+        if any(
+            previous["id"] not in completed_chapters
+            for previous in chapters
+            if previous["position"] < chapter["position"]
+        ):
+            return jsonify(error="Сначала завершите предыдущие разделы курса."), 403
+
+        data = 0
+        clock = 0
+        register = 0
+        counter = 0
+        sampled_bits = []
+        counter_states = [counter]
+        for event in events:
+            value = event["value"]
+            if event["type"] == "data":
+                if value == data:
+                    return jsonify(
+                        error="Переключайте последовательный вход D между 0 и 1."
+                    ), 400
+                data = value
+            else:
+                if value == clock:
+                    return jsonify(
+                        error="Тактовый сигнал должен чередовать низкий и высокий уровни."
+                    ), 400
+                previous_clock = clock
+                clock = value
+                if previous_clock == 0 and clock == 1:
+                    sampled_bits.append(data)
+                    register = ((register << 1) | data) & 0b1111
+                    counter = (counter + 1) % 6
+                    counter_states.append(counter)
+
+        expected_register = int("".join(map(str, REGISTER_COUNTER_TARGET[-4:])), 2)
+        correct = (
+            tuple(sampled_bits) == REGISTER_COUNTER_TARGET
+            and register == expected_register
+            and counter == 2
+            and counter_states[6] == 0
+        )
+        if not correct:
+            return jsonify(
+                correct=False,
+                sampled_bits=sampled_bits,
+                register=f"{register:04b}",
+                counter=counter,
+                counter_states=counter_states,
+                message=(
+                    "Передайте все биты по порядку. Регистр хранит последние четыре, "
+                    "а счётчик по модулю 6 после состояния 5 возвращается к 0."
+                ),
+            ), 422
+
+        database.execute(
+            """
+            INSERT INTO chapter_progress (user_id, chapter_id, completed)
+            VALUES (?, ?, 1)
+            ON CONFLICT (user_id, chapter_id) DO UPDATE SET
+                completed = 1,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.execute(
+            """
+            INSERT OR IGNORE INTO chapter_completion_history (user_id, chapter_id)
+            VALUES (?, ?)
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.commit()
+        return jsonify(
+            correct=True,
+            completed=True,
+            chapter_id=chapter["id"],
+            register=f"{register:04b}",
+            counter=counter,
+            counter_states=counter_states,
+        )
+
+    @app.post("/api/exercises/memory-lab")
+    @csrf_protected
+    def submit_memory_lab():
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы сохранить результат задания."), 401
+
+        payload = json_payload()
+        if payload is None:
+            return jsonify(error="Некорректный запрос."), 400
+        events = payload.get("events")
+        if not isinstance(events, list) or not events or len(events) > 40:
+            return jsonify(error="Укажите последовательность операций с памятью."), 400
+
+        for event in events:
+            if not isinstance(event, dict) or not isinstance(event.get("type"), str):
+                return jsonify(error="Одна из операций памяти указана неверно."), 400
+            event_type = event["type"]
+            if (
+                (event_type == "address" and (
+                    set(event) != {"type", "value"}
+                    or type(event["value"]) is not int
+                    or event["value"] not in range(4)
+                ))
+                or (event_type == "data" and (
+                    set(event) != {"type", "value"}
+                    or not isinstance(event["value"], str)
+                    or re.fullmatch(r"[01]{4}", event["value"]) is None
+                ))
+                or (event_type in {"write", "power"} and set(event) != {"type"})
+                or (event_type == "read" and (
+                    set(event) != {"type", "memory"}
+                    or not isinstance(event["memory"], str)
+                    or event["memory"] not in {"ram", "rom"}
+                ))
+                or event_type not in {"address", "data", "write", "read", "power"}
+            ):
+                return jsonify(error="Одна из операций памяти указана неверно."), 400
+
+        database = get_db()
+        chapter = database.execute(
+            """
+            SELECT chapters.id, chapters.course_id, chapters.position
+            FROM chapters
+            JOIN courses ON courses.id = chapters.course_id
+            WHERE courses.slug = ? AND courses.status = 'published'
+                AND chapters.position = 8 AND chapters.status = 'published'
+            """,
+            (COURSE_SLUG,),
+        ).fetchone()
+        if chapter is None:
+            return jsonify(error="Практическая лаборатория сейчас недоступна."), 404
+
+        completed_chapters = {
+            row["chapter_id"]
+            for row in database.execute(
+                """
+                SELECT chapter_id FROM chapter_progress
+                WHERE user_id = ? AND completed = 1
+                """,
+                (user["id"],),
+            ).fetchall()
+        }
+        chapters = get_course_chapters(chapter["course_id"])
+        if any(
+            previous["id"] not in completed_chapters
+            for previous in chapters
+            if previous["position"] < chapter["position"]
+        ):
+            return jsonify(error="Сначала завершите предыдущие разделы курса."), 403
+
+        address = 0
+        data = "0000"
+        ram = ["0000"] * 4
+        powered = True
+        read_history = []
+        wrote_target = False
+        power_cycle_completed = False
+        power_was_off = False
+        for event in events:
+            event_type = event["type"]
+            if event_type == "address":
+                address = event["value"]
+            elif event_type == "data":
+                data = event["value"]
+            elif event_type == "write":
+                if powered:
+                    ram[address] = data
+                    if address == MEMORY_LAB_TARGET_ADDRESS and data == MEMORY_LAB_TARGET_WORD:
+                        wrote_target = True
+            elif event_type == "read":
+                value = ram[address] if event["memory"] == "ram" else MEMORY_LAB_ROM[address]
+                read_history.append(
+                    {
+                        "memory": event["memory"],
+                        "address": address,
+                        "value": value if powered or event["memory"] == "rom" else None,
+                        "powered": powered,
+                        "after_power_cycle": power_cycle_completed,
+                    }
+                )
+            else:
+                powered = not powered
+                if not powered:
+                    ram = ["0000"] * 4
+                    power_was_off = True
+                elif power_was_off:
+                    power_cycle_completed = True
+
+        reads = {
+            (
+                read["memory"],
+                read["address"],
+                read["value"],
+                read["powered"],
+                read["after_power_cycle"],
+            )
+            for read in read_history
+        }
+        target_reads = {
+            ("ram", MEMORY_LAB_TARGET_ADDRESS, MEMORY_LAB_TARGET_WORD, True, False),
+            ("rom", 1, MEMORY_LAB_ROM[1], True, False),
+            ("ram", MEMORY_LAB_TARGET_ADDRESS, "0000", True, True),
+        } <= reads
+        rom_survived_power_loss = (
+            "rom",
+            1,
+            MEMORY_LAB_ROM[1],
+            True,
+            True,
+        ) in reads
+        correct = wrote_target and power_cycle_completed and target_reads and rom_survived_power_loss
+        if not correct:
+            return jsonify(
+                correct=False,
+                read_history=read_history,
+                ram=ram,
+                powered=powered,
+                message=(
+                    "Запишите 1101 в RAM по адресу 10 и прочитайте её. "
+                    "Сравните с ROM по адресу 01, затем отключите и снова включите питание: "
+                    "RAM очистится, а данные ROM сохранятся."
+                ),
+            ), 422
+
+        database.execute(
+            """
+            INSERT INTO chapter_progress (user_id, chapter_id, completed)
+            VALUES (?, ?, 1)
+            ON CONFLICT (user_id, chapter_id) DO UPDATE SET
+                completed = 1,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.execute(
+            """
+            INSERT OR IGNORE INTO chapter_completion_history (user_id, chapter_id)
+            VALUES (?, ?)
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.commit()
+        return jsonify(
+            correct=True,
+            completed=True,
+            chapter_id=chapter["id"],
+            ram=ram,
+            rom=MEMORY_LAB_ROM,
+            read_history=read_history,
+        )
+
     @app.post("/api/progress/<int:chapter_id>")
     @csrf_protected
     def update_progress(chapter_id):
@@ -1377,7 +2470,8 @@ def create_app(test_config=None):
             return jsonify(error="Войдите, чтобы сохранять прогресс обучения."), 401
         chapter = get_db().execute(
             """
-            SELECT chapters.id, chapters.course_id, chapters.position
+            SELECT chapters.id, chapters.course_id, chapters.position,
+                courses.slug AS course_slug
             FROM chapters
             JOIN courses ON courses.id = chapters.course_id
             WHERE chapters.id = ?
@@ -1414,6 +2508,22 @@ def create_app(test_config=None):
             if previous["position"] < chapter["position"]
         ):
             return jsonify(error="Сначала завершите предыдущие разделы курса."), 403
+        if (
+            chapter["course_slug"] == COURSE_SLUG
+            and chapter_id not in completed_chapters
+            and chapter["position"] in (1, 2, 3, 4, 5, 6, 7, 8)
+        ):
+            exercise_messages = {
+                1: "Сначала выполните интерактивное задание «Собери байт».",
+                2: "Сначала выполните интерактивное задание по переводу в восьмеричную систему.",
+                3: "Сначала соберите и проверьте логическую схему.",
+                4: "Сначала постройте и проверьте схему из NAND-элементов.",
+                5: "Сначала соберите и проверьте маршрутизатор данных.",
+                6: "Сначала выполните лабораторную работу с D-триггером.",
+                7: "Сначала передайте слово через регистр и проверьте счётчик.",
+                8: "Сначала выполните опыт с оперативной и постоянной памятью.",
+            }
+            return jsonify(error=exercise_messages[chapter["position"]]), 403
 
         get_db().execute(
             """

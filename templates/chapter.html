@@ -82,6 +82,865 @@
                     {% endif %}
                 </div>
 
+                {% if byte_exercise_target %}
+                    <section
+                        class="byte-exercise"
+                        aria-labelledby="byte-exercise-title"
+                        data-byte-exercise
+                        data-submit-url="{{ url_for('submit_byte_exercise') }}"
+                    >
+                        <p class="eyebrow">ИНТЕРАКТИВНАЯ ПРАКТИКА</p>
+                        <h2 id="byte-exercise-title">Собери байт</h2>
+                        {% if completed %}
+                            <p class="byte-exercise-success" role="status">
+                                Задание выполнено: 173₁₀ = 10101101₂ = AD₁₆. Следующий раздел открыт.
+                            </p>
+                        {% else %}
+                            <p class="byte-exercise-instructions">
+                                Контроллер ждёт код {{ byte_exercise_target }}. Переключайте разряды,
+                                чтобы собрать байт, и отправьте результат на проверку.
+                            </p>
+                            <div class="byte-bits" role="group" aria-label="Восемь битов байта от старшего к младшему">
+                                {% for weight in [128, 64, 32, 16, 8, 4, 2, 1] %}
+                                    <button
+                                        class="byte-bit"
+                                        type="button"
+                                        data-byte-bit
+                                        data-weight="{{ weight }}"
+                                        aria-pressed="false"
+                                        aria-label="Разряд {{ weight }}, значение 0"
+                                    >
+                                        <span class="byte-bit-weight">{{ weight }}</span>
+                                        <span data-byte-bit-value>0</span>
+                                    </button>
+                                {% endfor %}
+                            </div>
+                            <dl class="byte-readouts">
+                                <div>
+                                    <dt>Двоичный код</dt>
+                                    <dd data-byte-binary>00000000</dd>
+                                </div>
+                                <div>
+                                    <dt>Десятичное значение</dt>
+                                    <dd data-byte-decimal>0</dd>
+                                </div>
+                                <div>
+                                    <dt>Шестнадцатеричный код</dt>
+                                    <dd data-byte-hex>00</dd>
+                                </div>
+                            </dl>
+                            <div class="byte-exercise-actions">
+                                <button class="primary-link" type="button" data-byte-submit>
+                                    Проверить байт <span aria-hidden="true">→</span>
+                                </button>
+                                <p data-byte-status aria-live="polite" role="status"></p>
+                            </div>
+                        {% endif %}
+                    </section>
+                {% endif %}
+
+                {% if octal_exercise_target %}
+                    <section
+                        class="octal-exercise"
+                        aria-labelledby="octal-exercise-title"
+                        data-octal-exercise
+                        data-target="{{ octal_exercise_target }}"
+                        data-submit-url="{{ url_for('submit_octal_conversion_exercise') }}"
+                    >
+                        <p class="eyebrow">МИССИЯ СВЯЗИ · ПРАКТИКА</p>
+                        <h2 id="octal-exercise-title">Прокладываем восьмеричный маршрут</h2>
+                        {% if completed %}
+                            <p class="octal-exercise-success" role="status">
+                                Маршрут построен: 173₁₀ = 255₈. Следующий раздел открыт.
+                            </p>
+                        {% else %}
+                            <p class="octal-exercise-instructions">
+                                Архивный блок отвечает по адресу 173₁₀, но пульт принимает только
+                                восьмеричный код. Разделите число на 8 три раза, заполните частное
+                                и остаток для каждого шага, затем отправьте маршрут на проверку.
+                            </p>
+                            <div class="octal-steps" role="group" aria-label="Три деления на восемь">
+                                {% for step in range(1, 4) %}
+                                    <fieldset class="octal-step" data-octal-step="{{ step }}">
+                                        <legend>Шаг {{ step }} · деление на 8</legend>
+                                        <label>
+                                            Частное
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="1"
+                                                inputmode="numeric"
+                                                required
+                                                data-octal-quotient
+                                                aria-label="Шаг {{ step }}: частное"
+                                            >
+                                        </label>
+                                        <label>
+                                            Остаток
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max="7"
+                                                step="1"
+                                                inputmode="numeric"
+                                                required
+                                                data-octal-remainder
+                                                aria-label="Шаг {{ step }}: остаток"
+                                            >
+                                        </label>
+                                    </fieldset>
+                                {% endfor %}
+                            </div>
+                            <p class="octal-result">
+                                Считайте остатки снизу вверх — так получится восьмеричный адрес.
+                            </p>
+                            <div class="octal-exercise-actions">
+                                <button class="primary-link" type="button" data-octal-submit>
+                                    Проверить маршрут <span aria-hidden="true">→</span>
+                                </button>
+                                <p data-octal-status aria-live="polite" role="status"></p>
+                            </div>
+                        {% endif %}
+                    </section>
+                {% endif %}
+
+                {% if logic_exercise_target %}
+                    <section
+                        class="logic-exercise"
+                        aria-labelledby="logic-exercise-title"
+                        data-logic-exercise
+                        data-submit-url="{{ url_for('submit_boolean_circuit_exercise') }}"
+                    >
+                        <p class="eyebrow">МИССИЯ · РЕМОНТ СХЕМЫ</p>
+                        <h2 id="logic-exercise-title">Почини индикатор пропуска</h2>
+                        {% if completed %}
+                            <p class="logic-exercise-success" role="status">
+                                Схема работает: индикатор включается, когда переключатели A и B различаются.
+                                Вы построили исключающее ИЛИ.
+                            </p>
+                        {% else %}
+                            <p class="logic-exercise-instructions">
+                                На входе — два переключателя. Настройте схему так, чтобы индикатор
+                                загорался, когда включён ровно один переключатель, и гас, когда
+                                включены оба или ни одного. Переключайте A и B, стройте схему и
+                                сверяйтесь со всеми строками таблицы.
+                            </p>
+                            <div class="logic-simulator">
+                                <div class="logic-switches" role="group" aria-label="Тестовые входы схемы">
+                                    <button type="button" data-logic-input="a" aria-pressed="false">
+                                        Вход A <strong data-logic-input-value="a">0</strong>
+                                    </button>
+                                    <button type="button" data-logic-input="b" aria-pressed="false">
+                                        Вход B <strong data-logic-input-value="b">0</strong>
+                                    </button>
+                                </div>
+                                <p class="logic-indicator" data-logic-indicator="0" aria-live="polite">
+                                    <span class="logic-indicator-light" aria-hidden="true"></span>
+                                    <span data-logic-indicator-label>Индикатор выключен</span>
+                                </p>
+                            </div>
+                            <div class="logic-builder" aria-label="Конструктор логической схемы">
+                                <fieldset class="logic-term" data-logic-term="first">
+                                    <legend>Ветвь 1</legend>
+                                    <label>
+                                        Сигнал A
+                                        <select data-logic-literal="first-a">
+                                            <option value="a">A</option>
+                                            <option value="not-a">¬A</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Сигнал B
+                                        <select data-logic-literal="first-b">
+                                            <option value="b">B</option>
+                                            <option value="not-b">¬B</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Элемент ветви
+                                        <select data-logic-gate="first">
+                                            <option value="and" selected>И</option>
+                                            <option value="or">ИЛИ</option>
+                                        </select>
+                                    </label>
+                                </fieldset>
+                                <fieldset class="logic-term" data-logic-term="second">
+                                    <legend>Ветвь 2</legend>
+                                    <label>
+                                        Сигнал A
+                                        <select data-logic-literal="second-a">
+                                            <option value="a">A</option>
+                                            <option value="not-a">¬A</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Сигнал B
+                                        <select data-logic-literal="second-b">
+                                            <option value="b">B</option>
+                                            <option value="not-b">¬B</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Элемент ветви
+                                        <select data-logic-gate="second">
+                                            <option value="and" selected>И</option>
+                                            <option value="or">ИЛИ</option>
+                                        </select>
+                                    </label>
+                                </fieldset>
+                                <label class="logic-output-gate">
+                                    Объединить ветви
+                                    <select data-logic-gate="output">
+                                        <option value="and">И</option>
+                                        <option value="or" selected>ИЛИ</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <p class="logic-expression" aria-live="polite">
+                                Текущая формула: <strong data-logic-expression></strong>
+                            </p>
+                            <div class="logic-table-wrap">
+                                <table class="logic-truth-table">
+                                    <caption>Проверка четырёх возможных наборов</caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">A</th>
+                                            <th scope="col">B</th>
+                                            <th scope="col">Нужно</th>
+                                            <th scope="col">Схема</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for row in logic_exercise_rows %}
+                                            <tr
+                                                data-logic-row
+                                                data-a="{{ row.a }}"
+                                                data-b="{{ row.b }}"
+                                                data-expected="{{ row.expected }}"
+                                            >
+                                                <th scope="row">{{ row.a }}</th>
+                                                <td>{{ row.b }}</td>
+                                                <td>{{ row.expected }}</td>
+                                                <td data-logic-actual>0</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="logic-exercise-actions">
+                                <button class="primary-link" type="button" data-logic-submit>
+                                    Проверить все комбинации <span aria-hidden="true">→</span>
+                                </button>
+                                <button class="logic-hint-button" type="button" data-logic-hint hidden>
+                                    Показать подсказку
+                                </button>
+                                <p data-logic-status aria-live="polite" role="status"></p>
+                            </div>
+                            <p class="logic-hint-text" data-logic-hint-text aria-live="polite" hidden></p>
+                        {% endif %}
+                    </section>
+                {% endif %}
+
+                {% if gate_lab_rows %}
+                    <section
+                        class="gate-lab"
+                        aria-labelledby="gate-lab-title"
+                        data-gate-lab
+                        data-submit-url="{{ url_for('submit_nand_gate_lab') }}"
+                    >
+                        <p class="eyebrow">ЛОГИЧЕСКИЙ КВЕСТ · ЛАБОРАТОРИЯ</p>
+                        <h2 id="gate-lab-title">Разблокируй шлюз</h2>
+                        {% if completed %}
+                            <p class="gate-lab-success" role="status">
+                                Шлюз открыт! Три NAND-элемента собраны в схему ИЛИ, а все четыре
+                                комбинации входов проверены.
+                            </p>
+                        {% else %}
+                            <p class="gate-lab-instructions">
+                                За шлюзом находится следующий раздел. Сигнал должен пройти, если
+                                активен A или B. В распоряжении только три элемента NAND и провода:
+                                соберите схему ИЛИ из трёх NAND. Проверяйте каждый набор входов —
+                                таблица покажет, совпал ли выход.
+                            </p>
+                            <div class="gate-lab-inputs" role="group" aria-label="Переключатели схемы">
+                                <button type="button" data-gate-input="a" aria-pressed="false">
+                                    Вход A <strong data-gate-input-value="a">0</strong>
+                                </button>
+                                <button type="button" data-gate-input="b" aria-pressed="false">
+                                    Вход B <strong data-gate-input-value="b">0</strong>
+                                </button>
+                                <p class="gate-lab-indicator" data-gate-indicator="0" aria-live="polite">
+                                    <span class="gate-lab-light" aria-hidden="true"></span>
+                                    <span data-gate-indicator-label>Шлюз закрыт</span>
+                                </p>
+                            </div>
+                            <div class="gate-lab-circuit" aria-label="Схема из трёх логических элементов">
+                                <fieldset class="gate-block" data-gate-block="first">
+                                    <legend>Элемент 1</legend>
+                                    <label>
+                                        Вход 1
+                                        <select data-gate-wire="first_left">
+                                            <option value="a">A</option>
+                                            <option value="b">B</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Вход 2
+                                        <select data-gate-wire="first_right">
+                                            <option value="a">A</option>
+                                            <option value="b">B</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Элемент
+                                        <select data-gate-type="first">
+                                            <option value="nand">NAND</option>
+                                            <option value="nor">NOR</option>
+                                        </select>
+                                    </label>
+                                    <output data-gate-output="first">1</output>
+                                </fieldset>
+                                <span class="gate-lab-connector" aria-hidden="true">→</span>
+                                <fieldset class="gate-block" data-gate-block="second">
+                                    <legend>Элемент 2</legend>
+                                    <label>
+                                        Вход 1
+                                        <select data-gate-wire="second_left">
+                                            <option value="a">A</option>
+                                            <option value="b" selected>B</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Вход 2
+                                        <select data-gate-wire="second_right">
+                                            <option value="a">A</option>
+                                            <option value="b" selected>B</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Элемент
+                                        <select data-gate-type="second">
+                                            <option value="nand">NAND</option>
+                                            <option value="nor">NOR</option>
+                                        </select>
+                                    </label>
+                                    <output data-gate-output="second">1</output>
+                                </fieldset>
+                                <span class="gate-lab-connector" aria-hidden="true">→</span>
+                                <fieldset class="gate-block" data-gate-block="output">
+                                    <legend>Выходной элемент</legend>
+                                    <label>
+                                        Вход 1
+                                        <select data-gate-wire="output_left">
+                                            <option value="first">Элемент 1</option>
+                                            <option value="second">Элемент 2</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Вход 2
+                                        <select data-gate-wire="output_right">
+                                            <option value="first">Элемент 1</option>
+                                            <option value="second" selected>Элемент 2</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Элемент
+                                        <select data-gate-type="output">
+                                            <option value="nand">NAND</option>
+                                            <option value="nor">NOR</option>
+                                        </select>
+                                    </label>
+                                    <output data-gate-output="output">0</output>
+                                </fieldset>
+                            </div>
+                            <p class="gate-lab-score" data-gate-score aria-live="polite"></p>
+                            <div class="gate-lab-table-wrap">
+                                <table class="gate-lab-table">
+                                    <caption>Автоматическая проверка полной таблицы истинности</caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">A</th>
+                                            <th scope="col">B</th>
+                                            <th scope="col">Ожидаемый выход</th>
+                                            <th scope="col">Выход схемы</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for row in gate_lab_rows %}
+                                            <tr
+                                                data-gate-row
+                                                data-a="{{ row.a }}"
+                                                data-b="{{ row.b }}"
+                                                data-expected="{{ row.expected }}"
+                                            >
+                                                <th scope="row">{{ row.a }}</th>
+                                                <td>{{ row.b }}</td>
+                                                <td>{{ row.expected }}</td>
+                                                <td data-gate-row-output>0</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="gate-lab-actions">
+                                <button class="primary-link" type="button" data-gate-check>
+                                    Проверить схему <span aria-hidden="true">→</span>
+                                </button>
+                                <button class="logic-hint-button" type="button" data-gate-hint>
+                                    Подсказка
+                                </button>
+                                <p data-gate-status aria-live="polite" role="status"></p>
+                            </div>
+                            <p class="gate-lab-hint" data-gate-hint-text aria-live="polite" hidden></p>
+                        {% endif %}
+                    </section>
+                {% endif %}
+
+                {% if mux_lab_rows %}
+                    <section
+                        class="mux-lab"
+                        aria-labelledby="mux-lab-title"
+                        data-mux-lab
+                        data-submit-url="{{ url_for('submit_multiplexer_lab') }}"
+                    >
+                        <p class="eyebrow">КОНСТРУКТОР · КОМБИНАЦИОННЫЕ СХЕМЫ</p>
+                        <h2 id="mux-lab-title">Настрой маршрутизатор данных</h2>
+                        {% if completed %}
+                            <p class="mux-lab-success" role="status">
+                                Маршрутизатор передаёт выбранный сигнал: при S = 0 — D₀, при S = 1 — D₁.
+                                Все восемь комбинаций проверены.
+                            </p>
+                        {% else %}
+                            <p class="mux-lab-instructions">
+                                Соберите мультиплексор 2 к 1 из инвертора, двух элементов И и элемента ИЛИ.
+                                При S = 0 на выход должен проходить D₀, при S = 1 — D₁.
+                                Настройте провода и проверьте все восемь сочетаний входов.
+                            </p>
+                            <div class="mux-lab-inputs" role="group" aria-label="Входные сигналы мультиплексора">
+                                <button type="button" data-mux-input="d0" aria-pressed="false">
+                                    Данные D₀ <strong data-mux-input-value="d0">0</strong>
+                                </button>
+                                <button type="button" data-mux-input="d1" aria-pressed="false">
+                                    Данные D₁ <strong data-mux-input-value="d1">0</strong>
+                                </button>
+                                <button type="button" data-mux-input="s" aria-pressed="false">
+                                    Выбор S <strong data-mux-input-value="s">0</strong>
+                                </button>
+                                <p class="mux-lab-indicator" data-mux-indicator="0" aria-live="polite">
+                                    <span class="mux-lab-light" aria-hidden="true"></span>
+                                    <span data-mux-indicator-label>На выходе: 0</span>
+                                </p>
+                            </div>
+                            <div class="mux-lab-circuit" aria-label="Соедините логические элементы мультиплексора">
+                                <fieldset class="mux-block">
+                                    <legend>Инвертор ¬S</legend>
+                                    <label>
+                                        Вход
+                                        <select data-mux-wire="not_input">
+                                            <option value="d0">D₀</option>
+                                            <option value="d1">D₁</option>
+                                            <option value="s">S</option>
+                                        </select>
+                                    </label>
+                                    <output data-mux-output="not_s">1</output>
+                                </fieldset>
+                                <fieldset class="mux-block">
+                                    <legend>Ветвь данных D₀ · И</legend>
+                                    <label>
+                                        Вход 1
+                                        <select data-mux-wire="zero_left">
+                                            <option value="d0">D₀</option>
+                                            <option value="d1">D₁</option>
+                                            <option value="s">S</option>
+                                            <option value="not_s">¬S</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Вход 2
+                                        <select data-mux-wire="zero_right">
+                                            <option value="d0">D₀</option>
+                                            <option value="d1">D₁</option>
+                                            <option value="s">S</option>
+                                            <option value="not_s" selected>¬S</option>
+                                        </select>
+                                    </label>
+                                    <output data-mux-output="zero_term">0</output>
+                                </fieldset>
+                                <fieldset class="mux-block">
+                                    <legend>Ветвь данных D₁ · И</legend>
+                                    <label>
+                                        Вход 1
+                                        <select data-mux-wire="one_left">
+                                            <option value="d0">D₀</option>
+                                            <option value="d1">D₁</option>
+                                            <option value="s" selected>S</option>
+                                            <option value="not_s">¬S</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Вход 2
+                                        <select data-mux-wire="one_right">
+                                            <option value="d0">D₀</option>
+                                            <option value="d1">D₁</option>
+                                            <option value="s">S</option>
+                                            <option value="not_s">¬S</option>
+                                        </select>
+                                    </label>
+                                    <output data-mux-output="one_term">0</output>
+                                </fieldset>
+                                <fieldset class="mux-block">
+                                    <legend>Выход · ИЛИ</legend>
+                                    <label>
+                                        Вход 1
+                                        <select data-mux-wire="output_left">
+                                            <option value="zero_term">Ветвь D₀</option>
+                                            <option value="one_term">Ветвь D₁</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Вход 2
+                                        <select data-mux-wire="output_right">
+                                            <option value="zero_term">Ветвь D₀</option>
+                                            <option value="one_term" selected>Ветвь D₁</option>
+                                        </select>
+                                    </label>
+                                    <output data-mux-output="output">0</output>
+                                </fieldset>
+                            </div>
+                            <p class="mux-lab-score" data-mux-score aria-live="polite"></p>
+                            <div class="mux-lab-table-wrap">
+                                <table class="mux-lab-table">
+                                    <caption>Проверка поведения маршрутизатора по полной таблице истинности</caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">D₀</th>
+                                            <th scope="col">D₁</th>
+                                            <th scope="col">S</th>
+                                            <th scope="col">Ожидаемый выход</th>
+                                            <th scope="col">Выход схемы</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for row in mux_lab_rows %}
+                                            <tr
+                                                data-mux-row
+                                                data-d0="{{ row.d0 }}"
+                                                data-d1="{{ row.d1 }}"
+                                                data-s="{{ row.s }}"
+                                                data-expected="{{ row.expected }}"
+                                            >
+                                                <th scope="row">{{ row.d0 }}</th>
+                                                <td>{{ row.d1 }}</td>
+                                                <td>{{ row.s }}</td>
+                                                <td>{{ row.expected }}</td>
+                                                <td data-mux-row-output>0</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="mux-lab-actions">
+                                <button class="primary-link" type="button" data-mux-check>
+                                    Проверить маршрутизатор <span aria-hidden="true">→</span>
+                                </button>
+                                <button class="logic-hint-button" type="button" data-mux-hint>
+                                    Подсказка
+                                </button>
+                                <p data-mux-status aria-live="polite" role="status"></p>
+                            </div>
+                            <p class="mux-lab-hint" data-mux-hint-text aria-live="polite" hidden></p>
+                        {% endif %}
+                    </section>
+                {% endif %}
+
+                {% if trigger_lab_target %}
+                    <section
+                        class="trigger-lab"
+                        aria-labelledby="trigger-lab-title"
+                        data-trigger-lab
+                        data-submit-url="{{ url_for('submit_trigger_lab') }}"
+                    >
+                        <p class="eyebrow">ЛАБОРАТОРИЯ СОСТОЯНИЙ · D-ТРИГГЕР</p>
+                        <h2 id="trigger-lab-title">Поймай тактовый фронт</h2>
+                        {% if completed %}
+                            <p class="trigger-lab-success" role="status">
+                                D-триггер запомнил вход только на положительных фронтах, а изменение D
+                                между фронтами не повлияло на Q.
+                            </p>
+                        {% else %}
+                            <p class="trigger-lab-instructions">
+                                Проведите сигнал Q через последовательность 1 → 0 → 1. Выставляйте D,
+                                затем нажимайте CLK, чтобы создать положительный фронт. Между фронтами
+                                измените D при CLK = 1 и проверьте, что сохранённый Q не меняется.
+                            </p>
+                            <div class="trigger-lab-target" aria-label="Целевая последовательность">
+                                <span>Три положительных фронта должны сохранить:</span>
+                                {% for value in trigger_lab_target %}
+                                    <strong>{{ value }}</strong>
+                                    {% if not loop.last %}<span aria-hidden="true">→</span>{% endif %}
+                                {% endfor %}
+                            </div>
+                            <div class="trigger-lab-controls" role="group" aria-label="Управление D-триггером">
+                                <button type="button" data-trigger-input="data" aria-pressed="false">
+                                    Вход D <strong data-trigger-value="data">0</strong>
+                                </button>
+                                <button type="button" data-trigger-input="clock" aria-pressed="false">
+                                    Тактовый сигнал CLK <strong data-trigger-value="clock">0</strong>
+                                </button>
+                                <p class="trigger-lab-output" data-trigger-output="0" aria-live="polite">
+                                    <span class="trigger-lab-light" aria-hidden="true"></span>
+                                    <span>Сохранённое состояние Q = <strong data-trigger-value="output">0</strong></span>
+                                </p>
+                            </div>
+                            <p class="trigger-lab-progress" data-trigger-progress aria-live="polite">
+                                Зафиксировано фронтов: 0 из {{ trigger_lab_target|length }}
+                            </p>
+                            <div class="trigger-lab-timeline-wrap">
+                                <table class="trigger-lab-timeline">
+                                    <caption>Хронология входов и сохранённого состояния</caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Шаг</th>
+                                            <th scope="col">Действие</th>
+                                            <th scope="col">D</th>
+                                            <th scope="col">CLK</th>
+                                            <th scope="col">Q</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody data-trigger-timeline>
+                                        <tr>
+                                            <th scope="row">0</th>
+                                            <td>Начальное состояние</td>
+                                            <td>0</td>
+                                            <td>0</td>
+                                            <td>0</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="trigger-lab-actions">
+                                <button class="primary-link" type="button" data-trigger-check>
+                                    Проверить последовательность <span aria-hidden="true">→</span>
+                                </button>
+                                <button class="logic-hint-button" type="button" data-trigger-hint>
+                                    Подсказка
+                                </button>
+                                <button class="secondary-link" type="button" data-trigger-reset>
+                                    Сбросить
+                                </button>
+                                <p data-trigger-status aria-live="polite" role="status"></p>
+                            </div>
+                            <p class="trigger-lab-hint" data-trigger-hint-text aria-live="polite" hidden></p>
+                        {% endif %}
+                    </section>
+                {% endif %}
+
+                {% if register_counter_target %}
+                    <section
+                        class="register-counter-lab"
+                        aria-labelledby="register-counter-lab-title"
+                        data-register-counter-lab
+                        data-target-bits="{{ register_counter_target|join }}"
+                        data-submit-url="{{ url_for('submit_register_counter_lab') }}"
+                    >
+                        <p class="eyebrow">ПАНЕЛЬ ПЕРЕДАЧИ · РЕГИСТР И СЧЁТЧИК</p>
+                        <h2 id="register-counter-lab-title">Передай пакет данных</h2>
+                        {% if completed %}
+                            <p class="register-counter-success" role="status">
+                                Пакет 10110110 передан. Последние четыре бита собраны в слове 0110,
+                                а счётчик по модулю 6 прошёл через переход 5 → 0.
+                            </p>
+                        {% else %}
+                            <p class="register-counter-instructions">
+                                Передайте пакет <strong>10110110</strong> по одному биту за такт.
+                                Меняйте последовательный вход D, затем поднимайте CLK — сдвиговый
+                                регистр сохранит новый бит и передвинет остальные. Счётчик отмечает
+                                импульсы от 0 до 5 и затем начинает цикл заново.
+                            </p>
+                            <div class="register-counter-controls" role="group" aria-label="Управление передачей пакета">
+                                <button type="button" data-register-input aria-pressed="false">
+                                    Последовательный вход D <strong data-register-data>0</strong>
+                                </button>
+                                <button type="button" data-register-clock aria-pressed="false">
+                                    Тактовый импульс CLK <strong data-register-clock-value>0</strong>
+                                </button>
+                                <button class="secondary-link" type="button" data-register-reset>
+                                    Сбросить передачу
+                                </button>
+                            </div>
+                            <div class="register-counter-displays">
+                                <section class="register-display" aria-labelledby="register-display-title">
+                                    <p class="register-display-label" id="register-display-title">
+                                        Сдвиговый регистр · 4 бита
+                                    </p>
+                                    <div class="register-bits" role="group" aria-label="Содержимое регистра">
+                                        <span data-register-bit="0">0</span>
+                                        <span data-register-bit="1">0</span>
+                                        <span data-register-bit="2">0</span>
+                                        <span data-register-bit="3">0</span>
+                                    </div>
+                                    <p class="register-word" data-register-word>0000</p>
+                                </section>
+                                <section class="counter-display" aria-labelledby="counter-display-title">
+                                    <p class="register-display-label" id="counter-display-title">
+                                        Счётчик по модулю 6
+                                    </p>
+                                    <output data-counter-state="0">
+                                        <span data-counter-binary>000</span>
+                                        <strong data-counter-decimal>0</strong>
+                                    </output>
+                                    <p data-counter-progress>Импульсов: 0 из 8</p>
+                                </section>
+                            </div>
+                            <div class="register-counter-timeline-wrap">
+                                <table class="register-counter-timeline">
+                                    <caption>Состояния после каждого тактового фронта</caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Такт</th>
+                                            <th scope="col">Вход D</th>
+                                            <th scope="col">Регистр</th>
+                                            <th scope="col">Счётчик</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody data-register-timeline>
+                                        <tr>
+                                            <th scope="row">0</th>
+                                            <td>—</td>
+                                            <td>0000</td>
+                                            <td>000 (0)</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="register-counter-actions">
+                                <button class="primary-link" type="button" data-register-check disabled>
+                                    Проверить передачу <span aria-hidden="true">→</span>
+                                </button>
+                                <p data-register-status aria-live="polite" role="status"></p>
+                            </div>
+                        {% endif %}
+                    </section>
+                {% endif %}
+
+                {% if memory_lab_rom %}
+                    <section
+                        class="memory-lab"
+                        aria-labelledby="memory-lab-title"
+                        data-memory-lab
+                        data-rom="{{ memory_lab_rom|join(',') }}"
+                        data-submit-url="{{ url_for('submit_memory_lab') }}"
+                    >
+                        <p class="eyebrow">МИССИЯ · ЭНЕРГОНЕЗАВИСИМАЯ ПАМЯТЬ</p>
+                        <h2 id="memory-lab-title">Спаси данные при отключении питания</h2>
+                        {% if completed %}
+                            <p class="memory-lab-success" role="status">
+                                Данные RAM записаны и прочитаны, затем исчезли после отключения питания.
+                                Слово ROM по адресу 01 сохранилось — память ведёт себя ожидаемо.
+                            </p>
+                        {% else %}
+                            <p class="memory-lab-instructions">
+                                Запишите слово <strong>1101</strong> в RAM по адресу <strong>10</strong>
+                                и прочитайте его. Сравните с ROM по адресу <strong>01</strong>, затем
+                                выключите и снова включите питание. Проверьте, какие данные переживут
+                                перезапуск.
+                            </p>
+                            <div class="memory-lab-power" role="group" aria-label="Питание памяти">
+                                <span data-memory-power-state="on">Питание включено</span>
+                                <button type="button" data-memory-power aria-pressed="true">
+                                    Выключить питание
+                                </button>
+                            </div>
+                            <div class="memory-lab-workbench">
+                                <div class="memory-lab-controls">
+                                    <label>
+                                        Адрес
+                                        <select data-memory-address>
+                                            {% for cell in memory_lab_cells %}
+                                                <option value="{{ cell.address }}">{{ cell.binary }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </label>
+                                    <div class="memory-lab-type" role="group" aria-label="Тип памяти">
+                                        <button type="button" data-memory-type="ram" aria-pressed="true">RAM</button>
+                                        <button type="button" data-memory-type="rom" aria-pressed="false">ROM</button>
+                                    </div>
+                                    <div class="memory-lab-data" role="group" aria-label="Входное слово">
+                                        <span>Входные данные</span>
+                                        <div>
+                                            {% for bit in range(4) %}
+                                                <button
+                                                    type="button"
+                                                    data-memory-data-bit="{{ bit }}"
+                                                    aria-label="Переключить бит {{ bit }}"
+                                                    aria-pressed="false"
+                                                >0</button>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="memory-lab-actions">
+                                        <button type="button" data-memory-read>Читать</button>
+                                        <button type="button" data-memory-write>Записать в RAM</button>
+                                        <button type="button" data-memory-reset>Сбросить эксперимент</button>
+                                    </div>
+                                    <p class="memory-lab-readout" data-memory-readout aria-live="polite">
+                                        Выберите адрес и выполните чтение.
+                                    </p>
+                                </div>
+                                <div class="memory-lab-banks">
+                                    <section class="memory-bank" aria-labelledby="ram-bank-title">
+                                        <h3 id="ram-bank-title">RAM · энергозависимая</h3>
+                                        <p>Очищается при отключении питания</p>
+                                        <div class="memory-cells">
+                                            {% for cell in memory_lab_cells %}
+                                                <div data-memory-cell="ram-{{ cell.address }}">
+                                                    <span>{{ cell.binary }}</span>
+                                                    <strong>0000</strong>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    </section>
+                                    <section class="memory-bank" aria-labelledby="rom-bank-title">
+                                        <h3 id="rom-bank-title">ROM · энергонезависимая</h3>
+                                        <p>Сохраняет данные без питания</p>
+                                        <div class="memory-cells">
+                                            {% for cell in memory_lab_cells %}
+                                                <div data-memory-cell="rom-{{ cell.address }}">
+                                                    <span>{{ cell.binary }}</span>
+                                                    <strong>{{ cell.word }}</strong>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    </section>
+                                </div>
+                            </div>
+                            <p class="memory-lab-progress" data-memory-progress aria-live="polite">
+                                Выполнено проверок: 0 из 4
+                            </p>
+                            <div class="memory-lab-history-wrap">
+                                <table class="memory-lab-history">
+                                    <caption>История операций с памятью</caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Шаг</th>
+                                            <th scope="col">Операция</th>
+                                            <th scope="col">Адрес</th>
+                                            <th scope="col">Результат</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody data-memory-history></tbody>
+                                </table>
+                            </div>
+                            <div class="memory-lab-check">
+                                <button class="primary-link" type="button" data-memory-check disabled>
+                                    Проверить эксперимент <span aria-hidden="true">→</span>
+                                </button>
+                                <p data-memory-status aria-live="polite" role="status"></p>
+                            </div>
+                        {% endif %}
+                    </section>
+                {% endif %}
+
                 <div class="lesson-actions">
                     {% if completed %}
                         <p class="lesson-complete-status"><span aria-hidden="true">✓</span> Раздел пройден</p>
@@ -93,11 +952,26 @@
                             <p class="course-finished">Вы прошли все разделы курса.</p>
                         {% endif %}
                     {% else %}
-                        <p class="lesson-action-note">После изучения материала отметьте раздел пройденным, чтобы открыть следующий.</p>
-                        <button class="primary-link lesson-complete-button" type="button" data-complete-chapter="{{ chapter_id }}">
-                            Отметить раздел пройденным <span aria-hidden="true">→</span>
-                        </button>
-                        <p class="lesson-action-status" data-complete-status aria-live="polite"></p>
+                        {% if byte_exercise_target or octal_exercise_target or logic_exercise_target or gate_lab_rows or mux_lab_rows or trigger_lab_target or register_counter_target or memory_lab_rom %}
+                            <p class="lesson-action-note">Выполните практическое задание выше, чтобы открыть следующий раздел.</p>
+                        {% else %}
+                            <p class="lesson-action-note">После изучения материала отметьте раздел пройденным, чтобы открыть следующий.</p>
+                            <button class="primary-link lesson-complete-button" type="button" data-complete-chapter="{{ chapter_id }}">
+                                Отметить раздел пройденным <span aria-hidden="true">→</span>
+                            </button>
+                            <p class="lesson-action-status" data-complete-status aria-live="polite"></p>
+                        {% endif %}
+                        {% if development_mode %}
+                            <button
+                                class="development-skip-button"
+                                type="button"
+                                data-development-skip="{{ chapter_id }}"
+                            >
+                                ПРОПУСТИТЬ
+                            </button>
+                            <span class="development-skip-note">Только для разработки</span>
+                            <p class="lesson-action-status" data-development-skip-status aria-live="polite"></p>
+                        {% endif %}
                     {% endif %}
                 </div>
             </article>
@@ -109,5 +983,29 @@
         <span>Учебное пособие <span aria-hidden="true">·</span> Учитесь видеть логику</span>
     </footer>
     <script src="{{ url_for('static', filename='auth.js') }}" defer></script>
+    {% if access_state == "available" and chapter.position == 1 and not completed %}
+        <script src="{{ url_for('static', filename='byte-exercise.js') }}" defer></script>
+    {% endif %}
+    {% if access_state == "available" and chapter.position == 2 and not completed %}
+        <script src="{{ url_for('static', filename='octal-exercise.js') }}" defer></script>
+    {% endif %}
+    {% if access_state == "available" and chapter.position == 3 and not completed %}
+        <script src="{{ url_for('static', filename='logic-exercise.js') }}" defer></script>
+    {% endif %}
+    {% if access_state == "available" and chapter.position == 4 and not completed %}
+        <script src="{{ url_for('static', filename='gate-lab.js') }}" defer></script>
+    {% endif %}
+    {% if access_state == "available" and chapter.position == 5 and not completed %}
+        <script src="{{ url_for('static', filename='multiplexer-lab.js') }}" defer></script>
+    {% endif %}
+    {% if access_state == "available" and chapter.position == 6 and not completed %}
+        <script src="{{ url_for('static', filename='trigger-lab.js') }}" defer></script>
+    {% endif %}
+    {% if access_state == "available" and chapter.position == 7 and not completed %}
+        <script src="{{ url_for('static', filename='register-counter-lab.js') }}" defer></script>
+    {% endif %}
+    {% if access_state == "available" and chapter.position == 8 and not completed %}
+        <script src="{{ url_for('static', filename='memory-lab.js') }}" defer></script>
+    {% endif %}
 </body>
 </html>
