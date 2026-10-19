@@ -1771,6 +1771,240 @@ a.chapter-link:hover {
     color: #426d49;
 }
 
+.trigger-lab {
+    margin: 10px 0 24px;
+    padding: clamp(20px, 4vw, 32px);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+}
+
+.trigger-lab h2 {
+    margin: 0 0 8px;
+    color: var(--ink);
+    font-size: clamp(20px, 3vw, 25px);
+    letter-spacing: -0.04em;
+}
+
+.trigger-lab .eyebrow {
+    margin: 0 0 8px;
+}
+
+.trigger-lab-instructions,
+.trigger-lab-success {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+.trigger-lab-success {
+    color: #426d49;
+    font-weight: 700;
+}
+
+.trigger-lab-target {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 9px;
+    margin-top: 18px;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.trigger-lab-target strong {
+    display: inline-grid;
+    width: 28px;
+    height: 28px;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: #fff;
+    color: var(--ink);
+    font: 700 13px "DM Mono", Consolas, monospace;
+}
+
+.trigger-lab-controls {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 14px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: #fff;
+}
+
+.trigger-lab-controls button {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: #fff;
+    color: var(--ink);
+    cursor: pointer;
+    font: inherit;
+    font-size: 11px;
+}
+
+.trigger-lab-controls button[aria-pressed="true"] {
+    border-color: var(--ink);
+    background: var(--lime);
+}
+
+.trigger-lab-controls button:focus-visible,
+.trigger-lab-actions button:focus-visible {
+    outline: 3px solid var(--orange);
+    outline-offset: 3px;
+}
+
+.trigger-lab-controls button:disabled,
+.trigger-lab-actions button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.trigger-lab-controls strong {
+    font: 700 14px "DM Mono", Consolas, monospace;
+}
+
+.trigger-lab-output {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0 0 0 auto;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.trigger-lab-output strong {
+    color: var(--ink);
+}
+
+.trigger-lab-light {
+    width: 14px;
+    height: 14px;
+    border: 1px solid #8a9690;
+    border-radius: 50%;
+    background: #e5e9e3;
+}
+
+.trigger-lab-output[data-trigger-output="1"] .trigger-lab-light {
+    border-color: #789c23;
+    background: var(--lime);
+    box-shadow: 0 0 12px #d8f078;
+}
+
+.trigger-lab-progress {
+    margin: 12px 0 0;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.trigger-lab-timeline-wrap {
+    overflow-x: auto;
+    margin-top: 14px;
+}
+
+.trigger-lab-timeline {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--ink);
+    font-size: 11px;
+    text-align: center;
+}
+
+.trigger-lab-timeline caption {
+    margin-bottom: 8px;
+    color: var(--muted);
+    text-align: left;
+}
+
+.trigger-lab-timeline th,
+.trigger-lab-timeline td {
+    padding: 8px;
+    border: 1px solid var(--line);
+}
+
+.trigger-lab-timeline thead th {
+    background: #f1f3eb;
+}
+
+.trigger-lab-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.trigger-lab-actions button {
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.trigger-lab-hint {
+    margin: 12px 0 0;
+    padding: 11px 13px;
+    border-left: 3px solid var(--lime);
+    background: #f1f3eb;
+    color: var(--ink);
+    font-size: 11px;
+    line-height: 1.6;
+}
+
+[data-trigger-status] {
+    margin: 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+[data-trigger-status][data-state="error"] {
+    color: #a04535;
+}
+
+[data-trigger-status][data-state="success"] {
+    color: #426d49;
+}
+
+.development-skip-button {
+    padding: 10px 16px;
+    border: 1px solid #9d2929;
+    border-radius: 3px;
+    background: #c93636;
+    color: #fff;
+    cursor: pointer;
+    font: 800 11px "DM Mono", Consolas, monospace;
+    letter-spacing: 0.06em;
+}
+
+.development-skip-button:hover {
+    background: #a92323;
+}
+
+.development-skip-button:focus-visible {
+    outline: 3px solid var(--orange);
+    outline-offset: 3px;
+}
+
+.development-skip-button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.development-skip-note {
+    color: #a04535;
+    font-size: 10px;
+    font-weight: 700;
+}
+
 .logic-simulator {
     display: flex;
     align-items: center;
@@ -2164,6 +2398,10 @@ a.chapter-link:hover {
 
     .mux-lab-circuit {
         grid-template-columns: 1fr;
+    }
+
+    .trigger-lab-output {
+        margin-left: 0;
     }
 
     .gate-lab-connector {

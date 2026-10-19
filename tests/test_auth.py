@@ -112,6 +112,25 @@ class AuthenticationTests(unittest.TestCase):
             },
         )
 
+    def _submit_trigger_lab(self, events=None):
+        return self._post_json(
+            "/api/exercises/trigger-lab",
+            {
+                "events": events
+                if events is not None
+                else [
+                    {"type": "data", "value": 1},
+                    {"type": "clock", "value": 1},
+                    {"type": "data", "value": 0},
+                    {"type": "clock", "value": 0},
+                    {"type": "clock", "value": 1},
+                    {"type": "clock", "value": 0},
+                    {"type": "data", "value": 1},
+                    {"type": "clock", "value": 1},
+                ]
+            },
+        )
+
     def _complete_chapter(self, chapter_id):
         if chapter_id == 1:
             return self._submit_byte_exercise()
@@ -123,6 +142,8 @@ class AuthenticationTests(unittest.TestCase):
             return self._submit_nand_gate_lab()
         if chapter_id == 5:
             return self._submit_multiplexer_lab()
+        if chapter_id == 6:
+            return self._submit_trigger_lab()
         return self._post_json(
             f"/api/progress/{chapter_id}",
             {"completed": True},
@@ -568,6 +589,86 @@ class AuthenticationTests(unittest.TestCase):
         page = self.client.get("/course/6")
         self.assertEqual(page.status_code, 200)
         self.assertIn("Защёлка и триггер с тактовым фронтом".encode(), page.data)
+        self.assertIn("Поймай тактовый фронт".encode(), page.data)
+        self.assertEqual(page.data.count(b"data-trigger-input"), 2)
+        self.assertIn(b"/static/trigger-lab.js", page.data)
+        self.assertNotIn(b"data-complete-chapter", page.data)
+        self.assertNotIn(b"data-development-skip", page.data)
+
+    def test_trigger_lab_checks_clock_edges_and_holds_between_them(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self._submit_trigger_lab().status_code, 403)
+        for chapter_id in range(1, 6):
+            self.assertEqual(self._complete_chapter(chapter_id).status_code, 200)
+
+        malformed = self._submit_trigger_lab(
+            [{"type": ["clock"], "value": 1}]
+        )
+        no_hold = self._submit_trigger_lab(
+            [
+                {"type": "data", "value": 1},
+                {"type": "clock", "value": 1},
+                {"type": "clock", "value": 0},
+                {"type": "data", "value": 0},
+                {"type": "clock", "value": 1},
+                {"type": "clock", "value": 0},
+                {"type": "data", "value": 1},
+                {"type": "clock", "value": 1},
+            ]
+        )
+        bypass = self._post_json("/api/progress/6", {"completed": True})
+
+        self.assertEqual(malformed.status_code, 400)
+        self.assertEqual(no_hold.status_code, 422)
+        self.assertEqual(no_hold.json["captured"], [1, 0, 1])
+        self.assertFalse(no_hold.json["held_data_change"])
+        self.assertEqual(bypass.status_code, 403)
+        self.assertEqual(self.client.get("/course/7").status_code, 403)
+
+        complete = self._submit_trigger_lab()
+
+        self.assertEqual(complete.status_code, 200)
+        self.assertTrue(complete.json["correct"])
+        self.assertEqual(complete.json["chapter_id"], 6)
+        self.assertEqual(self.client.get("/course/7").status_code, 200)
+        completed_page = self.client.get("/course/6")
+        self.assertIn("D-триггер запомнил вход только".encode(), completed_page.data)
+        self.assertNotIn(b"data-trigger-check", completed_page.data)
+
+    def test_development_skip_button_and_endpoint_are_debug_only(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(
+            self._post_json("/api/development/skip-chapter/1", {}).status_code,
+            404,
+        )
+        for chapter_id in range(1, 6):
+            self.assertEqual(self._complete_chapter(chapter_id).status_code, 200)
+
+        self.app.config["DEBUG"] = True
+        page = self.client.get("/course/6")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b"data-development-skip=\"6\"", page.data)
+        self.assertIn("ПРОПУСТИТЬ".encode(), page.data)
+
+        skipped = self._post_json("/api/development/skip-chapter/6", {})
+
+        self.assertEqual(skipped.status_code, 200)
+        self.assertEqual(skipped.json["chapter_id"], 6)
+        self.assertEqual(self.client.get("/course/7").status_code, 200)
 
     def test_multiplexer_lab_verifies_all_input_combinations_and_blocks_bypass(self):
         self.assertEqual(

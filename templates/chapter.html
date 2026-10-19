@@ -653,6 +653,88 @@
                     </section>
                 {% endif %}
 
+                {% if trigger_lab_target %}
+                    <section
+                        class="trigger-lab"
+                        aria-labelledby="trigger-lab-title"
+                        data-trigger-lab
+                        data-submit-url="{{ url_for('submit_trigger_lab') }}"
+                    >
+                        <p class="eyebrow">ЛАБОРАТОРИЯ СОСТОЯНИЙ · D-ТРИГГЕР</p>
+                        <h2 id="trigger-lab-title">Поймай тактовый фронт</h2>
+                        {% if completed %}
+                            <p class="trigger-lab-success" role="status">
+                                D-триггер запомнил вход только на положительных фронтах, а изменение D
+                                между фронтами не повлияло на Q.
+                            </p>
+                        {% else %}
+                            <p class="trigger-lab-instructions">
+                                Проведите сигнал Q через последовательность 1 → 0 → 1. Выставляйте D,
+                                затем нажимайте CLK, чтобы создать положительный фронт. Между фронтами
+                                измените D при CLK = 1 и проверьте, что сохранённый Q не меняется.
+                            </p>
+                            <div class="trigger-lab-target" aria-label="Целевая последовательность">
+                                <span>Три положительных фронта должны сохранить:</span>
+                                {% for value in trigger_lab_target %}
+                                    <strong>{{ value }}</strong>
+                                    {% if not loop.last %}<span aria-hidden="true">→</span>{% endif %}
+                                {% endfor %}
+                            </div>
+                            <div class="trigger-lab-controls" role="group" aria-label="Управление D-триггером">
+                                <button type="button" data-trigger-input="data" aria-pressed="false">
+                                    Вход D <strong data-trigger-value="data">0</strong>
+                                </button>
+                                <button type="button" data-trigger-input="clock" aria-pressed="false">
+                                    Тактовый сигнал CLK <strong data-trigger-value="clock">0</strong>
+                                </button>
+                                <p class="trigger-lab-output" data-trigger-output="0" aria-live="polite">
+                                    <span class="trigger-lab-light" aria-hidden="true"></span>
+                                    <span>Сохранённое состояние Q = <strong data-trigger-value="output">0</strong></span>
+                                </p>
+                            </div>
+                            <p class="trigger-lab-progress" data-trigger-progress aria-live="polite">
+                                Зафиксировано фронтов: 0 из {{ trigger_lab_target|length }}
+                            </p>
+                            <div class="trigger-lab-timeline-wrap">
+                                <table class="trigger-lab-timeline">
+                                    <caption>Хронология входов и сохранённого состояния</caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Шаг</th>
+                                            <th scope="col">Действие</th>
+                                            <th scope="col">D</th>
+                                            <th scope="col">CLK</th>
+                                            <th scope="col">Q</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody data-trigger-timeline>
+                                        <tr>
+                                            <th scope="row">0</th>
+                                            <td>Начальное состояние</td>
+                                            <td>0</td>
+                                            <td>0</td>
+                                            <td>0</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="trigger-lab-actions">
+                                <button class="primary-link" type="button" data-trigger-check>
+                                    Проверить последовательность <span aria-hidden="true">→</span>
+                                </button>
+                                <button class="logic-hint-button" type="button" data-trigger-hint>
+                                    Подсказка
+                                </button>
+                                <button class="secondary-link" type="button" data-trigger-reset>
+                                    Сбросить
+                                </button>
+                                <p data-trigger-status aria-live="polite" role="status"></p>
+                            </div>
+                            <p class="trigger-lab-hint" data-trigger-hint-text aria-live="polite" hidden></p>
+                        {% endif %}
+                    </section>
+                {% endif %}
+
                 <div class="lesson-actions">
                     {% if completed %}
                         <p class="lesson-complete-status"><span aria-hidden="true">✓</span> Раздел пройден</p>
@@ -664,7 +746,7 @@
                             <p class="course-finished">Вы прошли все разделы курса.</p>
                         {% endif %}
                     {% else %}
-                        {% if byte_exercise_target or octal_exercise_target or logic_exercise_target or gate_lab_rows or mux_lab_rows %}
+                        {% if byte_exercise_target or octal_exercise_target or logic_exercise_target or gate_lab_rows or mux_lab_rows or trigger_lab_target %}
                             <p class="lesson-action-note">Выполните практическое задание выше, чтобы открыть следующий раздел.</p>
                         {% else %}
                             <p class="lesson-action-note">После изучения материала отметьте раздел пройденным, чтобы открыть следующий.</p>
@@ -672,6 +754,17 @@
                                 Отметить раздел пройденным <span aria-hidden="true">→</span>
                             </button>
                             <p class="lesson-action-status" data-complete-status aria-live="polite"></p>
+                        {% endif %}
+                        {% if development_mode %}
+                            <button
+                                class="development-skip-button"
+                                type="button"
+                                data-development-skip="{{ chapter_id }}"
+                            >
+                                ПРОПУСТИТЬ
+                            </button>
+                            <span class="development-skip-note">Только для разработки</span>
+                            <p class="lesson-action-status" data-development-skip-status aria-live="polite"></p>
                         {% endif %}
                     {% endif %}
                 </div>
@@ -698,6 +791,9 @@
     {% endif %}
     {% if access_state == "available" and chapter.position == 5 and not completed %}
         <script src="{{ url_for('static', filename='multiplexer-lab.js') }}" defer></script>
+    {% endif %}
+    {% if access_state == "available" and chapter.position == 6 and not completed %}
+        <script src="{{ url_for('static', filename='trigger-lab.js') }}" defer></script>
     {% endif %}
 </body>
 </html>

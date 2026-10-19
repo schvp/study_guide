@@ -203,3 +203,38 @@ if (completeChapterButton) {
         }
     });
 }
+
+const developmentSkipButton = document.querySelector("[data-development-skip]");
+if (developmentSkipButton) {
+    developmentSkipButton.addEventListener("click", async () => {
+        const status = document.querySelector("[data-development-skip-status]");
+        developmentSkipButton.disabled = true;
+        status.textContent = "Пропускаем раздел…";
+
+        try {
+            const response = await fetch(
+                `/api/development/skip-chapter/${developmentSkipButton.dataset.developmentSkip}`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-Token": csrfToken,
+                    },
+                    body: JSON.stringify({}),
+                },
+            );
+            const result = await readApiResponse(response);
+
+            if (!response.ok) {
+                throw new Error(result.error || "Не удалось пропустить раздел.");
+            }
+
+            window.location.reload();
+        } catch (error) {
+            status.textContent = error instanceof TypeError
+                ? "Не удалось связаться с сервером. Попробуйте ещё раз."
+                : error.message;
+            developmentSkipButton.disabled = false;
+        }
+    });
+}

@@ -16,6 +16,7 @@ BYTE_EXERCISE_TARGET = 173
 OCTAL_EXERCISE_TARGET = 173
 LOGIC_EXERCISE_TARGET = (0, 1, 1, 0)
 GATE_LAB_TARGET = (0, 1, 1, 1)
+TRIGGER_LAB_TARGET = (1, 0, 1)
 COURSE_TITLE = "Схемотехника цифровых систем"
 COURSE_DESCRIPTION = (
     "Пособие знакомит с принципами построения цифровых устройств "
@@ -1331,6 +1332,10 @@ def create_app(test_config=None):
                 if chapter_by_id["position"] == 5
                 else None
             ),
+            trigger_lab_target=(
+                TRIGGER_LAB_TARGET if chapter_by_id["position"] == 6 else None
+            ),
+            development_mode=app.debug,
             course=course,
             csrf_token=session["csrf_token"],
         )
@@ -1953,6 +1958,183 @@ def create_app(test_config=None):
         database.commit()
         return jsonify(correct=True, completed=True, chapter_id=chapter["id"])
 
+    @app.post("/api/exercises/trigger-lab")
+    @csrf_protected
+    def submit_trigger_lab():
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы сохранить результат задания."), 401
+
+        payload = json_payload()
+        if payload is None:
+            return jsonify(error="Некорректный запрос."), 400
+        events = payload.get("events")
+        if (
+            not isinstance(events, list)
+            or not events
+            or len(events) > 24
+            or any(
+                not isinstance(event, dict)
+                or set(event) != {"type", "value"}
+                or not isinstance(event["type"], str)
+                or event["type"] not in {"data", "clock"}
+                or type(event["value"]) is not int
+                or event["value"] not in (0, 1)
+                for event in events
+            )
+        ):
+            return jsonify(error="Укажите последовательность переключений D и CLK."), 400
+
+        database = get_db()
+        chapter = database.execute(
+            """
+            SELECT chapters.id, chapters.course_id, chapters.position
+            FROM chapters
+            JOIN courses ON courses.id = chapters.course_id
+            WHERE courses.slug = ? AND courses.status = 'published'
+                AND chapters.position = 6 AND chapters.status = 'published'
+            """,
+            (COURSE_SLUG,),
+        ).fetchone()
+        if chapter is None:
+            return jsonify(error="Практическая лаборатория сейчас недоступна."), 404
+
+        completed_chapters = {
+            row["chapter_id"]
+            for row in database.execute(
+                """
+                SELECT chapter_id FROM chapter_progress
+                WHERE user_id = ? AND completed = 1
+                """,
+                (user["id"],),
+            ).fetchall()
+        }
+        chapters = get_course_chapters(chapter["course_id"])
+        if any(
+            previous["id"] not in completed_chapters
+            for previous in chapters
+            if previous["position"] < chapter["position"]
+        ):
+            return jsonify(error="Сначала завершите предыдущие разделы курса."), 403
+
+        data = 0
+        clock = 0
+        output = 0
+        captured_values = []
+        held_data_change = False
+        for event in events:
+            value = event["value"]
+            if event["type"] == "data":
+                if clock == 1 and value != data and value != output:
+                    held_data_change = True
+                data = value
+            else:
+                previous_clock = clock
+                clock = value
+                if previous_clock == 0 and clock == 1:
+                    output = data
+                    captured_values.append(output)
+
+        if tuple(captured_values) != TRIGGER_LAB_TARGET or not held_data_change:
+            if tuple(captured_values) != TRIGGER_LAB_TARGET:
+                message = (
+                    "На положительных фронтах Q должна пройти последовательность "
+                    "1 → 0 → 1."
+                )
+            else:
+                message = (
+                    "Измените D между фронтами, когда CLK = 1, и убедитесь, "
+                    "что Q сохраняет прежнее значение."
+                )
+            return jsonify(
+                correct=False,
+                captured=captured_values,
+                held_data_change=held_data_change,
+                message=message,
+            ), 422
+
+        database.execute(
+            """
+            INSERT INTO chapter_progress (user_id, chapter_id, completed)
+            VALUES (?, ?, 1)
+            ON CONFLICT (user_id, chapter_id) DO UPDATE SET
+                completed = 1,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.execute(
+            """
+            INSERT OR IGNORE INTO chapter_completion_history (user_id, chapter_id)
+            VALUES (?, ?)
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.commit()
+        return jsonify(correct=True, completed=True, chapter_id=chapter["id"])
+
+    @app.post("/api/development/skip-chapter/<int:chapter_id>")
+    @csrf_protected
+    def development_skip_chapter(chapter_id):
+        if not app.debug:
+            return jsonify(error="Маршрут доступен только в режиме разработки."), 404
+
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы продолжить."), 401
+
+        database = get_db()
+        chapter = database.execute(
+            """
+            SELECT chapters.id, chapters.course_id, chapters.position
+            FROM chapters
+            JOIN courses ON courses.id = chapters.course_id
+            WHERE chapters.id = ? AND chapters.status = 'published'
+                AND courses.status = 'published'
+            """,
+            (chapter_id,),
+        ).fetchone()
+        if chapter is None:
+            return jsonify(error="Такого раздела не существует."), 404
+
+        chapters = get_course_chapters(chapter["course_id"])
+        completed_chapters = {
+            row["chapter_id"]
+            for row in database.execute(
+                """
+                SELECT chapter_id FROM chapter_progress
+                WHERE user_id = ? AND completed = 1
+                """,
+                (user["id"],),
+            ).fetchall()
+        }
+        if any(
+            previous["id"] not in completed_chapters
+            for previous in chapters
+            if previous["position"] < chapter["position"]
+        ):
+            return jsonify(error="Сначала откройте предыдущие разделы курса."), 403
+
+        database.execute(
+            """
+            INSERT INTO chapter_progress (user_id, chapter_id, completed)
+            VALUES (?, ?, 1)
+            ON CONFLICT (user_id, chapter_id) DO UPDATE SET
+                completed = 1,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.execute(
+            """
+            INSERT OR IGNORE INTO chapter_completion_history (user_id, chapter_id)
+            VALUES (?, ?)
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.commit()
+        return jsonify(completed=True, chapter_id=chapter["id"])
+
     @app.post("/api/progress/<int:chapter_id>")
     @csrf_protected
     def update_progress(chapter_id):
@@ -2002,7 +2184,7 @@ def create_app(test_config=None):
         if (
             chapter["course_slug"] == COURSE_SLUG
             and chapter_id not in completed_chapters
-            and chapter["position"] in (1, 2, 3, 4, 5)
+            and chapter["position"] in (1, 2, 3, 4, 5, 6)
         ):
             exercise_messages = {
                 1: "Сначала выполните интерактивное задание «Собери байт».",
@@ -2010,6 +2192,7 @@ def create_app(test_config=None):
                 3: "Сначала соберите и проверьте логическую схему.",
                 4: "Сначала постройте и проверьте схему из NAND-элементов.",
                 5: "Сначала соберите и проверьте маршрутизатор данных.",
+                6: "Сначала выполните лабораторную работу с D-триггером.",
             }
             return jsonify(error=exercise_messages[chapter["position"]]), 403
 
