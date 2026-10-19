@@ -14,6 +14,7 @@ from migrations import migrate_database
 COURSE_SLUG = "digital-circuits"
 BYTE_EXERCISE_TARGET = 173
 OCTAL_EXERCISE_TARGET = 173
+LOGIC_EXERCISE_TARGET = (0, 1, 1, 0)
 COURSE_TITLE = "Схемотехника цифровых систем"
 COURSE_DESCRIPTION = (
     "Пособие знакомит с принципами построения цифровых устройств "
@@ -1291,6 +1292,9 @@ def create_app(test_config=None):
             octal_exercise_target=(
                 OCTAL_EXERCISE_TARGET if chapter_by_id["position"] == 2 else None
             ),
+            logic_exercise_target=(
+                LOGIC_EXERCISE_TARGET if chapter_by_id["position"] == 3 else None
+            ),
             course=course,
             csrf_token=session["csrf_token"],
         )
@@ -1560,6 +1564,111 @@ def create_app(test_config=None):
             octal=format(OCTAL_EXERCISE_TARGET, "o"),
         )
 
+    @app.post("/api/exercises/boolean-circuit")
+    @csrf_protected
+    def submit_boolean_circuit_exercise():
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы сохранить результат задания."), 401
+
+        payload = json_payload()
+        if payload is None:
+            return jsonify(error="Некорректный запрос."), 400
+
+        expected_boolean_fields = {
+            "first_a_inverted",
+            "first_b_inverted",
+            "second_a_inverted",
+            "second_b_inverted",
+        }
+        if (
+            not expected_boolean_fields.issubset(payload)
+            or any(type(payload[field]) is not bool for field in expected_boolean_fields)
+            or any(
+                not isinstance(payload.get(field), str)
+                or payload[field] not in {"and", "or"}
+                for field in ("first_gate", "second_gate", "output_gate")
+            )
+        ):
+            return jsonify(error="Проверьте настройки логических элементов схемы."), 400
+
+        database = get_db()
+        chapter = database.execute(
+            """
+            SELECT chapters.id, chapters.course_id, chapters.position
+            FROM chapters
+            JOIN courses ON courses.id = chapters.course_id
+            WHERE courses.slug = ? AND courses.status = 'published'
+                AND chapters.position = 3 AND chapters.status = 'published'
+            """,
+            (COURSE_SLUG,),
+        ).fetchone()
+        if chapter is None:
+            return jsonify(error="Практическое задание сейчас недоступно."), 404
+
+        completed_chapters = {
+            row["chapter_id"]
+            for row in database.execute(
+                """
+                SELECT chapter_id FROM chapter_progress
+                WHERE user_id = ? AND completed = 1
+                """,
+                (user["id"],),
+            ).fetchall()
+        }
+        chapters = get_course_chapters(chapter["course_id"])
+        if any(
+            previous["id"] not in completed_chapters
+            for previous in chapters
+            if previous["position"] < chapter["position"]
+        ):
+            return jsonify(error="Сначала завершите предыдущие разделы курса."), 403
+
+        def apply_gate(gate, left, right):
+            return int(left and right) if gate == "and" else int(left or right)
+
+        mismatches = []
+        for row, (a, b) in enumerate(((0, 0), (0, 1), (1, 0), (1, 1))):
+            first_a = 1 - a if payload["first_a_inverted"] else a
+            first_b = 1 - b if payload["first_b_inverted"] else b
+            second_a = 1 - a if payload["second_a_inverted"] else a
+            second_b = 1 - b if payload["second_b_inverted"] else b
+            first_term = apply_gate(payload["first_gate"], first_a, first_b)
+            second_term = apply_gate(payload["second_gate"], second_a, second_b)
+            actual = apply_gate(payload["output_gate"], first_term, second_term)
+            expected = LOGIC_EXERCISE_TARGET[row]
+            if actual != expected:
+                mismatches.append(
+                    {"a": a, "b": b, "expected": expected, "actual": actual}
+                )
+
+        if mismatches:
+            return jsonify(
+                correct=False,
+                mismatches=mismatches,
+                message="В некоторых строках схема даёт неверный выход.",
+            ), 422
+
+        database.execute(
+            """
+            INSERT INTO chapter_progress (user_id, chapter_id, completed)
+            VALUES (?, ?, 1)
+            ON CONFLICT (user_id, chapter_id) DO UPDATE SET
+                completed = 1,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.execute(
+            """
+            INSERT OR IGNORE INTO chapter_completion_history (user_id, chapter_id)
+            VALUES (?, ?)
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.commit()
+        return jsonify(correct=True, completed=True, chapter_id=chapter["id"])
+
     @app.post("/api/progress/<int:chapter_id>")
     @csrf_protected
     def update_progress(chapter_id):
@@ -1609,15 +1718,14 @@ def create_app(test_config=None):
         if (
             chapter["course_slug"] == COURSE_SLUG
             and chapter_id not in completed_chapters
-            and chapter["position"] in (1, 2)
+            and chapter["position"] in (1, 2, 3)
         ):
-            return jsonify(
-                error=(
-                    "Сначала выполните интерактивное задание «Собери байт»."
-                    if chapter["position"] == 1
-                    else "Сначала выполните интерактивное задание по переводу в восьмеричную систему."
-                )
-            ), 403
+            exercise_messages = {
+                1: "Сначала выполните интерактивное задание «Собери байт».",
+                2: "Сначала выполните интерактивное задание по переводу в восьмеричную систему.",
+                3: "Сначала соберите и проверьте логическую схему.",
+            }
+            return jsonify(error=exercise_messages[chapter["position"]]), 403
 
         get_db().execute(
             """

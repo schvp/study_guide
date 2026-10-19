@@ -62,11 +62,29 @@ class AuthenticationTests(unittest.TestCase):
             },
         )
 
+    def _submit_logic_exercise(self, circuit=None):
+        return self._post_json(
+            "/api/exercises/boolean-circuit",
+            circuit
+            if circuit is not None
+            else {
+                "first_a_inverted": False,
+                "first_b_inverted": True,
+                "first_gate": "and",
+                "second_a_inverted": True,
+                "second_b_inverted": False,
+                "second_gate": "and",
+                "output_gate": "or",
+            },
+        )
+
     def _complete_chapter(self, chapter_id):
         if chapter_id == 1:
             return self._submit_byte_exercise()
         if chapter_id == 2:
             return self._submit_octal_exercise()
+        if chapter_id == 3:
+            return self._submit_logic_exercise()
         return self._post_json(
             f"/api/progress/{chapter_id}",
             {"completed": True},
@@ -1977,6 +1995,49 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(valid_but_wrong.json["step"], 2)
         self.assertEqual(valid_but_wrong.json["expected_quotient"], 2)
         self.assertEqual(valid_but_wrong.json["expected_remainder"], 5)
+
+    def test_boolean_circuit_requires_all_truth_table_rows_before_completing_chapter(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+
+        locked = self._submit_logic_exercise()
+        self.assertEqual(locked.status_code, 403)
+        self.assertEqual(self._complete_chapter(1).status_code, 200)
+        self.assertEqual(self._complete_chapter(2).status_code, 200)
+        invalid = self._submit_logic_exercise({"first_gate": []})
+        incorrect = self._submit_logic_exercise(
+            {
+                "first_a_inverted": False,
+                "first_b_inverted": False,
+                "first_gate": "and",
+                "second_a_inverted": False,
+                "second_b_inverted": False,
+                "second_gate": "and",
+                "output_gate": "or",
+            }
+        )
+        bypass = self._post_json(
+            "/api/progress/3",
+            {"completed": True},
+        )
+
+        self.assertEqual(invalid.status_code, 400)
+        self.assertEqual(incorrect.status_code, 422)
+        self.assertEqual(len(incorrect.json["mismatches"]), 3)
+        self.assertEqual(bypass.status_code, 403)
+        self.assertEqual(self.client.get("/course/4").status_code, 403)
+
+        correct = self._submit_logic_exercise()
+        self.assertEqual(correct.status_code, 200)
+        self.assertTrue(correct.json["correct"])
+        self.assertEqual(correct.json["chapter_id"], 3)
+        self.assertEqual(self.client.get("/course/4").status_code, 200)
 
     def test_correct_octal_route_completes_second_chapter(self):
         self.assertEqual(
