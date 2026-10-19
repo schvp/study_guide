@@ -78,6 +78,24 @@ class AuthenticationTests(unittest.TestCase):
             },
         )
 
+    def _submit_nand_gate_lab(self, circuit=None):
+        return self._post_json(
+            "/api/exercises/nand-gate-lab",
+            circuit
+            if circuit is not None
+            else {
+                "first_left": "a",
+                "first_right": "a",
+                "first_gate": "nand",
+                "second_left": "b",
+                "second_right": "b",
+                "second_gate": "nand",
+                "output_left": "first",
+                "output_right": "second",
+                "output_gate": "nand",
+            },
+        )
+
     def _complete_chapter(self, chapter_id):
         if chapter_id == 1:
             return self._submit_byte_exercise()
@@ -85,6 +103,8 @@ class AuthenticationTests(unittest.TestCase):
             return self._submit_octal_exercise()
         if chapter_id == 3:
             return self._submit_logic_exercise()
+        if chapter_id == 4:
+            return self._submit_nand_gate_lab()
         return self._post_json(
             f"/api/progress/{chapter_id}",
             {"completed": True},
@@ -2043,6 +2063,52 @@ class AuthenticationTests(unittest.TestCase):
         self.assertTrue(correct.json["correct"])
         self.assertEqual(correct.json["chapter_id"], 3)
         self.assertEqual(self.client.get("/course/4").status_code, 200)
+
+    def test_nand_gate_lab_verifies_wiring_and_requires_all_prior_chapters(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+
+        locked = self._submit_nand_gate_lab()
+        self.assertEqual(locked.status_code, 403)
+        for chapter_id in (1, 2, 3):
+            self.assertEqual(self._complete_chapter(chapter_id).status_code, 200)
+
+        malformed = self._submit_nand_gate_lab({"first_left": "source-code"})
+        incorrect = self._submit_nand_gate_lab(
+            {
+                "first_left": "a",
+                "first_right": "a",
+                "first_gate": "nand",
+                "second_left": "b",
+                "second_right": "b",
+                "second_gate": "nand",
+                "output_left": "first",
+                "output_right": "second",
+                "output_gate": "nor",
+            }
+        )
+        bypass = self._post_json(
+            "/api/progress/4",
+            {"completed": True},
+        )
+
+        self.assertEqual(malformed.status_code, 400)
+        self.assertEqual(incorrect.status_code, 422)
+        self.assertGreater(len(incorrect.json["mismatches"]), 0)
+        self.assertEqual(bypass.status_code, 403)
+        self.assertEqual(self.client.get("/course/5").status_code, 403)
+
+        correct = self._submit_nand_gate_lab()
+        self.assertEqual(correct.status_code, 200)
+        self.assertTrue(correct.json["correct"])
+        self.assertEqual(correct.json["chapter_id"], 4)
+        self.assertEqual(self.client.get("/course/5").status_code, 200)
         completed_page = self.client.get("/course/3")
         self.assertIn("Вы построили исключающее ИЛИ".encode(), completed_page.data)
         self.assertNotIn(b"data-logic-submit", completed_page.data)

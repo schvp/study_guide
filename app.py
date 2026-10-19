@@ -15,6 +15,7 @@ COURSE_SLUG = "digital-circuits"
 BYTE_EXERCISE_TARGET = 173
 OCTAL_EXERCISE_TARGET = 173
 LOGIC_EXERCISE_TARGET = (0, 1, 1, 0)
+GATE_LAB_TARGET = (0, 1, 1, 1)
 COURSE_TITLE = "Схемотехника цифровых систем"
 COURSE_DESCRIPTION = (
     "Пособие знакомит с принципами построения цифровых устройств "
@@ -1679,6 +1680,133 @@ def create_app(test_config=None):
         database.commit()
         return jsonify(correct=True, completed=True, chapter_id=chapter["id"])
 
+    @app.post("/api/exercises/nand-gate-lab")
+    @csrf_protected
+    def submit_nand_gate_lab():
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы сохранить результат задания."), 401
+
+        payload = json_payload()
+        if payload is None:
+            return jsonify(error="Некорректный запрос."), 400
+        wire_fields = (
+            "first_left",
+            "first_right",
+            "second_left",
+            "second_right",
+            "output_left",
+            "output_right",
+        )
+        if (
+            any(
+                not isinstance(payload.get(field), str)
+                for field in (*wire_fields, "first_gate", "second_gate", "output_gate")
+            )
+            or any(
+                payload[field] not in {"a", "b"}
+                for field in wire_fields[:4]
+            )
+            or any(
+                payload[field] not in {"first", "second"}
+                for field in wire_fields[4:]
+            )
+            or any(
+                payload[field] not in {"nand", "nor"}
+                for field in ("first_gate", "second_gate", "output_gate")
+            )
+        ):
+            return jsonify(error="Проверьте подключения проводов и типы элементов."), 400
+
+        database = get_db()
+        chapter = database.execute(
+            """
+            SELECT chapters.id, chapters.course_id, chapters.position
+            FROM chapters
+            JOIN courses ON courses.id = chapters.course_id
+            WHERE courses.slug = ? AND courses.status = 'published'
+                AND chapters.position = 4 AND chapters.status = 'published'
+            """,
+            (COURSE_SLUG,),
+        ).fetchone()
+        if chapter is None:
+            return jsonify(error="Практическая лаборатория сейчас недоступна."), 404
+
+        completed_chapters = {
+            row["chapter_id"]
+            for row in database.execute(
+                """
+                SELECT chapter_id FROM chapter_progress
+                WHERE user_id = ? AND completed = 1
+                """,
+                (user["id"],),
+            ).fetchall()
+        }
+        chapters = get_course_chapters(chapter["course_id"])
+        if any(
+            previous["id"] not in completed_chapters
+            for previous in chapters
+            if previous["position"] < chapter["position"]
+        ):
+            return jsonify(error="Сначала завершите предыдущие разделы курса."), 403
+
+        def evaluate_gate(gate, left, right):
+            if gate == "nand":
+                return int(not (left and right))
+            return int(not (left or right))
+
+        mismatches = []
+        for row, (a, b) in enumerate(((0, 0), (0, 1), (1, 0), (1, 1))):
+            inputs = {"a": a, "b": b}
+            first = evaluate_gate(
+                payload["first_gate"],
+                inputs[payload["first_left"]],
+                inputs[payload["first_right"]],
+            )
+            second = evaluate_gate(
+                payload["second_gate"],
+                inputs[payload["second_left"]],
+                inputs[payload["second_right"]],
+            )
+            intermediates = {"first": first, "second": second}
+            output = evaluate_gate(
+                payload["output_gate"],
+                intermediates[payload["output_left"]],
+                intermediates[payload["output_right"]],
+            )
+            expected = GATE_LAB_TARGET[row]
+            if output != expected:
+                mismatches.append(
+                    {"a": a, "b": b, "expected": expected, "actual": output}
+                )
+
+        if mismatches:
+            return jsonify(
+                correct=False,
+                mismatches=mismatches,
+                message="Схема пока не открывает шлюз для всех входных комбинаций.",
+            ), 422
+
+        database.execute(
+            """
+            INSERT INTO chapter_progress (user_id, chapter_id, completed)
+            VALUES (?, ?, 1)
+            ON CONFLICT (user_id, chapter_id) DO UPDATE SET
+                completed = 1,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.execute(
+            """
+            INSERT OR IGNORE INTO chapter_completion_history (user_id, chapter_id)
+            VALUES (?, ?)
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.commit()
+        return jsonify(correct=True, completed=True, chapter_id=chapter["id"])
+
     @app.post("/api/progress/<int:chapter_id>")
     @csrf_protected
     def update_progress(chapter_id):
@@ -1728,12 +1856,13 @@ def create_app(test_config=None):
         if (
             chapter["course_slug"] == COURSE_SLUG
             and chapter_id not in completed_chapters
-            and chapter["position"] in (1, 2, 3)
+            and chapter["position"] in (1, 2, 3, 4)
         ):
             exercise_messages = {
                 1: "Сначала выполните интерактивное задание «Собери байт».",
                 2: "Сначала выполните интерактивное задание по переводу в восьмеричную систему.",
                 3: "Сначала соберите и проверьте логическую схему.",
+                4: "Сначала постройте и проверьте схему из NAND-элементов.",
             }
             return jsonify(error=exercise_messages[chapter["position"]]), 403
 
