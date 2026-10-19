@@ -416,6 +416,7 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("Почини индикатор пропуска".encode(), page.data)
         self.assertEqual(page.data.count(b"data-logic-row"), 4)
         self.assertIn(b"/static/logic-exercise.js", page.data)
+        self.assertIn(b"data-logic-hint", page.data)
         self.assertNotIn(b"data-complete-chapter", page.data)
 
     def test_fourth_chapter_introduces_logic_gates_after_prior_chapters(self):

@@ -5,9 +5,16 @@ if (logicExercise) {
     const inputValues = { a: 0, b: 0 };
     const rows = Array.from(logicExercise.querySelectorAll("[data-logic-row]"));
     const submitButton = logicExercise.querySelector("[data-logic-submit]");
+    const hintButton = logicExercise.querySelector("[data-logic-hint]");
+    const hintText = logicExercise.querySelector("[data-logic-hint-text]");
     const status = logicExercise.querySelector("[data-logic-status]");
     const csrfMeta = document.querySelector('meta[name="csrf-token"]');
     const csrfToken = csrfMeta ? csrfMeta.content : "";
+    const hints = [
+        "Выход должен быть 1 только в строках 01 и 10. Для одинаковых входов 00 и 11 он должен быть 0.",
+        "Соберите путь A И ¬B и путь ¬A И B, затем объедините результаты элементов И операцией ИЛИ.",
+    ];
+    let hintsShown = 0;
 
     function readCircuit() {
         return {
@@ -105,6 +112,17 @@ if (logicExercise) {
         });
     });
 
+    hintButton.addEventListener("click", () => {
+        hintText.textContent = hints[hintsShown];
+        hintText.hidden = false;
+        hintsShown += 1;
+        if (hintsShown === hints.length) {
+            hintButton.hidden = true;
+        } else {
+            hintButton.textContent = "Следующая подсказка";
+        }
+    });
+
     submitButton.addEventListener("click", async () => {
         submitButton.disabled = true;
         status.textContent = "Проверяем все четыре комбинации…";
@@ -140,6 +158,7 @@ if (logicExercise) {
                     .join(", ");
                 status.textContent = `${result.message} Проверьте входы: ${combinations}.`;
                 status.dataset.state = "error";
+                hintButton.hidden = false;
                 return;
             }
             if (!response.ok) {
