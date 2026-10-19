@@ -131,6 +131,25 @@ class AuthenticationTests(unittest.TestCase):
             },
         )
 
+    def _submit_register_counter_lab(self, bits=None):
+        data_bits = bits if bits is not None else [1, 0, 1, 1, 0, 1, 1, 0]
+        events = []
+        current_data = 0
+        for bit in data_bits:
+            if bit != current_data:
+                events.append({"type": "data", "value": bit})
+                current_data = bit
+            events.extend(
+                (
+                    {"type": "clock", "value": 1},
+                    {"type": "clock", "value": 0},
+                )
+            )
+        return self._post_json(
+            "/api/exercises/register-counter-lab",
+            {"events": events},
+        )
+
     def _complete_chapter(self, chapter_id):
         if chapter_id == 1:
             return self._submit_byte_exercise()
@@ -144,6 +163,8 @@ class AuthenticationTests(unittest.TestCase):
             return self._submit_multiplexer_lab()
         if chapter_id == 6:
             return self._submit_trigger_lab()
+        if chapter_id == 7:
+            return self._submit_register_counter_lab()
         return self._post_json(
             f"/api/progress/{chapter_id}",
             {"completed": True},
@@ -744,6 +765,43 @@ class AuthenticationTests(unittest.TestCase):
         page = self.client.get("/course/7")
         self.assertEqual(page.status_code, 200)
         self.assertIn("Параллельные регистры".encode(), page.data)
+
+    def test_register_counter_lab_verifies_serial_word_and_modulo_six(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self._submit_register_counter_lab().status_code, 403)
+        for chapter_id in range(1, 7):
+            self.assertEqual(self._complete_chapter(chapter_id).status_code, 200)
+
+        malformed = self._post_json(
+            "/api/exercises/register-counter-lab",
+            {"events": [{"type": "clock", "value": True}]},
+        )
+        wrong_word = self._submit_register_counter_lab([1, 0, 1, 1, 0, 1, 0, 0])
+        bypass = self._post_json("/api/progress/7", {"completed": True})
+
+        self.assertEqual(malformed.status_code, 400)
+        self.assertEqual(wrong_word.status_code, 422)
+        self.assertEqual(wrong_word.json["sampled_bits"], [1, 0, 1, 1, 0, 1, 0, 0])
+        self.assertEqual(wrong_word.json["register"], "0100")
+        self.assertEqual(wrong_word.json["counter_states"][-1], 2)
+        self.assertEqual(bypass.status_code, 403)
+        self.assertEqual(self.client.get("/course/8").status_code, 403)
+
+        complete = self._submit_register_counter_lab()
+
+        self.assertEqual(complete.status_code, 200)
+        self.assertTrue(complete.json["correct"])
+        self.assertEqual(complete.json["chapter_id"], 7)
+        self.assertEqual(complete.json["register"], "0110")
+        self.assertEqual(complete.json["counter_states"], [0, 1, 2, 3, 4, 5, 0, 1, 2])
+        self.assertEqual(self.client.get("/course/8").status_code, 200)
 
     def test_eighth_chapter_introduces_memory_after_registers_and_counters(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
