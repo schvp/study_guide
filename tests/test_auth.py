@@ -354,6 +354,11 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("## Операция НЕ", content)
         self.assertIn("## Операция И", content)
         self.assertIn("## Основные законы булевой алгебры", content)
+        self.assertIn("## Практические задания с разбором", content)
+        self.assertIn("¬(A ∧ B) = ¬A ∨ ¬B", content)
+        self.assertIn("(A ∧ B) ∨ (A ∧ ¬B)", content)
+        self.assertIn("## Задания для самостоятельной работы", content)
+        self.assertIn("выходы равны 0, 0, 1, 0", content)
         self.assertIn("2³ = 8 строк", content)
 
         self.assertEqual(
@@ -375,6 +380,8 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertIn("Булева алгебра".encode(), page.data)
         self.assertIn("Операция ИЛИ".encode(), page.data)
+        self.assertIn("Практические задания с разбором".encode(), page.data)
+        self.assertIn("Задания для самостоятельной работы".encode(), page.data)
 
     def test_fourth_chapter_introduces_logic_gates_after_prior_chapters(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
