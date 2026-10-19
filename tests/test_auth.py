@@ -150,6 +150,35 @@ class AuthenticationTests(unittest.TestCase):
             {"events": events},
         )
 
+    def _submit_memory_lab(self, include_power_cycle=True):
+        events = [
+            {"type": "address", "value": 2},
+            {"type": "data", "value": "1101"},
+            {"type": "write"},
+            {"type": "read", "memory": "ram"},
+            {"type": "address", "value": 1},
+            {"type": "read", "memory": "rom"},
+        ]
+        if include_power_cycle:
+            events.extend(
+                (
+                    {"type": "power"},
+                    {"type": "power"},
+                )
+            )
+        events.extend(
+            (
+                {"type": "address", "value": 2},
+                {"type": "read", "memory": "ram"},
+                {"type": "address", "value": 1},
+                {"type": "read", "memory": "rom"},
+            )
+        )
+        return self._post_json(
+            "/api/exercises/memory-lab",
+            {"events": events},
+        )
+
     def _complete_chapter(self, chapter_id):
         if chapter_id == 1:
             return self._submit_byte_exercise()
@@ -165,6 +194,8 @@ class AuthenticationTests(unittest.TestCase):
             return self._submit_trigger_lab()
         if chapter_id == 7:
             return self._submit_register_counter_lab()
+        if chapter_id == 8:
+            return self._submit_memory_lab()
         return self._post_json(
             f"/api/progress/{chapter_id}",
             {"completed": True},
@@ -842,6 +873,69 @@ class AuthenticationTests(unittest.TestCase):
         page = self.client.get("/course/8")
         self.assertEqual(page.status_code, 200)
         self.assertIn("Ячейки, слова и адреса".encode(), page.data)
+
+    def test_memory_lab_verifies_ram_write_and_rom_power_retention(self):
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        self.assertEqual(self._submit_memory_lab().status_code, 403)
+        for chapter_id in range(1, 8):
+            self.assertEqual(self._complete_chapter(chapter_id).status_code, 200)
+
+        malformed = self._post_json(
+            "/api/exercises/memory-lab",
+            {"events": [{"type": "address", "value": True}]},
+        )
+        missing_cycle = self._submit_memory_lab(include_power_cycle=False)
+        bypass = self._post_json("/api/progress/8", {"completed": True})
+
+        self.assertEqual(malformed.status_code, 400)
+        self.assertEqual(missing_cycle.status_code, 422)
+        self.assertEqual(bypass.status_code, 403)
+
+        complete = self._submit_memory_lab()
+
+        self.assertEqual(complete.status_code, 200)
+        self.assertTrue(complete.json["correct"])
+        self.assertEqual(complete.json["chapter_id"], 8)
+        self.assertEqual(complete.json["ram"], ["0000"] * 4)
+        self.assertEqual(complete.json["rom"], ["1010", "0110", "1101", "0011"])
+        self.assertTrue(
+            any(
+                read["memory"] == "ram"
+                and read["address"] == 2
+                and read["value"] == "1101"
+                for read in complete.json["read_history"]
+            )
+        )
+        self.assertTrue(
+            any(
+                read["memory"] == "ram"
+                and read["address"] == 2
+                and read["value"] == "0000"
+                and read["after_power_cycle"]
+                for read in complete.json["read_history"]
+            )
+        )
+        self.assertTrue(
+            any(
+                read["memory"] == "rom"
+                and read["address"] == 1
+                and read["value"] == "0110"
+                and read["after_power_cycle"]
+                for read in complete.json["read_history"]
+            )
+        )
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            progress = database.execute(
+                "SELECT completed FROM chapter_progress WHERE chapter_id = 8"
+            ).fetchone()
+        self.assertEqual(progress[0], 1)
 
     def test_first_chapter_material_is_seeded_into_existing_empty_chapter(self):
         database_path = os.path.join(self.temp_dir.name, "empty-chapter.sqlite3")

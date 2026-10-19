@@ -18,6 +18,9 @@ LOGIC_EXERCISE_TARGET = (0, 1, 1, 0)
 GATE_LAB_TARGET = (0, 1, 1, 1)
 TRIGGER_LAB_TARGET = (1, 0, 1)
 REGISTER_COUNTER_TARGET = (1, 0, 1, 1, 0, 1, 1, 0)
+MEMORY_LAB_ROM = ("1010", "0110", "1101", "0011")
+MEMORY_LAB_TARGET_ADDRESS = 2
+MEMORY_LAB_TARGET_WORD = "1101"
 COURSE_TITLE = "Схемотехника цифровых систем"
 COURSE_DESCRIPTION = (
     "Пособие знакомит с принципами построения цифровых устройств "
@@ -1339,6 +1342,9 @@ def create_app(test_config=None):
             register_counter_target=(
                 REGISTER_COUNTER_TARGET if chapter_by_id["position"] == 7 else None
             ),
+            memory_lab_rom=(
+                MEMORY_LAB_ROM if chapter_by_id["position"] == 8 else None
+            ),
             development_mode=app.debug,
             course=course,
             csrf_token=session["csrf_token"],
@@ -2272,6 +2278,178 @@ def create_app(test_config=None):
             counter_states=counter_states,
         )
 
+    @app.post("/api/exercises/memory-lab")
+    @csrf_protected
+    def submit_memory_lab():
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы сохранить результат задания."), 401
+
+        payload = json_payload()
+        if payload is None:
+            return jsonify(error="Некорректный запрос."), 400
+        events = payload.get("events")
+        if not isinstance(events, list) or not events or len(events) > 40:
+            return jsonify(error="Укажите последовательность операций с памятью."), 400
+
+        for event in events:
+            if not isinstance(event, dict) or not isinstance(event.get("type"), str):
+                return jsonify(error="Одна из операций памяти указана неверно."), 400
+            event_type = event["type"]
+            if (
+                (event_type == "address" and (
+                    set(event) != {"type", "value"}
+                    or type(event["value"]) is not int
+                    or event["value"] not in range(4)
+                ))
+                or (event_type == "data" and (
+                    set(event) != {"type", "value"}
+                    or not isinstance(event["value"], str)
+                    or re.fullmatch(r"[01]{4}", event["value"]) is None
+                ))
+                or (event_type in {"write", "power"} and set(event) != {"type"})
+                or (event_type == "read" and (
+                    set(event) != {"type", "memory"}
+                    or not isinstance(event["memory"], str)
+                    or event["memory"] not in {"ram", "rom"}
+                ))
+                or event_type not in {"address", "data", "write", "read", "power"}
+            ):
+                return jsonify(error="Одна из операций памяти указана неверно."), 400
+
+        database = get_db()
+        chapter = database.execute(
+            """
+            SELECT chapters.id, chapters.course_id, chapters.position
+            FROM chapters
+            JOIN courses ON courses.id = chapters.course_id
+            WHERE courses.slug = ? AND courses.status = 'published'
+                AND chapters.position = 8 AND chapters.status = 'published'
+            """,
+            (COURSE_SLUG,),
+        ).fetchone()
+        if chapter is None:
+            return jsonify(error="Практическая лаборатория сейчас недоступна."), 404
+
+        completed_chapters = {
+            row["chapter_id"]
+            for row in database.execute(
+                """
+                SELECT chapter_id FROM chapter_progress
+                WHERE user_id = ? AND completed = 1
+                """,
+                (user["id"],),
+            ).fetchall()
+        }
+        chapters = get_course_chapters(chapter["course_id"])
+        if any(
+            previous["id"] not in completed_chapters
+            for previous in chapters
+            if previous["position"] < chapter["position"]
+        ):
+            return jsonify(error="Сначала завершите предыдущие разделы курса."), 403
+
+        address = 0
+        data = "0000"
+        ram = ["0000"] * 4
+        powered = True
+        read_history = []
+        wrote_target = False
+        power_cycle_completed = False
+        power_was_off = False
+        for event in events:
+            event_type = event["type"]
+            if event_type == "address":
+                address = event["value"]
+            elif event_type == "data":
+                data = event["value"]
+            elif event_type == "write":
+                if powered:
+                    ram[address] = data
+                    if address == MEMORY_LAB_TARGET_ADDRESS and data == MEMORY_LAB_TARGET_WORD:
+                        wrote_target = True
+            elif event_type == "read":
+                value = ram[address] if event["memory"] == "ram" else MEMORY_LAB_ROM[address]
+                read_history.append(
+                    {
+                        "memory": event["memory"],
+                        "address": address,
+                        "value": value if powered or event["memory"] == "rom" else None,
+                        "powered": powered,
+                        "after_power_cycle": power_cycle_completed,
+                    }
+                )
+            else:
+                powered = not powered
+                if not powered:
+                    ram = ["0000"] * 4
+                    power_was_off = True
+                elif power_was_off:
+                    power_cycle_completed = True
+
+        reads = {
+            (
+                read["memory"],
+                read["address"],
+                read["value"],
+                read["powered"],
+                read["after_power_cycle"],
+            )
+            for read in read_history
+        }
+        target_reads = {
+            ("ram", MEMORY_LAB_TARGET_ADDRESS, MEMORY_LAB_TARGET_WORD, True, False),
+            ("rom", 1, MEMORY_LAB_ROM[1], True, False),
+            ("ram", MEMORY_LAB_TARGET_ADDRESS, "0000", True, True),
+        } <= reads
+        rom_survived_power_loss = (
+            "rom",
+            1,
+            MEMORY_LAB_ROM[1],
+            True,
+            True,
+        ) in reads
+        correct = wrote_target and power_cycle_completed and target_reads and rom_survived_power_loss
+        if not correct:
+            return jsonify(
+                correct=False,
+                read_history=read_history,
+                ram=ram,
+                powered=powered,
+                message=(
+                    "Запишите 1101 в RAM по адресу 10 и прочитайте её. "
+                    "Сравните с ROM по адресу 01, затем отключите и снова включите питание: "
+                    "RAM очистится, а данные ROM сохранятся."
+                ),
+            ), 422
+
+        database.execute(
+            """
+            INSERT INTO chapter_progress (user_id, chapter_id, completed)
+            VALUES (?, ?, 1)
+            ON CONFLICT (user_id, chapter_id) DO UPDATE SET
+                completed = 1,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.execute(
+            """
+            INSERT OR IGNORE INTO chapter_completion_history (user_id, chapter_id)
+            VALUES (?, ?)
+            """,
+            (user["id"], chapter["id"]),
+        )
+        database.commit()
+        return jsonify(
+            correct=True,
+            completed=True,
+            chapter_id=chapter["id"],
+            ram=ram,
+            rom=MEMORY_LAB_ROM,
+            read_history=read_history,
+        )
+
     @app.post("/api/progress/<int:chapter_id>")
     @csrf_protected
     def update_progress(chapter_id):
@@ -2321,7 +2499,7 @@ def create_app(test_config=None):
         if (
             chapter["course_slug"] == COURSE_SLUG
             and chapter_id not in completed_chapters
-            and chapter["position"] in (1, 2, 3, 4, 5, 6, 7)
+            and chapter["position"] in (1, 2, 3, 4, 5, 6, 7, 8)
         ):
             exercise_messages = {
                 1: "Сначала выполните интерактивное задание «Собери байт».",
@@ -2331,6 +2509,7 @@ def create_app(test_config=None):
                 5: "Сначала соберите и проверьте маршрутизатор данных.",
                 6: "Сначала выполните лабораторную работу с D-триггером.",
                 7: "Сначала передайте слово через регистр и проверьте счётчик.",
+                8: "Сначала выполните опыт с оперативной и постоянной памятью.",
             }
             return jsonify(error=exercise_messages[chapter["position"]]), 403
 
