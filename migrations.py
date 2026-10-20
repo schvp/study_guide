@@ -170,6 +170,68 @@ def _add_content_publication_status(database):
     )
 
 
+def _create_assessment_tables(database):
+    database.execute(
+        """
+        CREATE TABLE assessment_questions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+            chapter_id INTEGER NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+            question_type TEXT NOT NULL
+                CHECK (question_type IN ('single_choice', 'multiple_choice', 'numeric')),
+            prompt TEXT NOT NULL,
+            options TEXT NOT NULL DEFAULT '[]',
+            correct_answer TEXT NOT NULL,
+            tolerance REAL NOT NULL DEFAULT 0 CHECK (tolerance >= 0),
+            explanation TEXT NOT NULL DEFAULT '',
+            position INTEGER NOT NULL,
+            published INTEGER NOT NULL DEFAULT 1 CHECK (published IN (0, 1)),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (chapter_id, position)
+        )
+        """
+    )
+    database.execute(
+        """
+        CREATE INDEX idx_assessment_questions_course_chapter
+        ON assessment_questions(course_id, chapter_id, published, position)
+        """
+    )
+    database.execute(
+        """
+        CREATE TABLE assessment_attempts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+            chapter_id INTEGER NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+            score INTEGER NOT NULL DEFAULT 0 CHECK (score >= 0),
+            question_count INTEGER NOT NULL CHECK (question_count > 0),
+            started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            submitted_at TEXT
+        )
+        """
+    )
+    database.execute(
+        """
+        CREATE INDEX idx_assessment_attempts_user
+        ON assessment_attempts(user_id, submitted_at DESC, id DESC)
+        """
+    )
+    database.execute(
+        """
+        CREATE TABLE assessment_attempt_answers (
+            attempt_id INTEGER NOT NULL
+                REFERENCES assessment_attempts(id) ON DELETE CASCADE,
+            question_id INTEGER NOT NULL
+                REFERENCES assessment_questions(id) ON DELETE CASCADE,
+            answer TEXT NOT NULL,
+            is_correct INTEGER NOT NULL CHECK (is_correct IN (0, 1)),
+            PRIMARY KEY (attempt_id, question_id)
+        )
+        """
+    )
+
+
 MIGRATIONS = (
     (1, "create_user_tables", _create_user_tables),
     (2, "add_username", _add_username),
@@ -179,6 +241,7 @@ MIGRATIONS = (
     (6, "create_library_materials", _create_library_materials),
     (7, "add_user_roles", _add_user_roles),
     (8, "add_content_publication_status", _add_content_publication_status),
+    (9, "create_assessment_tables", _create_assessment_tables),
 )
 
 
