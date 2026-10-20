@@ -786,12 +786,37 @@ def create_app(test_config=None):
         materials_by_course = {}
         for material in material_rows:
             materials_by_course.setdefault(material["course_id"], []).append(material)
+        assessment_rows = get_db().execute(
+            """
+            SELECT id, course_id, chapter_id, question_type, prompt, options,
+                correct_answer, tolerance, explanation, position, published
+            FROM assessment_questions
+            ORDER BY course_id, chapter_id, position, id
+            """
+        ).fetchall()
+        assessment_questions_by_chapter = {}
+        for question in assessment_rows:
+            question_data = dict(question)
+            question_data["options_text"] = "\n".join(
+                f"{option['value']}|{option['label']}"
+                for option in json.loads(question["options"])
+            )
+            correct_answer = json.loads(question["correct_answer"])
+            question_data["correct_answer_input"] = (
+                ", ".join(correct_answer)
+                if isinstance(correct_answer, list)
+                else str(correct_answer)
+            )
+            assessment_questions_by_chapter.setdefault(
+                question["chapter_id"], []
+            ).append(question_data)
         selected_course_id = request.args.get("course_id", type=int)
         return render_template(
             "content_management.html",
             courses=courses,
             chapters_by_course=chapters_by_course,
             materials_by_course=materials_by_course,
+            assessment_questions_by_chapter=assessment_questions_by_chapter,
             library_material_types=LIBRARY_MATERIAL_TYPES,
             selected_course_id=selected_course_id,
             current_user=current_user(),
@@ -913,6 +938,124 @@ def create_app(test_config=None):
         if status not in {"draft", "published"}:
             return None, "Выберите статус курса."
         return (title, slug, description, status), None
+
+    def assessment_question_form_values(question_count, creating):
+        question_type = request.form.get("question_type", "")
+        prompt = request.form.get("prompt", "").strip()
+        options_text = request.form.get("options", "").strip()
+        correct_answer_text = request.form.get("correct_answer", "").strip()
+        explanation = request.form.get("explanation", "").strip()
+        published = request.form.get("published", "1")
+        if question_type not in {"single_choice", "multiple_choice", "numeric"}:
+            return None, "Выберите поддерживаемый тип вопроса."
+        if not prompt:
+            return None, "Укажите текст вопроса."
+        if len(prompt) > 1000:
+            return None, "Текст вопроса должен быть не длиннее 1000 символов."
+        if len(explanation) > 2000:
+            return None, "Пояснение должно быть не длиннее 2000 символов."
+        if len(options_text) > 3000 or len(correct_answer_text) > 200:
+            return None, "Варианты и правильный ответ превышают допустимую длину."
+        if published not in {"0", "1"}:
+            return None, "Выберите статус публикации вопроса."
+
+        options = []
+        tolerance = 0.0
+        if question_type in {"single_choice", "multiple_choice"}:
+            lines = [line.strip() for line in options_text.splitlines() if line.strip()]
+            if not 2 <= len(lines) <= 10:
+                return None, "Добавьте от 2 до 10 вариантов в формате «код|текст»."
+            values = set()
+            for line in lines:
+                value, separator, label = line.partition("|")
+                value = value.strip()
+                label = label.strip()
+                if (
+                    not separator
+                    or not re.fullmatch(r"[A-Za-z0-9_.-]{1,50}", value)
+                    or not label
+                    or len(label) > 200
+                    or value in values
+                ):
+                    return None, "Проверьте варианты: используйте уникальные коды и формат «код|текст»."
+                values.add(value)
+                options.append({"value": value, "label": label})
+            if question_type == "multiple_choice":
+                correct_answer = [
+                    value.strip()
+                    for value in correct_answer_text.split(",")
+                    if value.strip()
+                ]
+                if (
+                    not correct_answer
+                    or len(correct_answer) != len(set(correct_answer))
+                    or any(value not in values for value in correct_answer)
+                ):
+                    return None, "Укажите через запятую коды правильных вариантов."
+            else:
+                if correct_answer_text not in values:
+                    return None, "Укажите код одного правильного варианта."
+                correct_answer = correct_answer_text
+        else:
+            if len(correct_answer_text) > 64:
+                return None, "Числовой ответ должен быть не длиннее 64 символов."
+            try:
+                correct_answer = float(correct_answer_text.replace(",", "."))
+                tolerance = float(request.form.get("tolerance", "0").replace(",", "."))
+            except ValueError:
+                return None, "Укажите корректный числовой ответ и допустимую погрешность."
+            if (
+                not math.isfinite(correct_answer)
+                or not math.isfinite(tolerance)
+                or tolerance < 0
+                or len(request.form.get("tolerance", "")) > 64
+            ):
+                return None, "Ответ и погрешность должны быть конечными числами, погрешность неотрицательна."
+
+        try:
+            position = int(request.form.get("position", ""))
+        except ValueError:
+            return None, "Укажите целое число для позиции вопроса."
+        max_position = question_count + 1 if creating else question_count
+        if position < 1 or position > max_position:
+            return None, f"Позиция вопроса должна быть от 1 до {max_position}."
+        return (
+            question_type,
+            prompt,
+            json.dumps(options, ensure_ascii=False),
+            json.dumps(correct_answer, ensure_ascii=False),
+            tolerance,
+            explanation,
+            position,
+            int(published),
+        ), None
+
+    def reorder_assessment_questions(chapter_id, question_ids):
+        maximum = get_db().execute(
+            """
+            SELECT COALESCE(MAX(position), 0)
+            FROM assessment_questions WHERE chapter_id = ?
+            """,
+            (chapter_id,),
+        ).fetchone()[0]
+        offset = maximum + len(question_ids) + 1
+        get_db().execute(
+            """
+            UPDATE assessment_questions
+            SET position = position + ?
+            WHERE chapter_id = ?
+            """,
+            (offset, chapter_id),
+        )
+        for position, question_id in enumerate(question_ids, 1):
+            get_db().execute(
+                """
+                UPDATE assessment_questions
+                SET position = ?
+                WHERE id = ? AND chapter_id = ?
+                """,
+                (position, question_id, chapter_id),
+            )
 
     @app.post("/content-management/courses")
     @roles_required("teacher", "admin")
@@ -1098,6 +1241,180 @@ def create_app(test_config=None):
 
         flash("Изменения главы сохранены.", "success")
         return redirect_to_course_management(course_id)
+
+    @app.post("/content-management/chapters/<int:chapter_id>/assessment-questions")
+    @roles_required("teacher", "admin")
+    @csrf_protected
+    def create_assessment_question(chapter_id):
+        database = get_db()
+        database.execute("BEGIN IMMEDIATE")
+        chapter = database.execute(
+            "SELECT id, course_id FROM chapters WHERE id = ?",
+            (chapter_id,),
+        ).fetchone()
+        if chapter is None:
+            database.rollback()
+            return render_template(
+                "404.html",
+                current_user=current_user(),
+            ), 404
+        questions = database.execute(
+            """
+            SELECT id FROM assessment_questions
+            WHERE chapter_id = ?
+            ORDER BY position, id
+            """,
+            (chapter_id,),
+        ).fetchall()
+        values, error = assessment_question_form_values(len(questions), creating=True)
+        if error:
+            database.rollback()
+            flash(error, "error")
+            return redirect_to_course_management(chapter["course_id"])
+        (
+            question_type,
+            prompt,
+            options,
+            correct_answer,
+            tolerance,
+            explanation,
+            position,
+            published,
+        ) = values
+        cursor = database.execute(
+            """
+            INSERT INTO assessment_questions (
+                course_id, chapter_id, question_type, prompt, options,
+                correct_answer, tolerance, explanation, position, published
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                chapter["course_id"],
+                chapter_id,
+                question_type,
+                prompt,
+                options,
+                correct_answer,
+                tolerance,
+                explanation,
+                len(questions) + 1,
+                published,
+            ),
+        )
+        question_ids = [question["id"] for question in questions]
+        question_ids.insert(position - 1, cursor.lastrowid)
+        reorder_assessment_questions(chapter_id, question_ids)
+        database.commit()
+        flash("Вопрос добавлен в банк.", "success")
+        return redirect_to_course_management(chapter["course_id"])
+
+    @app.post("/content-management/assessment-questions/<int:question_id>")
+    @roles_required("teacher", "admin")
+    @csrf_protected
+    def edit_assessment_question(question_id):
+        database = get_db()
+        database.execute("BEGIN IMMEDIATE")
+        question = database.execute(
+            """
+            SELECT id, course_id, chapter_id, position
+            FROM assessment_questions WHERE id = ?
+            """,
+            (question_id,),
+        ).fetchone()
+        if question is None:
+            database.rollback()
+            return render_template(
+                "404.html",
+                current_user=current_user(),
+            ), 404
+        questions = database.execute(
+            """
+            SELECT id FROM assessment_questions
+            WHERE chapter_id = ?
+            ORDER BY position, id
+            """,
+            (question["chapter_id"],),
+        ).fetchall()
+        values, error = assessment_question_form_values(
+            len(questions),
+            creating=False,
+        )
+        if error:
+            database.rollback()
+            flash(error, "error")
+            return redirect_to_course_management(question["course_id"])
+        (
+            question_type,
+            prompt,
+            options,
+            correct_answer,
+            tolerance,
+            explanation,
+            position,
+            published,
+        ) = values
+        database.execute(
+            """
+            UPDATE assessment_questions
+            SET question_type = ?, prompt = ?, options = ?, correct_answer = ?,
+                tolerance = ?, explanation = ?, published = ?
+            WHERE id = ?
+            """,
+            (
+                question_type,
+                prompt,
+                options,
+                correct_answer,
+                tolerance,
+                explanation,
+                published,
+                question_id,
+            ),
+        )
+        question_ids = [
+            item["id"] for item in questions if item["id"] != question_id
+        ]
+        question_ids.insert(position - 1, question_id)
+        reorder_assessment_questions(question["chapter_id"], question_ids)
+        database.commit()
+        flash("Изменения вопроса сохранены.", "success")
+        return redirect_to_course_management(question["course_id"])
+
+    @app.post("/content-management/assessment-questions/<int:question_id>/delete")
+    @roles_required("teacher", "admin")
+    @csrf_protected
+    def delete_assessment_question(question_id):
+        database = get_db()
+        database.execute("BEGIN IMMEDIATE")
+        question = database.execute(
+            "SELECT id, course_id, chapter_id FROM assessment_questions WHERE id = ?",
+            (question_id,),
+        ).fetchone()
+        if question is None:
+            database.rollback()
+            return render_template(
+                "404.html",
+                current_user=current_user(),
+            ), 404
+        database.execute(
+            "DELETE FROM assessment_questions WHERE id = ?",
+            (question_id,),
+        )
+        remaining = database.execute(
+            """
+            SELECT id FROM assessment_questions
+            WHERE chapter_id = ? ORDER BY position, id
+            """,
+            (question["chapter_id"],),
+        ).fetchall()
+        reorder_assessment_questions(
+            question["chapter_id"],
+            [item["id"] for item in remaining],
+        )
+        database.commit()
+        flash("Вопрос удалён. Уже начатые попытки сохраняют исходные формулировки.", "success")
+        return redirect_to_course_management(question["course_id"])
 
     @app.post("/content-management/courses/<int:course_id>/library-materials")
     @roles_required("teacher", "admin")

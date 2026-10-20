@@ -330,6 +330,17 @@ def _make_assessment_attempts_immutable(database):
     database.execute("DROP TABLE assessment_attempt_answers_old")
 
 
+def _track_assessment_bank_seeding(database):
+    database.execute(
+        """
+        CREATE TABLE assessment_bank_seed_state (
+            course_id INTEGER PRIMARY KEY REFERENCES courses(id) ON DELETE CASCADE,
+            seeded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+
+
 MIGRATIONS = (
     (1, "create_user_tables", _create_user_tables),
     (2, "add_username", _add_username),
@@ -342,6 +353,7 @@ MIGRATIONS = (
     (9, "create_assessment_tables", _create_assessment_tables),
     (10, "snapshot_assessment_attempt_questions", _snapshot_assessment_attempt_questions),
     (11, "make_assessment_attempts_immutable", _make_assessment_attempts_immutable),
+    (12, "track_assessment_bank_seeding", _track_assessment_bank_seeding),
 )
 
 

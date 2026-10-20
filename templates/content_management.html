@@ -189,6 +189,137 @@
                                 {% endif %}
                             </section>
 
+                            <section class="managed-assessments" aria-labelledby="assessment-title-{{ course.id }}">
+                                <div class="managed-chapters-heading">
+                                    <p class="profile-label">БАНК ВОПРОСОВ</p>
+                                    <h3 id="assessment-title-{{ course.id }}">Тестирование по главам</h3>
+                                </div>
+                                {% for chapter in chapters_by_course.get(course.id, []) %}
+                                    <details class="managed-assessment-chapter">
+                                        <summary>
+                                            <span class="managed-chapter-position">{{ "%02d"|format(chapter.position) }}</span>
+                                            <span class="managed-chapter-title">{{ chapter.title }}</span>
+                                            <span class="managed-course-meta">{{ assessment_questions_by_chapter.get(chapter.id, [])|length }} вопросов</span>
+                                            <span class="managed-course-action">Управлять вопросами</span>
+                                        </summary>
+                                        <section class="assessment-question-editor" aria-label="Вопросы главы {{ chapter.title }}">
+                                            <h4>Добавить вопрос</h4>
+                                            <form class="management-form" method="post" action="{{ url_for('create_assessment_question', chapter_id=chapter.id) }}">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                <label class="management-field">
+                                                    <span>Тип вопроса</span>
+                                                    <select name="question_type" required>
+                                                        <option value="single_choice">Один вариант ответа</option>
+                                                        <option value="multiple_choice">Несколько вариантов ответа</option>
+                                                        <option value="numeric">Числовой ответ</option>
+                                                    </select>
+                                                </label>
+                                                <label class="management-field">
+                                                    <span>Текст вопроса</span>
+                                                    <textarea name="prompt" rows="3" maxlength="1000" required></textarea>
+                                                </label>
+                                                <label class="management-field">
+                                                    <span>Варианты ответа (по одному на строку: код|текст)</span>
+                                                    <textarea name="options" rows="4" placeholder="yes|Да&#10;no|Нет"></textarea>
+                                                </label>
+                                                <label class="management-field">
+                                                    <span>Код правильного варианта или число; для нескольких ответов — коды через запятую</span>
+                                                    <input type="text" name="correct_answer" maxlength="200" required>
+                                                </label>
+                                                <label class="management-field">
+                                                    <span>Допустимая погрешность для числового ответа</span>
+                                                    <input type="number" name="tolerance" min="0" step="any" value="0">
+                                                </label>
+                                                <label class="management-field">
+                                                    <span>Пояснение к ответу</span>
+                                                    <textarea name="explanation" rows="3" maxlength="2000"></textarea>
+                                                </label>
+                                                <label class="management-field">
+                                                    <span>Позиция в тесте</span>
+                                                    <input type="number" name="position" min="1" value="{{ assessment_questions_by_chapter.get(chapter.id, [])|length + 1 }}" required>
+                                                </label>
+                                                <label class="management-field">
+                                                    <span>Публикация</span>
+                                                    <select name="published">
+                                                        <option value="1" selected>Опубликован</option>
+                                                        <option value="0">Скрыт</option>
+                                                    </select>
+                                                </label>
+                                                <button class="management-save" type="submit">Добавить вопрос</button>
+                                            </form>
+
+                                            {% if assessment_questions_by_chapter.get(chapter.id) %}
+                                                <ol class="managed-assessment-question-list">
+                                                    {% for question in assessment_questions_by_chapter.get(chapter.id) %}
+                                                        <li>
+                                                            <details>
+                                                                <summary>
+                                                                    <span class="managed-chapter-position">{{ "%02d"|format(question.position) }}</span>
+                                                                    <span class="managed-chapter-title">{{ question.prompt }}</span>
+                                                                    <span class="managed-course-meta">{% if question.published %}Опубликован{% else %}Скрыт{% endif %}</span>
+                                                                    <span class="managed-course-action">Редактировать</span>
+                                                                </summary>
+                                                                <form class="management-form" method="post" action="{{ url_for('edit_assessment_question', question_id=question.id) }}">
+                                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                                    <label class="management-field">
+                                                                        <span>Тип вопроса</span>
+                                                                        <select name="question_type" required>
+                                                                            <option value="single_choice" {% if question.question_type == 'single_choice' %}selected{% endif %}>Один вариант ответа</option>
+                                                                            <option value="multiple_choice" {% if question.question_type == 'multiple_choice' %}selected{% endif %}>Несколько вариантов ответа</option>
+                                                                            <option value="numeric" {% if question.question_type == 'numeric' %}selected{% endif %}>Числовой ответ</option>
+                                                                        </select>
+                                                                    </label>
+                                                                    <label class="management-field">
+                                                                        <span>Текст вопроса</span>
+                                                                        <textarea name="prompt" rows="3" maxlength="1000" required>{{ question.prompt }}</textarea>
+                                                                    </label>
+                                                                    <label class="management-field">
+                                                                        <span>Варианты ответа (код|текст, каждый с новой строки)</span>
+                                                                        <textarea name="options" rows="4">{{ question.options_text }}</textarea>
+                                                                    </label>
+                                                                    <label class="management-field">
+                                                                        <span>Код правильного варианта или число; несколько кодов разделяются запятой</span>
+                                                                        <input type="text" name="correct_answer" value="{{ question.correct_answer_input }}" maxlength="200" required>
+                                                                    </label>
+                                                                    <label class="management-field">
+                                                                        <span>Допустимая погрешность</span>
+                                                                        <input type="number" name="tolerance" min="0" step="any" value="{{ question.tolerance }}">
+                                                                    </label>
+                                                                    <label class="management-field">
+                                                                        <span>Пояснение</span>
+                                                                        <textarea name="explanation" rows="3" maxlength="2000">{{ question.explanation }}</textarea>
+                                                                    </label>
+                                                                    <label class="management-field">
+                                                                        <span>Позиция в тесте</span>
+                                                                        <input type="number" name="position" min="1" max="{{ assessment_questions_by_chapter.get(chapter.id, [])|length }}" value="{{ question.position }}" required>
+                                                                    </label>
+                                                                    <label class="management-field">
+                                                                        <span>Публикация</span>
+                                                                        <select name="published">
+                                                                            <option value="1" {% if question.published %}selected{% endif %}>Опубликован</option>
+                                                                            <option value="0" {% if not question.published %}selected{% endif %}>Скрыт</option>
+                                                                        </select>
+                                                                    </label>
+                                                                    <button class="management-save" type="submit">Сохранить вопрос</button>
+                                                                </form>
+                                                                <form class="managed-library-delete" method="post" action="{{ url_for('delete_assessment_question', question_id=question.id) }}" onsubmit="return confirm('Удалить вопрос из банка? Уже начатые попытки сохранят его копию.');">
+                                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                                    <button class="management-delete" type="submit">Удалить вопрос</button>
+                                                                </form>
+                                                            </details>
+                                                        </li>
+                                                    {% endfor %}
+                                                </ol>
+                                            {% else %}
+                                                <p class="library-empty-state managed-chapters-empty">В этой главе пока нет вопросов.</p>
+                                            {% endif %}
+                                        </section>
+                                    </details>
+                                {% else %}
+                                    <p class="library-empty-state managed-chapters-empty">Добавьте главу, чтобы создать банк вопросов.</p>
+                                {% endfor %}
+                            </section>
+
                             <section class="managed-library" aria-labelledby="library-title-{{ course.id }}">
                                 <div class="managed-chapters-heading">
                                     <p class="profile-label">ДОПОЛНИТЕЛЬНЫЕ РЕСУРСЫ</p>

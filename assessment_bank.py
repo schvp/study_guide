@@ -175,6 +175,22 @@ INITIAL_QUESTIONS = (
 
 
 def seed_assessment_questions(database, course_id):
+    already_seeded = database.execute(
+        "SELECT 1 FROM assessment_bank_seed_state WHERE course_id = ?",
+        (course_id,),
+    ).fetchone()
+    if already_seeded:
+        return
+    existing_questions = database.execute(
+        "SELECT 1 FROM assessment_questions WHERE course_id = ? LIMIT 1",
+        (course_id,),
+    ).fetchone()
+    if existing_questions:
+        database.execute(
+            "INSERT INTO assessment_bank_seed_state (course_id) VALUES (?)",
+            (course_id,),
+        )
+        return
     chapters = {
         row["position"]: row["id"]
         for row in database.execute(
@@ -211,3 +227,7 @@ def seed_assessment_questions(database, course_id):
                 position,
             ),
         )
+    database.execute(
+        "INSERT INTO assessment_bank_seed_state (course_id) VALUES (?)",
+        (course_id,),
+    )

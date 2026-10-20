@@ -1987,6 +1987,78 @@ a.chapter-link:hover {
     white-space: nowrap;
 }
 
+.managed-assessments {
+    display: grid;
+    gap: 14px;
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+}
+
+.managed-assessment-chapter,
+.managed-assessment-question-list > li {
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: #fbfbf7;
+}
+
+.managed-assessment-chapter > summary,
+.managed-assessment-question-list > li > details > summary {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 14px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.managed-assessment-chapter > summary::-webkit-details-marker,
+.managed-assessment-question-list summary::-webkit-details-marker {
+    display: none;
+}
+
+.managed-assessment-chapter > summary::after,
+.managed-assessment-question-list summary::after {
+    margin-left: auto;
+    color: var(--muted);
+    content: "+";
+}
+
+.managed-assessment-chapter[open] > summary::after,
+.managed-assessment-question-list details[open] > summary::after {
+    content: "−";
+}
+
+.assessment-question-editor {
+    display: grid;
+    gap: 14px;
+    padding: 0 16px 18px;
+}
+
+.assessment-question-editor > h4 {
+    margin: 8px 0 0;
+    color: var(--ink);
+    font-size: 14px;
+}
+
+.managed-assessment-question-list {
+    display: grid;
+    gap: 8px;
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.managed-assessment-question-list .managed-chapter-title {
+    min-width: min(200px, 100%);
+    flex: 1 1 240px;
+}
+
+.managed-assessment-question-list .management-form {
+    padding: 0 14px 18px;
+}
+
 .trigger-lab {
     margin: 10px 0 24px;
     padding: clamp(20px, 4vw, 32px);
