@@ -1,3 +1,4 @@
+import json
 import sqlite3
 
 
@@ -248,6 +249,87 @@ def _snapshot_assessment_attempt_questions(database):
     )
 
 
+def _make_assessment_attempts_immutable(database):
+    attempt_questions = database.execute(
+        """
+        SELECT attempt_questions.attempt_id, attempt_questions.question_id,
+            attempt_questions.position, questions.question_type,
+            questions.prompt, questions.options, questions.correct_answer,
+            questions.tolerance, questions.explanation
+        FROM assessment_attempt_questions AS attempt_questions
+        JOIN assessment_questions AS questions
+            ON questions.id = attempt_questions.question_id
+        ORDER BY attempt_questions.attempt_id, attempt_questions.position
+        """
+    ).fetchall()
+    database.execute("ALTER TABLE assessment_attempt_questions RENAME TO assessment_attempt_questions_old")
+    database.execute(
+        """
+        CREATE TABLE assessment_attempt_questions (
+            attempt_id INTEGER NOT NULL
+                REFERENCES assessment_attempts(id) ON DELETE CASCADE,
+            question_id INTEGER NOT NULL,
+            position INTEGER NOT NULL,
+            question_snapshot TEXT NOT NULL,
+            PRIMARY KEY (attempt_id, question_id),
+            UNIQUE (attempt_id, position)
+        )
+        """
+    )
+    database.executemany(
+        """
+        INSERT INTO assessment_attempt_questions (
+            attempt_id, question_id, position, question_snapshot
+        )
+        VALUES (?, ?, ?, ?)
+        """,
+        [
+            (
+                row[0],
+                row[1],
+                row[2],
+                json.dumps(
+                    {
+                        "question_type": row[3],
+                        "prompt": row[4],
+                        "options": json.loads(row[5]),
+                        "correct_answer": json.loads(row[6]),
+                        "tolerance": row[7],
+                        "explanation": row[8],
+                    },
+                    ensure_ascii=False,
+                ),
+            )
+            for row in attempt_questions
+        ],
+    )
+    database.execute("DROP TABLE assessment_attempt_questions_old")
+
+    database.execute("ALTER TABLE assessment_attempt_answers RENAME TO assessment_attempt_answers_old")
+    database.execute(
+        """
+        CREATE TABLE assessment_attempt_answers (
+            attempt_id INTEGER NOT NULL
+                REFERENCES assessment_attempts(id) ON DELETE CASCADE,
+            question_id INTEGER NOT NULL,
+            answer TEXT NOT NULL,
+            is_correct INTEGER NOT NULL CHECK (is_correct IN (0, 1)),
+            PRIMARY KEY (attempt_id, question_id)
+        )
+        """
+    )
+    database.execute(
+        """
+        INSERT INTO assessment_attempt_answers (
+            attempt_id, question_id, answer, is_correct
+        )
+        SELECT attempt_id, question_id, answer, is_correct
+        FROM assessment_attempt_answers_old
+        """
+    )
+    database.execute("DROP TABLE assessment_attempt_answers_old")
+
+
 MIGRATIONS = (
     (1, "create_user_tables", _create_user_tables),
     (2, "add_username", _add_username),
@@ -259,6 +341,7 @@ MIGRATIONS = (
     (8, "add_content_publication_status", _add_content_publication_status),
     (9, "create_assessment_tables", _create_assessment_tables),
     (10, "snapshot_assessment_attempt_questions", _snapshot_assessment_attempt_questions),
+    (11, "make_assessment_attempts_immutable", _make_assessment_attempts_immutable),
 )
 
 

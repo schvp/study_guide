@@ -1522,7 +1522,8 @@ def create_app(test_config=None):
             return jsonify(error="Тест по этой теме не найден."), 404
         questions = database.execute(
             """
-            SELECT id, question_type, prompt, options
+            SELECT id, question_type, prompt, options, correct_answer,
+                tolerance, explanation
             FROM assessment_questions
             WHERE chapter_id = ? AND published = 1
             ORDER BY position, id
@@ -1544,11 +1545,28 @@ def create_app(test_config=None):
         attempt_id = cursor.lastrowid
         database.executemany(
             """
-            INSERT INTO assessment_attempt_questions (attempt_id, question_id, position)
-            VALUES (?, ?, ?)
+            INSERT INTO assessment_attempt_questions (
+                attempt_id, question_id, position, question_snapshot
+            )
+            VALUES (?, ?, ?, ?)
             """,
             [
-                (attempt_id, question["id"], position)
+                (
+                    attempt_id,
+                    question["id"],
+                    position,
+                    json.dumps(
+                        {
+                            "question_type": question["question_type"],
+                            "prompt": question["prompt"],
+                            "options": json.loads(question["options"]),
+                            "correct_answer": json.loads(question["correct_answer"]),
+                            "tolerance": question["tolerance"],
+                            "explanation": question["explanation"],
+                        },
+                        ensure_ascii=False,
+                    ),
+                )
                 for position, question in enumerate(questions, 1)
             ],
         )
@@ -1596,19 +1614,23 @@ def create_app(test_config=None):
             database.rollback()
             return jsonify(error="Эта попытка уже отправлена."), 409
 
-        questions = database.execute(
+        question_rows = database.execute(
             """
-            SELECT questions.id, questions.question_type, questions.prompt,
-                questions.options, questions.correct_answer, questions.tolerance,
-                questions.explanation
+            SELECT attempt_questions.question_id AS id,
+                attempt_questions.question_snapshot
             FROM assessment_attempt_questions AS attempt_questions
-            JOIN assessment_questions AS questions
-                ON questions.id = attempt_questions.question_id
             WHERE attempt_questions.attempt_id = ?
             ORDER BY attempt_questions.position
             """,
             (attempt_id,),
         ).fetchall()
+        questions = [
+            {
+                "id": row["id"],
+                **json.loads(row["question_snapshot"]),
+            }
+            for row in question_rows
+        ]
         expected_ids = {str(question["id"]) for question in questions}
         if len(questions) != attempt["question_count"]:
             database.rollback()
@@ -1620,10 +1642,10 @@ def create_app(test_config=None):
         graded_answers = []
         score = 0
         for question in questions:
-            options = json.loads(question["options"])
+            options = question["options"]
             option_values = {option["value"] for option in options}
             answer = answers[str(question["id"])]
-            expected = json.loads(question["correct_answer"])
+            expected = question["correct_answer"]
 
             if question["question_type"] == "single_choice":
                 if not isinstance(answer, str) or answer not in option_values:
@@ -1705,7 +1727,7 @@ def create_app(test_config=None):
                 {
                     "id": result["question"]["id"],
                     "prompt": result["question"]["prompt"],
-                    "options": json.loads(result["question"]["options"]),
+                    "options": result["question"]["options"],
                     "answer": result["answer"],
                     "correct_answer": result["expected"],
                     "correct": result["correct"],
