@@ -30,6 +30,7 @@ class DatabaseMigrationTests(unittest.TestCase):
                 (7, "add_user_roles"),
                 (8, "add_content_publication_status"),
                 (9, "create_assessment_tables"),
+                (10, "snapshot_assessment_attempt_questions"),
             ],
         )
         user_columns = {
@@ -57,7 +58,7 @@ class DatabaseMigrationTests(unittest.TestCase):
             self.database.execute(
                 "SELECT COUNT(*) FROM schema_migrations"
             ).fetchone()[0],
-            9,
+            10,
         )
 
     def test_assessment_tables_store_questions_and_per_user_attempt_answers(self):
@@ -87,6 +88,12 @@ class DatabaseMigrationTests(unittest.TestCase):
         )
         self.database.execute(
             """
+            INSERT INTO assessment_attempt_questions (attempt_id, question_id, position)
+            VALUES (1, 1, 1)
+            """
+        )
+        self.database.execute(
+            """
             INSERT INTO assessment_attempt_answers (attempt_id, question_id, answer, is_correct)
             VALUES (1, 1, '"a"', 1)
             """
@@ -104,6 +111,12 @@ class DatabaseMigrationTests(unittest.TestCase):
         self.assertEqual(
             self.database.execute(
                 "SELECT COUNT(*) FROM assessment_attempt_answers"
+            ).fetchone()[0],
+            0,
+        )
+        self.assertEqual(
+            self.database.execute(
+                "SELECT COUNT(*) FROM assessment_attempt_questions"
             ).fetchone()[0],
             0,
         )
@@ -244,7 +257,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         with patch.object(
             migrations,
             "MIGRATIONS",
-            migrations.MIGRATIONS + ((10, "failing_migration", fail_after_ddl),),
+            migrations.MIGRATIONS + ((11, "failing_migration", fail_after_ddl),),
         ):
             with self.assertRaisesRegex(RuntimeError, "migration failed"):
                 migrations.migrate_database(self.database)
@@ -258,7 +271,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         self.assertIsNone(table)
         self.assertIsNone(
             self.database.execute(
-                "SELECT 1 FROM schema_migrations WHERE version = 10"
+                "SELECT 1 FROM schema_migrations WHERE version = 11"
             ).fetchone()
         )
 

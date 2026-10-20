@@ -232,6 +232,22 @@ def _create_assessment_tables(database):
     )
 
 
+def _snapshot_assessment_attempt_questions(database):
+    database.execute(
+        """
+        CREATE TABLE assessment_attempt_questions (
+            attempt_id INTEGER NOT NULL
+                REFERENCES assessment_attempts(id) ON DELETE CASCADE,
+            question_id INTEGER NOT NULL
+                REFERENCES assessment_questions(id) ON DELETE CASCADE,
+            position INTEGER NOT NULL,
+            PRIMARY KEY (attempt_id, question_id),
+            UNIQUE (attempt_id, position)
+        )
+        """
+    )
+
+
 MIGRATIONS = (
     (1, "create_user_tables", _create_user_tables),
     (2, "add_username", _add_username),
@@ -242,6 +258,7 @@ MIGRATIONS = (
     (7, "add_user_roles", _add_user_roles),
     (8, "add_content_publication_status", _add_content_publication_status),
     (9, "create_assessment_tables", _create_assessment_tables),
+    (10, "snapshot_assessment_attempt_questions", _snapshot_assessment_attempt_questions),
 )
 
 

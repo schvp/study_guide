@@ -1,3 +1,5 @@
+import json
+import math
 import os
 import re
 import secrets
@@ -7,6 +9,7 @@ from urllib.parse import urlsplit
 
 from flask import Flask, flash, g, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
+from assessment_bank import seed_assessment_questions
 from course_content import load_course_materials
 from migrations import migrate_database
 
@@ -54,8 +57,8 @@ APP_SECTIONS = {
     },
     "testing": {
         "title": "Тестирование",
-        "description": "Проверяйте знания по мере прохождения курса.",
-        "status": "Тесты по разделам курса появятся здесь.",
+        "description": "Тренировочные тесты с проверкой ответов и разбором ошибок.",
+        "status": "Выберите тему, чтобы начать тренировку.",
     },
 }
 USER_ROLE_LABELS = {
@@ -226,6 +229,8 @@ def create_app(test_config=None):
                 )
         database.commit()
         migrate_database(database)
+        seed_assessment_questions(database, course_id)
+        database.commit()
         if app.config["SEED_DEMO_ADMIN"]:
             database.execute(
                 """
@@ -464,6 +469,55 @@ def create_app(test_config=None):
     def render_app_section(active_nav):
         user = current_user()
         course = get_course()
+        if active_nav == "testing":
+            quizzes = (
+                get_db()
+                .execute(
+                    """
+                    SELECT chapters.id AS chapter_id, chapters.position,
+                        chapters.title, COUNT(questions.id) AS question_count
+                    FROM chapters
+                    JOIN assessment_questions AS questions
+                        ON questions.chapter_id = chapters.id
+                        AND questions.published = 1
+                    WHERE chapters.course_id = ? AND chapters.status = 'published'
+                    GROUP BY chapters.id
+                    ORDER BY chapters.position, chapters.id
+                    """,
+                    (course["id"],),
+                )
+                .fetchall()
+                if course
+                else []
+            )
+            attempt_history = (
+                get_db()
+                .execute(
+                    """
+                    SELECT attempts.id, attempts.score, attempts.question_count,
+                        attempts.submitted_at,
+                        chapters.title AS chapter_title, chapters.position
+                    FROM assessment_attempts AS attempts
+                    JOIN chapters ON chapters.id = attempts.chapter_id
+                    WHERE attempts.user_id = ? AND attempts.submitted_at IS NOT NULL
+                    ORDER BY attempts.submitted_at DESC, attempts.id DESC
+                    LIMIT 10
+                    """,
+                    (user["id"],),
+                )
+                .fetchall()
+                if user
+                else []
+            )
+            return render_template(
+                "section.html",
+                active_nav=active_nav,
+                section=APP_SECTIONS[active_nav],
+                current_user=user,
+                assessment_quizzes=quizzes,
+                assessment_history=attempt_history,
+                csrf_token=session["csrf_token"],
+            )
         if active_nav == "profile":
             completion_history = (
                 get_db()
@@ -752,7 +806,7 @@ def create_app(test_config=None):
         status = request.form.get("status", "draft" if creating else existing_status)
         try:
             position = int(request.form.get("position", ""))
-        except ValueError:
+        except (ValueError, OverflowError):
             return None, "Укажите целое число для позиции главы."
         if not title:
             return None, "Укажите название главы."
@@ -1443,6 +1497,223 @@ def create_app(test_config=None):
     def logout():
         session.clear()
         return jsonify(success=True)
+
+    @app.post("/api/assessments/<int:chapter_id>/attempts")
+    @csrf_protected
+    def start_assessment_attempt(chapter_id):
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы начать тест и сохранить результат."), 401
+        if json_payload() is None:
+            return jsonify(error="Некорректный запрос."), 400
+
+        database = get_db()
+        chapter = database.execute(
+            """
+            SELECT chapters.id, chapters.course_id, chapters.title
+            FROM chapters
+            JOIN courses ON courses.id = chapters.course_id
+            WHERE chapters.id = ? AND chapters.status = 'published'
+                AND courses.status = 'published'
+            """,
+            (chapter_id,),
+        ).fetchone()
+        if chapter is None:
+            return jsonify(error="Тест по этой теме не найден."), 404
+        questions = database.execute(
+            """
+            SELECT id, question_type, prompt, options
+            FROM assessment_questions
+            WHERE chapter_id = ? AND published = 1
+            ORDER BY position, id
+            """,
+            (chapter_id,),
+        ).fetchall()
+        if not questions:
+            return jsonify(error="В этой теме пока нет опубликованных вопросов."), 404
+
+        cursor = database.execute(
+            """
+            INSERT INTO assessment_attempts (
+                user_id, course_id, chapter_id, question_count
+            )
+            VALUES (?, ?, ?, ?)
+            """,
+            (user["id"], chapter["course_id"], chapter_id, len(questions)),
+        )
+        attempt_id = cursor.lastrowid
+        database.executemany(
+            """
+            INSERT INTO assessment_attempt_questions (attempt_id, question_id, position)
+            VALUES (?, ?, ?)
+            """,
+            [
+                (attempt_id, question["id"], position)
+                for position, question in enumerate(questions, 1)
+            ],
+        )
+        database.commit()
+        return jsonify(
+            attempt_id=attempt_id,
+            chapter_title=chapter["title"],
+            questions=[
+                {
+                    "id": question["id"],
+                    "question_type": question["question_type"],
+                    "prompt": question["prompt"],
+                    "options": json.loads(question["options"]),
+                }
+                for question in questions
+            ],
+        ), 201
+
+    @app.post("/api/assessments/attempts/<int:attempt_id>/submit")
+    @csrf_protected
+    def submit_assessment_attempt(attempt_id):
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы отправить ответы и сохранить результат."), 401
+
+        payload = json_payload()
+        answers = payload.get("answers") if payload is not None else None
+        if not isinstance(answers, dict):
+            return jsonify(error="Передайте ответы на все вопросы теста."), 400
+
+        database = get_db()
+        database.execute("BEGIN IMMEDIATE")
+        attempt = database.execute(
+            """
+            SELECT id, chapter_id, question_count, score, submitted_at
+            FROM assessment_attempts
+            WHERE id = ? AND user_id = ?
+            """,
+            (attempt_id, user["id"]),
+        ).fetchone()
+        if attempt is None:
+            database.rollback()
+            return jsonify(error="Попытка тестирования не найдена."), 404
+        if attempt["submitted_at"] is not None:
+            database.rollback()
+            return jsonify(error="Эта попытка уже отправлена."), 409
+
+        questions = database.execute(
+            """
+            SELECT questions.id, questions.question_type, questions.prompt,
+                questions.options, questions.correct_answer, questions.tolerance,
+                questions.explanation
+            FROM assessment_attempt_questions AS attempt_questions
+            JOIN assessment_questions AS questions
+                ON questions.id = attempt_questions.question_id
+            WHERE attempt_questions.attempt_id = ?
+            ORDER BY attempt_questions.position
+            """,
+            (attempt_id,),
+        ).fetchall()
+        expected_ids = {str(question["id"]) for question in questions}
+        if len(questions) != attempt["question_count"]:
+            database.rollback()
+            return jsonify(error="Состав теста изменился. Начните новую попытку."), 409
+        if set(answers) != expected_ids:
+            database.rollback()
+            return jsonify(error="Ответьте на каждый вопрос и отправьте тест снова."), 400
+
+        graded_answers = []
+        score = 0
+        for question in questions:
+            options = json.loads(question["options"])
+            option_values = {option["value"] for option in options}
+            answer = answers[str(question["id"])]
+            expected = json.loads(question["correct_answer"])
+
+            if question["question_type"] == "single_choice":
+                if not isinstance(answer, str) or answer not in option_values:
+                    database.rollback()
+                    return jsonify(error="Один из выбранных вариантов недопустим."), 400
+                correct = answer == expected
+            elif question["question_type"] == "multiple_choice":
+                if (
+                    not isinstance(answer, list)
+                    or any(not isinstance(value, str) for value in answer)
+                    or len(answer) != len(set(answer))
+                    or any(value not in option_values for value in answer)
+                ):
+                    database.rollback()
+                    return jsonify(error="Проверьте выбранные варианты ответа."), 400
+                correct = set(answer) == set(expected)
+            else:
+                if isinstance(answer, bool) or not isinstance(answer, (int, float, str)):
+                    database.rollback()
+                    return jsonify(error="Введите числовой ответ на один из вопросов."), 400
+                if isinstance(answer, str):
+                    answer = answer.strip().replace(",", ".")
+                    if not answer or len(answer) > 64:
+                        database.rollback()
+                        return jsonify(error="Введите корректный числовой ответ."), 400
+                try:
+                    numeric_answer = float(answer)
+                except ValueError:
+                    database.rollback()
+                    return jsonify(error="Введите корректный числовой ответ."), 400
+                if not math.isfinite(numeric_answer):
+                    database.rollback()
+                    return jsonify(error="Введите конечное числовое значение."), 400
+                answer = numeric_answer
+                correct = abs(numeric_answer - float(expected)) <= question["tolerance"]
+
+            if correct:
+                score += 1
+            graded_answers.append(
+                {
+                    "question": question,
+                    "answer": answer,
+                    "expected": expected,
+                    "correct": correct,
+                }
+            )
+
+        database.executemany(
+            """
+            INSERT INTO assessment_attempt_answers (
+                attempt_id, question_id, answer, is_correct
+            )
+            VALUES (?, ?, ?, ?)
+            """,
+            [
+                (
+                    attempt_id,
+                    result["question"]["id"],
+                    json.dumps(result["answer"], ensure_ascii=False),
+                    int(result["correct"]),
+                )
+                for result in graded_answers
+            ],
+        )
+        database.execute(
+            """
+            UPDATE assessment_attempts
+            SET score = ?, submitted_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (score, attempt_id),
+        )
+        database.commit()
+        return jsonify(
+            attempt_id=attempt_id,
+            score=score,
+            question_count=len(questions),
+            results=[
+                {
+                    "id": result["question"]["id"],
+                    "prompt": result["question"]["prompt"],
+                    "options": json.loads(result["question"]["options"]),
+                    "answer": result["answer"],
+                    "correct_answer": result["expected"],
+                    "correct": result["correct"],
+                    "explanation": result["question"]["explanation"],
+                }
+                for result in graded_answers
+            ],
+        )
 
     @app.post("/api/exercises/byte")
     @csrf_protected

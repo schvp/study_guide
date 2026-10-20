@@ -92,6 +92,64 @@
                 <p>После входа здесь появятся данные аккаунта и ваш прогресс.</p>
                 <a class="primary-link" href="{{ url_for('home', login='1') }}">Перейти ко входу <span aria-hidden="true">→</span></a>
             </section>
+        {% elif active_nav == "testing" %}
+            <section class="assessment-section" aria-labelledby="assessment-list-title">
+                <div class="assessment-heading">
+                    <p class="eyebrow">РЕЖИМ ТРЕНИРОВКИ</p>
+                    <h2 id="assessment-list-title">Выберите тему</h2>
+                    <p>Ответы проверяются после отправки. В конце вы увидите результат и пояснения к каждому вопросу.</p>
+                </div>
+                {% if not current_user %}
+                    <p class="assessment-login-note">
+                        <a href="{{ url_for('home', login='1') }}">Войдите в аккаунт</a>, чтобы проходить тесты и сохранять результаты.
+                    </p>
+                {% endif %}
+                {% if assessment_quizzes %}
+                    <ul class="assessment-quiz-list">
+                        {% for quiz in assessment_quizzes %}
+                            <li class="assessment-quiz-card">
+                                <div>
+                                    <span class="assessment-quiz-position">ТЕМА {{ "%02d"|format(quiz.position) }}</span>
+                                    <h3>{{ quiz.title }}</h3>
+                                    <p>{{ quiz.question_count }} вопроса · без ограничения времени</p>
+                                </div>
+                                {% if current_user %}
+                                    <button
+                                        class="primary-link"
+                                        type="button"
+                                        data-assessment-start
+                                        data-chapter-id="{{ quiz.chapter_id }}"
+                                    >Начать тренировку <span aria-hidden="true">→</span></button>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="assessment-empty">Опубликованных вопросов пока нет.</p>
+                {% endif %}
+            </section>
+            <section class="assessment-player" data-assessment-player hidden aria-live="polite"></section>
+            <section class="assessment-results" data-assessment-results hidden aria-live="polite"></section>
+            {% if current_user %}
+                <section class="assessment-history" aria-labelledby="assessment-history-title">
+                    <div class="assessment-heading">
+                        <p class="eyebrow">ВАШИ РЕЗУЛЬТАТЫ</p>
+                        <h2 id="assessment-history-title">Последние попытки</h2>
+                    </div>
+                    {% if assessment_history %}
+                        <ol class="assessment-history-list">
+                            {% for attempt in assessment_history %}
+                                <li>
+                                    <span><strong>{{ attempt.chapter_title }}</strong><small>{{ attempt.submitted_at }}</small></span>
+                                    <span class="assessment-history-score">{{ attempt.score }} / {{ attempt.question_count }}</span>
+                                </li>
+                            {% endfor %}
+                        </ol>
+                    {% else %}
+                        <p class="assessment-empty">Здесь появятся результаты завершённых тестов.</p>
+                    {% endif %}
+                </section>
+            {% endif %}
         {% elif active_nav == "library" %}
             <section class="library-materials" aria-label="Материалы библиотеки">
                 {% if library_materials %}
@@ -138,5 +196,8 @@
         <span>Учебное пособие <span aria-hidden="true">·</span> Учитесь видеть логику</span>
     </footer>
     <script src="{{ url_for('static', filename='auth.js') }}" defer></script>
+    {% if active_nav == "testing" %}
+        <script src="{{ url_for('static', filename='assessment.js') }}" defer></script>
+    {% endif %}
 </body>
 </html>
