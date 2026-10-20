@@ -341,6 +341,63 @@ def _track_assessment_bank_seeding(database):
     )
 
 
+def _add_assessment_difficulty_and_settings(database):
+    database.execute(
+        """
+        ALTER TABLE assessment_questions
+        ADD COLUMN difficulty TEXT NOT NULL DEFAULT 'beginner'
+            CHECK (difficulty IN ('beginner', 'intermediate', 'advanced'))
+        """
+    )
+    database.execute(
+        """
+        CREATE TABLE assessment_chapter_settings (
+            chapter_id INTEGER PRIMARY KEY
+                REFERENCES chapters(id) ON DELETE CASCADE,
+            questions_per_attempt INTEGER NOT NULL DEFAULT 2
+                CHECK (questions_per_attempt BETWEEN 1 AND 20)
+        )
+        """
+    )
+    database.execute(
+        """
+        INSERT INTO assessment_chapter_settings (chapter_id)
+        SELECT id FROM chapters
+        """
+    )
+
+
+def _version_assessment_question_bank(database):
+    database.execute(
+        """
+        ALTER TABLE assessment_bank_seed_state
+        ADD COLUMN bank_version INTEGER NOT NULL DEFAULT 1
+        """
+    )
+    snapshots = database.execute(
+        """
+        SELECT attempt_id, question_id, question_snapshot
+        FROM assessment_attempt_questions
+        """
+    ).fetchall()
+    for attempt_id, question_id, serialized_snapshot in snapshots:
+        snapshot = json.loads(serialized_snapshot)
+        if "difficulty" not in snapshot:
+            snapshot["difficulty"] = "beginner"
+            database.execute(
+                """
+                UPDATE assessment_attempt_questions
+                SET question_snapshot = ?
+                WHERE attempt_id = ? AND question_id = ?
+                """,
+                (
+                    json.dumps(snapshot, ensure_ascii=False),
+                    attempt_id,
+                    question_id,
+                ),
+            )
+
+
 MIGRATIONS = (
     (1, "create_user_tables", _create_user_tables),
     (2, "add_username", _add_username),
@@ -354,6 +411,8 @@ MIGRATIONS = (
     (10, "snapshot_assessment_attempt_questions", _snapshot_assessment_attempt_questions),
     (11, "make_assessment_attempts_immutable", _make_assessment_attempts_immutable),
     (12, "track_assessment_bank_seeding", _track_assessment_bank_seeding),
+    (13, "add_assessment_difficulty_and_settings", _add_assessment_difficulty_and_settings),
+    (14, "version_assessment_question_bank", _version_assessment_question_bank),
 )
 
 

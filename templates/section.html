@@ -111,15 +111,26 @@
                                 <div>
                                     <span class="assessment-quiz-position">ТЕМА {{ "%02d"|format(quiz.position) }}</span>
                                     <h3>{{ quiz.title }}</h3>
-                                    <p>{{ quiz.question_count }} вопроса · без ограничения времени</p>
+                                    <p>До {{ quiz.question_count }} вопросов из {{ quiz.available_questions }} · случайный вариант</p>
                                 </div>
                                 {% if current_user %}
-                                    <button
-                                        class="primary-link"
-                                        type="button"
-                                        data-assessment-start
-                                        data-chapter-id="{{ quiz.chapter_id }}"
-                                    >Начать тренировку <span aria-hidden="true">→</span></button>
+                                    <div class="assessment-quiz-actions">
+                                        <label class="assessment-difficulty-label">
+                                            <span>Сложность</span>
+                                            <select data-assessment-difficulty aria-label="Уровень сложности: {{ quiz.title }}">
+                                                <option value="any">Любая</option>
+                                                <option value="beginner">Начальная</option>
+                                                <option value="intermediate">Средняя</option>
+                                                <option value="advanced">Продвинутая</option>
+                                            </select>
+                                        </label>
+                                        <button
+                                            class="primary-link"
+                                            type="button"
+                                            data-assessment-start
+                                            data-chapter-id="{{ quiz.chapter_id }}"
+                                        >Начать тренировку <span aria-hidden="true">→</span></button>
+                                    </div>
                                 {% endif %}
                             </li>
                         {% endfor %}

@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import sqlite3
@@ -5,8 +6,9 @@ import tempfile
 import unittest
 from contextlib import closing
 
-from assessment_bank import seed_assessment_questions
+from assessment_bank import INITIAL_QUESTIONS, seed_assessment_questions
 from app import create_app
+import migrations
 
 
 class AssessmentTests(unittest.TestCase):
@@ -72,6 +74,63 @@ class AssessmentTests(unittest.TestCase):
             data={"csrf_token": token or self.csrf_token, **payload},
         )
 
+    def _correct_answers(self, attempt):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            snapshots = dict(
+                database.execute(
+                    """
+                    SELECT question_id, question_snapshot
+                    FROM assessment_attempt_questions
+                    WHERE attempt_id = ?
+                    """,
+                    (attempt["attempt_id"],),
+                ).fetchall()
+            )
+        answers = {}
+        for question in attempt["questions"]:
+            snapshot = json.loads(snapshots[question["id"]])
+            expected = snapshot["correct_answer"]
+            answers[str(question["id"])] = (
+                str(expected)
+                if snapshot["question_type"] == "numeric"
+                else expected
+            )
+        return answers
+
+    def _incorrect_answers(self, attempt):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            snapshots = dict(
+                database.execute(
+                    """
+                    SELECT question_id, question_snapshot
+                    FROM assessment_attempt_questions
+                    WHERE attempt_id = ?
+                    """,
+                    (attempt["attempt_id"],),
+                ).fetchall()
+            )
+        answers = {}
+        for question in attempt["questions"]:
+            snapshot = json.loads(snapshots[question["id"]])
+            expected = snapshot["correct_answer"]
+            if snapshot["question_type"] == "numeric":
+                answer = str(float(expected) + 1)
+            elif snapshot["question_type"] == "multiple_choice":
+                expected_values = set(expected)
+                answer = [
+                    option["value"]
+                    for option in snapshot["options"]
+                    if option["value"] not in expected_values
+                ][:1]
+            else:
+                answer = next(
+                    option["value"]
+                    for option in snapshot["options"]
+                    if option["value"] != expected
+                )
+            answers[str(question["id"])] = answer
+        return answers
+
     def test_testing_page_lists_published_chapter_quizzes(self):
         response = self.client.get("/testing")
 
@@ -83,6 +142,7 @@ class AssessmentTests(unittest.TestCase):
         self._login_demo_user()
         response = self.client.get("/testing")
         self.assertIn(b"data-assessment-start", response.data)
+        self.assertIn("До 2 вопросов из 3".encode(), response.data)
         self.assertNotIn(b"correct_answer", response.data)
 
     def test_removed_seed_questions_are_not_recreated_on_restart(self):
@@ -99,6 +159,52 @@ class AssessmentTests(unittest.TestCase):
                 "SELECT COUNT(*) FROM assessment_questions"
             ).fetchone()[0]
         self.assertEqual(question_count, 0)
+
+    def test_existing_seed_bank_receives_new_levels_without_restoring_removed_questions(self):
+        database = sqlite3.connect(":memory:")
+        database.row_factory = sqlite3.Row
+        database.execute("PRAGMA foreign_keys = ON")
+        migrations.migrate_database(database, through_version=12)
+        database.execute(
+            "INSERT INTO courses (id, slug, title) VALUES (1, 'course', 'Course')"
+        )
+        database.execute(
+            "INSERT INTO chapters (id, course_id, position, title) VALUES (1, 1, 1, 'Chapter')"
+        )
+        starter = INITIAL_QUESTIONS[0]
+        database.execute(
+            """
+            INSERT INTO assessment_questions (
+                course_id, chapter_id, question_type, prompt, options,
+                correct_answer, explanation, position
+            )
+            VALUES (1, 1, ?, ?, ?, ?, ?, 1)
+            """,
+            (
+                starter["question_type"],
+                starter["prompt"],
+                json.dumps(starter["options"]),
+                json.dumps(starter["correct_answer"]),
+                starter["explanation"],
+            ),
+        )
+        database.execute(
+            "INSERT INTO assessment_bank_seed_state (course_id) VALUES (1)"
+        )
+        migrations.migrate_database(database)
+
+        seed_assessment_questions(database, 1)
+
+        rows = database.execute(
+            """
+            SELECT prompt, difficulty FROM assessment_questions
+            WHERE chapter_id = 1 ORDER BY position
+            """
+        ).fetchall()
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0]["difficulty"], "beginner")
+        self.assertEqual(rows[1]["difficulty"], "advanced")
+        database.close()
 
     def test_guest_cannot_start_attempt_and_csrf_is_required(self):
         unauthorized = self.client.post(
@@ -139,16 +245,51 @@ class AssessmentTests(unittest.TestCase):
         self.assertEqual(attempt, (2,))
         self.assertEqual(question_count, 2)
 
+    def test_attempt_randomly_samples_configured_count_at_selected_difficulty(self):
+        self._login_demo_user()
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            database.execute(
+                """
+                UPDATE assessment_chapter_settings
+                SET questions_per_attempt = 1 WHERE chapter_id = 1
+                """
+            )
+            database.execute(
+                """
+                UPDATE assessment_questions SET difficulty = 'advanced'
+                WHERE chapter_id = 1
+                """
+            )
+            database.commit()
+        no_matches = self._post_json(
+            "/api/assessments/1/attempts",
+            {"difficulty": "beginner"},
+        )
+        self.assertEqual(no_matches.status_code, 404)
+
+        attempt = self._start_attempt()
+        self.assertEqual(len(attempt["questions"]), 1)
+        self.assertEqual(attempt["questions"][0]["difficulty"], "advanced")
+        self.assertNotIn("correct_answer", attempt["questions"][0])
+
+        invalid = self._post_json(
+            "/api/assessments/1/attempts",
+            {"difficulty": "expert"},
+        )
+        self.assertEqual(invalid.status_code, 400)
+
     def test_numeric_and_multiple_choice_answers_are_graded_and_saved(self):
         self._login_demo_user()
-        attempt = self._start_attempt(chapter_id=2)
-        answers = {}
-        for question in attempt["questions"]:
-            answers[str(question["id"])] = (
-                "255"
-                if question["question_type"] == "numeric"
-                else ["binary", "octal", "hex"]
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            database.execute(
+                """
+                UPDATE assessment_chapter_settings
+                SET questions_per_attempt = 20 WHERE chapter_id = 2
+                """
             )
+            database.commit()
+        attempt = self._start_attempt(chapter_id=2)
+        answers = self._correct_answers(attempt)
 
         response = self._post_json(
             f"/api/assessments/attempts/{attempt['attempt_id']}/submit",
@@ -157,7 +298,7 @@ class AssessmentTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200, response.get_json())
         result = response.get_json()
-        self.assertEqual((result["score"], result["question_count"]), (2, 2))
+        self.assertEqual((result["score"], result["question_count"]), (3, 3))
         self.assertTrue(all(item["correct"] for item in result["results"]))
         self.assertTrue(all(item["explanation"] for item in result["results"]))
 
@@ -176,22 +317,17 @@ class AssessmentTests(unittest.TestCase):
                 """,
                 (attempt["attempt_id"],),
             ).fetchone()[0]
-        self.assertEqual(saved_attempt[:2], (2, 2))
+        self.assertEqual(saved_attempt[:2], (3, 3))
         self.assertIsNotNone(saved_attempt[2])
-        self.assertEqual(saved_answers, 2)
+        self.assertEqual(saved_answers, 3)
 
         history_page = self.client.get("/testing")
-        self.assertIn("2 / 2".encode(), history_page.data)
+        self.assertIn("3 / 3".encode(), history_page.data)
 
     def test_incorrect_answer_returns_correct_answer_and_explanation(self):
         self._login_demo_user()
         attempt = self._start_attempt(chapter_id=1)
-        answers = {
-            str(question["id"]): (
-                "4" if question["question_type"] == "single_choice" else "10"
-            )
-            for question in attempt["questions"]
-        }
+        answers = self._incorrect_answers(attempt)
 
         response = self._post_json(
             f"/api/assessments/attempts/{attempt['attempt_id']}/submit",
@@ -231,12 +367,7 @@ class AssessmentTests(unittest.TestCase):
     def test_attempt_is_private_to_its_owner_and_cannot_be_submitted_twice(self):
         self._login_demo_user()
         attempt = self._start_attempt()
-        answers = {
-            str(question["id"]): (
-                "8" if question["question_type"] == "single_choice" else "11"
-            )
-            for question in attempt["questions"]
-        }
+        answers = self._correct_answers(attempt)
 
         first_submit = self._post_json(
             f"/api/assessments/attempts/{attempt['attempt_id']}/submit",
@@ -305,6 +436,7 @@ class AssessmentTests(unittest.TestCase):
             f"/content-management/assessment-questions/{question_id}",
             {
                 "question_type": "multiple_choice",
+                "difficulty": "advanced",
                 "prompt": "Выберите оба активных уровня.",
                 "options": "high|Высокий\nlow|Низкий",
                 "correct_answer": "high, low",
@@ -318,15 +450,36 @@ class AssessmentTests(unittest.TestCase):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
             saved = database.execute(
                 """
-                SELECT question_type, prompt, correct_answer, position, published
+                SELECT question_type, prompt, correct_answer, position, published,
+                    difficulty
                 FROM assessment_questions WHERE id = ?
                 """,
                 (question_id,),
             ).fetchone()
         self.assertEqual(
             saved,
-            ("multiple_choice", "Выберите оба активных уровня.", '["high", "low"]', 2, 1),
+            (
+                "multiple_choice",
+                "Выберите оба активных уровня.",
+                '["high", "low"]',
+                2,
+                1,
+                "advanced",
+            ),
         )
+        settings = self._post_form(
+            "/content-management/chapters/1/assessment-settings",
+            {"questions_per_attempt": "1"},
+        )
+        self.assertEqual(settings.status_code, 302)
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            configured_count = database.execute(
+                """
+                SELECT questions_per_attempt FROM assessment_chapter_settings
+                WHERE chapter_id = 1
+                """
+            ).fetchone()[0]
+        self.assertEqual(configured_count, 1)
 
         deleted = self._post_form(
             f"/content-management/assessment-questions/{question_id}/delete",
@@ -345,6 +498,26 @@ class AssessmentTests(unittest.TestCase):
                     "SELECT MIN(position) FROM assessment_questions WHERE chapter_id = 1"
                 ).fetchone()[0],
                 1,
+            )
+
+    def test_assessment_settings_reject_invalid_question_counts(self):
+        self._login_admin()
+        response = self._post_form(
+            "/content-management/chapters/1/assessment-settings",
+            {"questions_per_attempt": "21"},
+        )
+        self.assertEqual(response.status_code, 302)
+        page = self.client.get(response.headers["Location"])
+        self.assertIn("от 1 до 20 вопросов".encode(), page.data)
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            self.assertEqual(
+                database.execute(
+                    """
+                    SELECT questions_per_attempt FROM assessment_chapter_settings
+                    WHERE chapter_id = 1
+                    """
+                ).fetchone()[0],
+                2,
             )
 
     def test_question_editor_enforces_role_csrf_and_validates_options(self):
@@ -400,14 +573,7 @@ class AssessmentTests(unittest.TestCase):
         self._post_json("/api/auth/logout", {})
         self.csrf_token = self._load_csrf_token()
         self._login_demo_user()
-        answers = {
-            str(question["id"]): (
-                "8"
-                if question["question_type"] == "single_choice"
-                else "11"
-            )
-            for question in attempt["questions"]
-        }
+        answers = self._correct_answers(attempt)
         submitted = self._post_json(
             f"/api/assessments/attempts/{attempt['attempt_id']}/submit",
             {"answers": answers},

@@ -41,7 +41,12 @@
         const fieldset = document.createElement("fieldset");
         fieldset.className = "assessment-question";
         const legend = document.createElement("legend");
-        legend.textContent = `${index + 1}. ${question.prompt}`;
+        const difficulty = {
+            beginner: "Начальная",
+            intermediate: "Средняя",
+            advanced: "Продвинутая",
+        }[question.difficulty];
+        legend.textContent = `${index + 1}. ${question.prompt} (${difficulty} сложность)`;
         fieldset.append(legend);
 
         if (question.question_type === "numeric") {
@@ -169,7 +174,12 @@
             title.textContent = `${index + 1}. ${result.prompt}`;
             const outcome = document.createElement("p");
             outcome.className = "assessment-result-outcome";
-            outcome.textContent = result.correct ? "Верно" : "Неверно";
+            const difficulty = {
+                beginner: "начальная",
+                intermediate: "средняя",
+                advanced: "продвинутая",
+            }[result.difficulty];
+            outcome.textContent = `${result.correct ? "Верно" : "Неверно"} · ${difficulty} сложность`;
             const answer = document.createElement("p");
             answer.textContent = `Ваш ответ: ${answerLabel(result.answer, result.options)}`;
             const expected = document.createElement("p");
@@ -195,7 +205,11 @@
         try {
             const data = await postJson(
                 `/api/assessments/${button.dataset.chapterId}/attempts`,
-                {},
+                {
+                    difficulty: button
+                        .closest(".assessment-quiz-card")
+                        .querySelector("[data-assessment-difficulty]").value,
+                },
             );
             activeAttempt = data;
             renderAttempt(data);

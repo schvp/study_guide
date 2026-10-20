@@ -34,6 +34,8 @@ class DatabaseMigrationTests(unittest.TestCase):
                 (10, "snapshot_assessment_attempt_questions"),
                 (11, "make_assessment_attempts_immutable"),
                 (12, "track_assessment_bank_seeding"),
+                (13, "add_assessment_difficulty_and_settings"),
+                (14, "version_assessment_question_bank"),
             ],
         )
         user_columns = {
@@ -61,7 +63,7 @@ class DatabaseMigrationTests(unittest.TestCase):
             self.database.execute(
                 "SELECT COUNT(*) FROM schema_migrations"
             ).fetchone()[0],
-            12,
+            14,
         )
 
     def test_assessment_tables_store_questions_and_per_user_attempt_answers(self):
@@ -126,6 +128,42 @@ class DatabaseMigrationTests(unittest.TestCase):
             0,
         )
 
+    def test_assessment_difficulty_and_chapter_question_count_constraints(self):
+        self.database.execute("PRAGMA foreign_keys = ON")
+        migrations.migrate_database(self.database, through_version=12)
+        self.database.execute(
+            "INSERT INTO courses (id, slug, title) VALUES (1, 'course', 'Course')"
+        )
+        self.database.execute(
+            "INSERT INTO chapters (id, course_id, position, title) VALUES (1, 1, 1, 'Chapter')"
+        )
+        migrations.migrate_database(self.database)
+        self.assertEqual(
+            self.database.execute(
+                """
+                SELECT questions_per_attempt FROM assessment_chapter_settings
+                WHERE chapter_id = 1
+                """
+            ).fetchone()[0],
+            2,
+        )
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.database.execute(
+                """
+                INSERT INTO assessment_questions (
+                    course_id, chapter_id, question_type, prompt,
+                    correct_answer, position, difficulty
+                ) VALUES (1, 1, 'numeric', 'Question?', '1', 1, 'expert')
+                """
+            )
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.database.execute(
+                """
+                UPDATE assessment_chapter_settings
+                SET questions_per_attempt = 21 WHERE chapter_id = 1
+                """
+            )
+
     def test_migration_snapshots_existing_attempts_and_preserves_answers_after_question_deletion(self):
         self.database.execute("PRAGMA foreign_keys = ON")
         migrations.migrate_database(self.database, through_version=10)
@@ -171,6 +209,7 @@ class DatabaseMigrationTests(unittest.TestCase):
             """
         ).fetchone()[0]
         self.assertEqual(json.loads(snapshot)["prompt"], "Original question?")
+        self.assertEqual(json.loads(snapshot)["difficulty"], "beginner")
 
         self.database.execute("DELETE FROM assessment_questions WHERE id = 1")
         self.database.commit()
@@ -323,7 +362,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         with patch.object(
             migrations,
             "MIGRATIONS",
-            migrations.MIGRATIONS + ((13, "failing_migration", fail_after_ddl),),
+            migrations.MIGRATIONS + ((15, "failing_migration", fail_after_ddl),),
         ):
             with self.assertRaisesRegex(RuntimeError, "migration failed"):
                 migrations.migrate_database(self.database)
@@ -337,7 +376,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         self.assertIsNone(table)
         self.assertIsNone(
             self.database.execute(
-                "SELECT 1 FROM schema_migrations WHERE version = 13"
+                "SELECT 1 FROM schema_migrations WHERE version = 15"
             ).fetchone()
         )
 

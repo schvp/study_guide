@@ -203,6 +203,14 @@
                                             <span class="managed-course-action">Управлять вопросами</span>
                                         </summary>
                                         <section class="assessment-question-editor" aria-label="Вопросы главы {{ chapter.title }}">
+                                            <form class="management-form assessment-settings-form" method="post" action="{{ url_for('update_assessment_settings', chapter_id=chapter.id) }}">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                <label class="management-field">
+                                                    <span>Вопросов в случайном варианте (от 1 до 20)</span>
+                                                    <input type="number" name="questions_per_attempt" min="1" max="20" value="{{ assessment_settings_by_chapter.get(chapter.id, 2) }}" required>
+                                                </label>
+                                                <button class="management-save" type="submit">Сохранить размер варианта</button>
+                                            </form>
                                             <h4>Добавить вопрос</h4>
                                             <form class="management-form" method="post" action="{{ url_for('create_assessment_question', chapter_id=chapter.id) }}">
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -212,6 +220,14 @@
                                                         <option value="single_choice">Один вариант ответа</option>
                                                         <option value="multiple_choice">Несколько вариантов ответа</option>
                                                         <option value="numeric">Числовой ответ</option>
+                                                    </select>
+                                                </label>
+                                                <label class="management-field">
+                                                    <span>Сложность</span>
+                                                    <select name="difficulty">
+                                                        <option value="beginner">Начальный</option>
+                                                        <option value="intermediate">Средний</option>
+                                                        <option value="advanced">Продвинутый</option>
                                                     </select>
                                                 </label>
                                                 <label class="management-field">
@@ -256,7 +272,7 @@
                                                                 <summary>
                                                                     <span class="managed-chapter-position">{{ "%02d"|format(question.position) }}</span>
                                                                     <span class="managed-chapter-title">{{ question.prompt }}</span>
-                                                                    <span class="managed-course-meta">{% if question.published %}Опубликован{% else %}Скрыт{% endif %}</span>
+                                                                    <span class="managed-course-meta">{{ question.difficulty_label }} · {% if question.published %}Опубликован{% else %}Скрыт{% endif %}</span>
                                                                     <span class="managed-course-action">Редактировать</span>
                                                                 </summary>
                                                                 <form class="management-form" method="post" action="{{ url_for('edit_assessment_question', question_id=question.id) }}">
@@ -267,6 +283,14 @@
                                                                             <option value="single_choice" {% if question.question_type == 'single_choice' %}selected{% endif %}>Один вариант ответа</option>
                                                                             <option value="multiple_choice" {% if question.question_type == 'multiple_choice' %}selected{% endif %}>Несколько вариантов ответа</option>
                                                                             <option value="numeric" {% if question.question_type == 'numeric' %}selected{% endif %}>Числовой ответ</option>
+                                                                        </select>
+                                                                    </label>
+                                                                    <label class="management-field">
+                                                                        <span>Сложность</span>
+                                                                        <select name="difficulty">
+                                                                            <option value="beginner" {% if question.difficulty == 'beginner' %}selected{% endif %}>Начальный</option>
+                                                                            <option value="intermediate" {% if question.difficulty == 'intermediate' %}selected{% endif %}>Средний</option>
+                                                                            <option value="advanced" {% if question.difficulty == 'advanced' %}selected{% endif %}>Продвинутый</option>
                                                                         </select>
                                                                     </label>
                                                                     <label class="management-field">

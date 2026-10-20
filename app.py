@@ -475,11 +475,14 @@ def create_app(test_config=None):
                 .execute(
                     """
                     SELECT chapters.id AS chapter_id, chapters.position,
-                        chapters.title, COUNT(questions.id) AS question_count
+                        chapters.title, COUNT(questions.id) AS available_questions,
+                        COALESCE(settings.questions_per_attempt, 2) AS question_count
                     FROM chapters
                     JOIN assessment_questions AS questions
                         ON questions.chapter_id = chapters.id
                         AND questions.published = 1
+                    LEFT JOIN assessment_chapter_settings AS settings
+                        ON settings.chapter_id = chapters.id
                     WHERE chapters.course_id = ? AND chapters.status = 'published'
                     GROUP BY chapters.id
                     ORDER BY chapters.position, chapters.id
@@ -788,15 +791,29 @@ def create_app(test_config=None):
             materials_by_course.setdefault(material["course_id"], []).append(material)
         assessment_rows = get_db().execute(
             """
-            SELECT id, course_id, chapter_id, question_type, prompt, options,
-                correct_answer, tolerance, explanation, position, published
-            FROM assessment_questions
-            ORDER BY course_id, chapter_id, position, id
+            SELECT questions.id, questions.course_id, questions.chapter_id,
+                questions.question_type, questions.prompt, questions.options,
+                questions.correct_answer, questions.tolerance, questions.explanation,
+                questions.position, questions.published, questions.difficulty
+            FROM assessment_questions AS questions
+            ORDER BY questions.course_id, questions.chapter_id,
+                questions.position, questions.id
             """
         ).fetchall()
         assessment_questions_by_chapter = {}
+        assessment_settings_by_chapter = {
+            row["chapter_id"]: row["questions_per_attempt"]
+            for row in get_db().execute(
+                "SELECT chapter_id, questions_per_attempt FROM assessment_chapter_settings"
+            ).fetchall()
+        }
         for question in assessment_rows:
             question_data = dict(question)
+            question_data["difficulty_label"] = {
+                "beginner": "Начальный",
+                "intermediate": "Средний",
+                "advanced": "Продвинутый",
+            }[question["difficulty"]]
             question_data["options_text"] = "\n".join(
                 f"{option['value']}|{option['label']}"
                 for option in json.loads(question["options"])
@@ -817,6 +834,7 @@ def create_app(test_config=None):
             chapters_by_course=chapters_by_course,
             materials_by_course=materials_by_course,
             assessment_questions_by_chapter=assessment_questions_by_chapter,
+            assessment_settings_by_chapter=assessment_settings_by_chapter,
             library_material_types=LIBRARY_MATERIAL_TYPES,
             selected_course_id=selected_course_id,
             current_user=current_user(),
@@ -948,6 +966,9 @@ def create_app(test_config=None):
         published = request.form.get("published", "1")
         if question_type not in {"single_choice", "multiple_choice", "numeric"}:
             return None, "Выберите поддерживаемый тип вопроса."
+        difficulty = request.form.get("difficulty", "beginner")
+        if difficulty not in {"beginner", "intermediate", "advanced"}:
+            return None, "Выберите уровень сложности."
         if not prompt:
             return None, "Укажите текст вопроса."
         if len(prompt) > 1000:
@@ -1028,6 +1049,7 @@ def create_app(test_config=None):
             explanation,
             position,
             int(published),
+            difficulty,
         ), None
 
     def reorder_assessment_questions(chapter_id, question_ids):
@@ -1280,14 +1302,16 @@ def create_app(test_config=None):
             explanation,
             position,
             published,
+            difficulty,
         ) = values
         cursor = database.execute(
             """
             INSERT INTO assessment_questions (
                 course_id, chapter_id, question_type, prompt, options,
-                correct_answer, tolerance, explanation, position, published
+                correct_answer, tolerance, explanation, position, published,
+                difficulty
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 chapter["course_id"],
@@ -1300,6 +1324,7 @@ def create_app(test_config=None):
                 explanation,
                 len(questions) + 1,
                 published,
+                difficulty,
             ),
         )
         question_ids = [question["id"] for question in questions]
@@ -1353,12 +1378,13 @@ def create_app(test_config=None):
             explanation,
             position,
             published,
+            difficulty,
         ) = values
         database.execute(
             """
             UPDATE assessment_questions
             SET question_type = ?, prompt = ?, options = ?, correct_answer = ?,
-                tolerance = ?, explanation = ?, published = ?
+                tolerance = ?, explanation = ?, published = ?, difficulty = ?
             WHERE id = ?
             """,
             (
@@ -1369,6 +1395,7 @@ def create_app(test_config=None):
                 tolerance,
                 explanation,
                 published,
+                difficulty,
                 question_id,
             ),
         )
@@ -1380,6 +1407,40 @@ def create_app(test_config=None):
         database.commit()
         flash("Изменения вопроса сохранены.", "success")
         return redirect_to_course_management(question["course_id"])
+
+    @app.post("/content-management/chapters/<int:chapter_id>/assessment-settings")
+    @roles_required("teacher", "admin")
+    @csrf_protected
+    def update_assessment_settings(chapter_id):
+        chapter = get_db().execute(
+            "SELECT id, course_id FROM chapters WHERE id = ?",
+            (chapter_id,),
+        ).fetchone()
+        if chapter is None:
+            return render_template(
+                "404.html",
+                current_user=current_user(),
+            ), 404
+        try:
+            question_count = int(request.form.get("questions_per_attempt", ""))
+        except ValueError:
+            flash("Укажите целое число вопросов в варианте.", "error")
+            return redirect_to_course_management(chapter["course_id"])
+        if not 1 <= question_count <= 20:
+            flash("В варианте должно быть от 1 до 20 вопросов.", "error")
+            return redirect_to_course_management(chapter["course_id"])
+        get_db().execute(
+            """
+            INSERT INTO assessment_chapter_settings (chapter_id, questions_per_attempt)
+            VALUES (?, ?)
+            ON CONFLICT (chapter_id) DO UPDATE SET
+                questions_per_attempt = excluded.questions_per_attempt
+            """,
+            (chapter_id, question_count),
+        )
+        get_db().commit()
+        flash("Настройки теста по главе сохранены.", "success")
+        return redirect_to_course_management(chapter["course_id"])
 
     @app.post("/content-management/assessment-questions/<int:question_id>/delete")
     @roles_required("teacher", "admin")
@@ -1821,8 +1882,17 @@ def create_app(test_config=None):
         user = current_user()
         if user is None:
             return jsonify(error="Войдите, чтобы начать тест и сохранить результат."), 401
-        if json_payload() is None:
+        payload = json_payload()
+        if payload is None:
             return jsonify(error="Некорректный запрос."), 400
+        difficulty = payload.get("difficulty", "any")
+        if not isinstance(difficulty, str) or difficulty not in {
+            "any",
+            "beginner",
+            "intermediate",
+            "advanced",
+        }:
+            return jsonify(error="Выберите допустимый уровень сложности."), 400
 
         database = get_db()
         chapter = database.execute(
@@ -1837,18 +1907,33 @@ def create_app(test_config=None):
         ).fetchone()
         if chapter is None:
             return jsonify(error="Тест по этой теме не найден."), 404
-        questions = database.execute(
+        question_rows = database.execute(
             """
             SELECT id, question_type, prompt, options, correct_answer,
-                tolerance, explanation
+                tolerance, explanation, difficulty
             FROM assessment_questions
             WHERE chapter_id = ? AND published = 1
+                AND (? = 'any' OR difficulty = ?)
             ORDER BY position, id
             """,
-            (chapter_id,),
+            (chapter_id, difficulty, difficulty),
         ).fetchall()
-        if not questions:
-            return jsonify(error="В этой теме пока нет опубликованных вопросов."), 404
+        if not question_rows:
+            return jsonify(error="Для выбранного уровня в этой теме пока нет вопросов."), 404
+        question_limit = database.execute(
+            """
+            SELECT COALESCE(
+                (SELECT questions_per_attempt
+                FROM assessment_chapter_settings WHERE chapter_id = ?),
+                2
+            )
+            """,
+            (chapter_id,),
+        ).fetchone()[0]
+        questions = secrets.SystemRandom().sample(
+            question_rows,
+            k=min(len(question_rows), question_limit),
+        )
 
         cursor = database.execute(
             """
@@ -1880,6 +1965,7 @@ def create_app(test_config=None):
                             "correct_answer": json.loads(question["correct_answer"]),
                             "tolerance": question["tolerance"],
                             "explanation": question["explanation"],
+                            "difficulty": question["difficulty"],
                         },
                         ensure_ascii=False,
                     ),
@@ -1897,6 +1983,7 @@ def create_app(test_config=None):
                     "question_type": question["question_type"],
                     "prompt": question["prompt"],
                     "options": json.loads(question["options"]),
+                    "difficulty": question["difficulty"],
                 }
                 for question in questions
             ],
@@ -2049,6 +2136,7 @@ def create_app(test_config=None):
                     "correct_answer": result["expected"],
                     "correct": result["correct"],
                     "explanation": result["question"]["explanation"],
+                    "difficulty": result["question"]["difficulty"],
                 }
                 for result in graded_answers
             ],

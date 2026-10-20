@@ -5,6 +5,7 @@ INITIAL_QUESTIONS = (
     {
         "chapter_position": 1,
         "question_type": "single_choice",
+        "difficulty": "beginner",
         "prompt": "Сколько битов содержит один байт?",
         "options": [
             {"value": "4", "label": "4"},
@@ -17,6 +18,7 @@ INITIAL_QUESTIONS = (
     {
         "chapter_position": 1,
         "question_type": "numeric",
+        "difficulty": "intermediate",
         "prompt": "Какое десятичное число записано двоичным кодом 1011?",
         "options": [],
         "correct_answer": 11,
@@ -25,6 +27,7 @@ INITIAL_QUESTIONS = (
     {
         "chapter_position": 2,
         "question_type": "numeric",
+        "difficulty": "intermediate",
         "prompt": "Запишите десятичное число 173 в восьмеричной системе.",
         "options": [],
         "correct_answer": 255,
@@ -33,6 +36,7 @@ INITIAL_QUESTIONS = (
     {
         "chapter_position": 2,
         "question_type": "multiple_choice",
+        "difficulty": "beginner",
         "prompt": "Какие записи равны десятичному числу 10?",
         "options": [
             {"value": "binary", "label": "1010₂"},
@@ -46,6 +50,7 @@ INITIAL_QUESTIONS = (
     {
         "chapter_position": 3,
         "question_type": "single_choice",
+        "difficulty": "beginner",
         "prompt": "Чему равно выражение X ∧ 1?",
         "options": [
             {"value": "zero", "label": "0"},
@@ -58,6 +63,7 @@ INITIAL_QUESTIONS = (
     {
         "chapter_position": 3,
         "question_type": "numeric",
+        "difficulty": "intermediate",
         "prompt": "Сколько строк содержит таблица истинности для двух переменных?",
         "options": [],
         "correct_answer": 4,
@@ -66,6 +72,7 @@ INITIAL_QUESTIONS = (
     {
         "chapter_position": 4,
         "question_type": "single_choice",
+        "difficulty": "beginner",
         "prompt": "Каков выход элемента НЕ, если на входе 0?",
         "options": [
             {"value": "zero", "label": "0"},
@@ -77,6 +84,7 @@ INITIAL_QUESTIONS = (
     {
         "chapter_position": 4,
         "question_type": "multiple_choice",
+        "difficulty": "intermediate",
         "prompt": "В каких случаях выход элемента И равен 1?",
         "options": [
             {"value": "00", "label": "A = 0, B = 0"},
@@ -90,6 +98,7 @@ INITIAL_QUESTIONS = (
     {
         "chapter_position": 5,
         "question_type": "single_choice",
+        "difficulty": "beginner",
         "prompt": "Какой элемент формирует бит суммы полусумматора?",
         "options": [
             {"value": "and", "label": "И"},
@@ -102,6 +111,7 @@ INITIAL_QUESTIONS = (
     {
         "chapter_position": 5,
         "question_type": "numeric",
+        "difficulty": "intermediate",
         "prompt": "Каково десятичное значение наибольшего беззнакового числа из 3 битов?",
         "options": [],
         "correct_answer": 7,
@@ -110,6 +120,7 @@ INITIAL_QUESTIONS = (
     {
         "chapter_position": 6,
         "question_type": "single_choice",
+        "difficulty": "beginner",
         "prompt": "Когда триггер срабатывает на положительный фронт тактового сигнала?",
         "options": [
             {"value": "rise", "label": "При переходе такта из 0 в 1"},
@@ -122,6 +133,7 @@ INITIAL_QUESTIONS = (
     {
         "chapter_position": 6,
         "question_type": "multiple_choice",
+        "difficulty": "intermediate",
         "prompt": "Что происходит с состоянием триггера между активными фронтами такта?",
         "options": [
             {"value": "hold", "label": "Состояние сохраняется"},
@@ -134,6 +146,7 @@ INITIAL_QUESTIONS = (
     {
         "chapter_position": 7,
         "question_type": "numeric",
+        "difficulty": "intermediate",
         "prompt": "Сколько различных состояний может хранить 4-битный регистр?",
         "options": [],
         "correct_answer": 16,
@@ -142,6 +155,7 @@ INITIAL_QUESTIONS = (
     {
         "chapter_position": 7,
         "question_type": "single_choice",
+        "difficulty": "beginner",
         "prompt": "Сколько состояний проходит счётчик по модулю 6 за один полный цикл?",
         "options": [
             {"value": "5", "label": "5"},
@@ -154,6 +168,7 @@ INITIAL_QUESTIONS = (
     {
         "chapter_position": 8,
         "question_type": "single_choice",
+        "difficulty": "beginner",
         "prompt": "Какая память сохраняет данные после отключения питания?",
         "options": [
             {"value": "ram", "label": "Оперативная память RAM"},
@@ -166,28 +181,117 @@ INITIAL_QUESTIONS = (
     {
         "chapter_position": 8,
         "question_type": "numeric",
+        "difficulty": "intermediate",
         "prompt": "Сколько ячеек адресует 3-битная адресная шина?",
         "options": [],
         "correct_answer": 8,
         "explanation": "Три адресных бита задают 2³ = 8 различных адресов.",
+    },
+    {
+        "chapter_position": 1,
+        "question_type": "numeric",
+        "difficulty": "advanced",
+        "prompt": "Какое десятичное число записано двоичным кодом 110101?",
+        "options": [],
+        "correct_answer": 53,
+        "explanation": "110101₂ = 32 + 16 + 4 + 1 = 53₁₀.",
+    },
+    {
+        "chapter_position": 2,
+        "question_type": "numeric",
+        "difficulty": "advanced",
+        "prompt": "Запишите десятичное число 255 в шестнадцатеричной системе.",
+        "options": [],
+        "correct_answer": 255,
+        "explanation": "255₁₀ = 15×16 + 15, поэтому запись — FF₁₆.",
+    },
+    {
+        "chapter_position": 3,
+        "question_type": "single_choice",
+        "difficulty": "advanced",
+        "prompt": "Какое выражение эквивалентно ¬(A ∧ B) по закону де Моргана?",
+        "options": [
+            {"value": "and", "label": "¬A ∧ ¬B"},
+            {"value": "or", "label": "¬A ∨ ¬B"},
+            {"value": "xor", "label": "A ⊕ B"},
+        ],
+        "correct_answer": "or",
+        "explanation": "По закону де Моргана отрицание конъюнкции равно дизъюнкции отрицаний.",
+    },
+    {
+        "chapter_position": 4,
+        "question_type": "single_choice",
+        "difficulty": "advanced",
+        "prompt": "При какой комбинации входов элемент NAND выдаёт 0?",
+        "options": [
+            {"value": "00", "label": "A = 0, B = 0"},
+            {"value": "01", "label": "A = 0, B = 1"},
+            {"value": "10", "label": "A = 1, B = 0"},
+            {"value": "11", "label": "A = 1, B = 1"},
+        ],
+        "correct_answer": "11",
+        "explanation": "NAND — это отрицание И; ноль на выходе появляется только при двух единицах.",
+    },
+    {
+        "chapter_position": 5,
+        "question_type": "single_choice",
+        "difficulty": "advanced",
+        "prompt": "Каков выход схемы большинства при A = 1, B = 0, C = 1?",
+        "options": [
+            {"value": "0", "label": "0"},
+            {"value": "1", "label": "1"},
+        ],
+        "correct_answer": "1",
+        "explanation": "Схема большинства выдаёт 1, когда единицы поданы как минимум на два из трёх входов.",
+    },
+    {
+        "chapter_position": 6,
+        "question_type": "single_choice",
+        "difficulty": "advanced",
+        "prompt": "Какое значение примет D-триггер на активном фронте, если D = 0?",
+        "options": [
+            {"value": "0", "label": "0"},
+            {"value": "1", "label": "1"},
+            {"value": "hold", "label": "Сохранит предыдущее значение"},
+        ],
+        "correct_answer": "0",
+        "explanation": "D-триггер копирует вход D на выход Q при активном фронте такта.",
+    },
+    {
+        "chapter_position": 7,
+        "question_type": "numeric",
+        "difficulty": "advanced",
+        "prompt": "Какое число состояний проходит 4-битный двоичный счётчик по модулю 16?",
+        "options": [],
+        "correct_answer": 16,
+        "explanation": "Четыре разряда образуют 2⁴ = 16 состояний, от 0 до 15.",
+    },
+    {
+        "chapter_position": 8,
+        "question_type": "numeric",
+        "difficulty": "advanced",
+        "prompt": "Сколько адресных битов нужно для выбора одной из 32 ячеек памяти?",
+        "options": [],
+        "correct_answer": 5,
+        "explanation": "Нужно n битов, для которых 2ⁿ = 32; следовательно, n = 5.",
     },
 )
 
 
 def seed_assessment_questions(database, course_id):
     already_seeded = database.execute(
-        "SELECT 1 FROM assessment_bank_seed_state WHERE course_id = ?",
+        "SELECT bank_version FROM assessment_bank_seed_state WHERE course_id = ?",
         (course_id,),
     ).fetchone()
-    if already_seeded:
+    if already_seeded and already_seeded["bank_version"] >= 2:
         return
     existing_questions = database.execute(
         "SELECT 1 FROM assessment_questions WHERE course_id = ? LIMIT 1",
         (course_id,),
     ).fetchone()
-    if existing_questions:
+    if existing_questions and not already_seeded:
         database.execute(
-            "INSERT INTO assessment_bank_seed_state (course_id) VALUES (?)",
+            "INSERT INTO assessment_bank_seed_state (course_id, bank_version) VALUES (?, 2)",
             (course_id,),
         )
         return
@@ -201,10 +305,40 @@ def seed_assessment_questions(database, course_id):
             (course_id,),
         )
     }
-    positions = {}
+    positions = {
+        row["chapter_id"]: row["position"]
+        for row in database.execute(
+            """
+            SELECT chapter_id, MAX(position) AS position
+            FROM assessment_questions
+            WHERE course_id = ?
+            GROUP BY chapter_id
+            """,
+            (course_id,),
+        )
+    }
     for question in INITIAL_QUESTIONS:
         chapter_id = chapters.get(question["chapter_position"])
         if chapter_id is None:
+            continue
+        existing_question = database.execute(
+            """
+            SELECT id FROM assessment_questions
+            WHERE chapter_id = ? AND prompt = ?
+            """,
+            (chapter_id, question["prompt"]),
+        ).fetchone()
+        if already_seeded and question["difficulty"] != "advanced":
+            if existing_question:
+                database.execute(
+                    """
+                    UPDATE assessment_questions SET difficulty = ?
+                    WHERE id = ?
+                    """,
+                    (question["difficulty"], existing_question["id"]),
+                )
+            continue
+        if existing_question:
             continue
         position = positions.get(chapter_id, 0) + 1
         positions[chapter_id] = position
@@ -212,9 +346,9 @@ def seed_assessment_questions(database, course_id):
             """
             INSERT OR IGNORE INTO assessment_questions (
                 course_id, chapter_id, question_type, prompt, options,
-                correct_answer, explanation, position
+                correct_answer, explanation, position, difficulty
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 course_id,
@@ -225,9 +359,21 @@ def seed_assessment_questions(database, course_id):
                 json.dumps(question["correct_answer"], ensure_ascii=False),
                 question["explanation"],
                 position,
+                question["difficulty"],
             ),
         )
+    database.executemany(
+        """
+        INSERT OR IGNORE INTO assessment_chapter_settings (chapter_id)
+        VALUES (?)
+        """,
+        [(chapter_id,) for chapter_id in chapters.values()],
+    )
     database.execute(
-        "INSERT INTO assessment_bank_seed_state (course_id) VALUES (?)",
+        """
+        INSERT INTO assessment_bank_seed_state (course_id, bank_version)
+        VALUES (?, 2)
+        ON CONFLICT (course_id) DO UPDATE SET bank_version = 2
+        """,
         (course_id,),
     )

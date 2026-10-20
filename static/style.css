@@ -1854,6 +1854,30 @@ a.chapter-link:hover {
     cursor: pointer;
 }
 
+.assessment-quiz-actions {
+    display: flex;
+    align-items: end;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.assessment-difficulty-label {
+    display: grid;
+    gap: 5px;
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.assessment-difficulty-label select {
+    min-height: 38px;
+    padding: 7px 28px 7px 9px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: #fff;
+    color: var(--ink);
+    font: inherit;
+}
+
 .assessment-quiz-card button:disabled,
 .assessment-form button:disabled {
     cursor: wait;
