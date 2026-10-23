@@ -157,6 +157,43 @@ class DatabaseMigrationTests(unittest.TestCase):
                 ) VALUES (1, 1, 'numeric', 'Question?', '1', 1, 'expert')
                 """
             )
+
+    def test_assessment_time_and_attempt_limit_constraints(self):
+        self.database.execute("PRAGMA foreign_keys = ON")
+        migrations.migrate_database(self.database, through_version=12)
+        self.database.execute(
+            "INSERT INTO courses (id, slug, title) VALUES (1, 'course', 'Course')"
+        )
+        self.database.execute(
+            "INSERT INTO chapters (id, course_id, position, title) VALUES (1, 1, 1, 'Chapter')"
+        )
+        migrations.migrate_database(self.database)
+
+        self.database.execute(
+            """
+            UPDATE assessment_chapter_settings
+            SET time_limit_seconds = 60, max_attempts = 1
+            WHERE chapter_id = 1
+            """
+        )
+        for invalid_time in (59, 86401):
+            with self.assertRaises(sqlite3.IntegrityError):
+                self.database.execute(
+                    """
+                    UPDATE assessment_chapter_settings
+                    SET time_limit_seconds = ? WHERE chapter_id = 1
+                    """,
+                    (invalid_time,),
+                )
+        for invalid_attempts in (0, 101):
+            with self.assertRaises(sqlite3.IntegrityError):
+                self.database.execute(
+                    """
+                    UPDATE assessment_chapter_settings
+                    SET max_attempts = ? WHERE chapter_id = 1
+                    """,
+                    (invalid_attempts,),
+                )
         with self.assertRaises(sqlite3.IntegrityError):
             self.database.execute(
                 """
