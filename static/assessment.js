@@ -10,6 +10,13 @@
     let activeAttempt = null;
     let timerId = null;
 
+    function clearAttemptTimer() {
+        if (timerId !== null) {
+            window.clearInterval(timerId);
+            timerId = null;
+        }
+    }
+
     async function postJson(url, payload) {
         const response = await fetch(url, {
             method: "POST",
@@ -198,6 +205,7 @@
     }
 
     async function startAttempt(button) {
+        clearAttemptTimer();
         button.disabled = true;
         resultsPanel.hidden = true;
         player.replaceChildren();
@@ -243,7 +251,7 @@
                 const seconds = String(remaining % 60).padStart(2, "0");
                 timer.textContent = `Осталось времени: ${minutes}:${seconds}`;
                 if (remaining === 0) {
-                    window.clearInterval(timerId);
+                    clearAttemptTimer();
                     showStatus(player, "Время истекло. Отправьте ответы, чтобы завершить попытку.", true);
                 }
             };
@@ -288,10 +296,7 @@
                 { answers },
             );
             form.remove();
-            if (timerId) {
-                window.clearInterval(timerId);
-                timerId = null;
-            }
+            clearAttemptTimer();
             player.querySelector("[data-assessment-status]")?.remove();
             renderResults(data, activeAttempt.chapter_title);
         } catch (error) {
