@@ -145,6 +145,23 @@ class AssessmentTests(unittest.TestCase):
         self.assertIn("До 2 вопросов из 3".encode(), response.data)
         self.assertNotIn(b"correct_answer", response.data)
 
+    def test_testing_page_shows_attempt_usage_for_limited_quiz(self):
+        self._login_demo_user()
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            database.execute(
+                """
+                UPDATE assessment_chapter_settings
+                SET max_attempts = 3 WHERE chapter_id = 1
+                """
+            )
+            database.commit()
+        self._start_attempt()
+
+        response = self.client.get("/testing")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Использовано попыток: 1 из 3".encode(), response.data)
+
     def test_removed_seed_questions_are_not_recreated_on_restart(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
             database.execute("DELETE FROM assessment_questions")
