@@ -1,3 +1,4 @@
+import json
 import sqlite3
 import unittest
 from unittest.mock import patch
@@ -29,6 +30,12 @@ class DatabaseMigrationTests(unittest.TestCase):
                 (6, "create_library_materials"),
                 (7, "add_user_roles"),
                 (8, "add_content_publication_status"),
+                (9, "create_assessment_tables"),
+                (10, "snapshot_assessment_attempt_questions"),
+                (11, "make_assessment_attempts_immutable"),
+                (12, "track_assessment_bank_seeding"),
+                (13, "add_assessment_difficulty_and_settings"),
+                (14, "version_assessment_question_bank"),
             ],
         )
         user_columns = {
@@ -56,7 +63,167 @@ class DatabaseMigrationTests(unittest.TestCase):
             self.database.execute(
                 "SELECT COUNT(*) FROM schema_migrations"
             ).fetchone()[0],
-            8,
+            14,
+        )
+
+    def test_assessment_tables_store_questions_and_per_user_attempt_answers(self):
+        self.database.execute("PRAGMA foreign_keys = ON")
+        migrations.migrate_database(self.database)
+        self.database.execute(
+            "INSERT INTO users (id, email, password_hash) VALUES (1, 'student@example.com', 'hash')"
+        )
+        self.database.execute(
+            "INSERT INTO courses (id, slug, title) VALUES (1, 'course', 'Course')"
+        )
+        self.database.execute(
+            "INSERT INTO chapters (id, course_id, position, title) VALUES (1, 1, 1, 'Chapter')"
+        )
+        self.database.execute(
+            """
+            INSERT INTO assessment_questions (
+                id, course_id, chapter_id, question_type, prompt, correct_answer, position
+            ) VALUES (1, 1, 1, 'single_choice', 'Question?', '"a"', 1)
+            """
+        )
+        self.database.execute(
+            """
+            INSERT INTO assessment_attempts (id, user_id, course_id, chapter_id, question_count)
+            VALUES (1, 1, 1, 1, 1)
+            """
+        )
+        self.database.execute(
+            """
+            INSERT INTO assessment_attempt_questions (
+                attempt_id, question_id, position, question_snapshot
+            )
+            VALUES (1, 1, 1, '{"question_type":"single_choice","prompt":"Question?","options":[],"correct_answer":"a","tolerance":0,"explanation":""}')
+            """
+        )
+        self.database.execute(
+            """
+            INSERT INTO assessment_attempt_answers (attempt_id, question_id, answer, is_correct)
+            VALUES (1, 1, '"a"', 1)
+            """
+        )
+        self.database.commit()
+
+        self.database.execute("DELETE FROM users WHERE id = 1")
+        self.database.commit()
+        self.assertEqual(
+            self.database.execute(
+                "SELECT COUNT(*) FROM assessment_attempts"
+            ).fetchone()[0],
+            0,
+        )
+        self.assertEqual(
+            self.database.execute(
+                "SELECT COUNT(*) FROM assessment_attempt_answers"
+            ).fetchone()[0],
+            0,
+        )
+        self.assertEqual(
+            self.database.execute(
+                "SELECT COUNT(*) FROM assessment_attempt_questions"
+            ).fetchone()[0],
+            0,
+        )
+
+    def test_assessment_difficulty_and_chapter_question_count_constraints(self):
+        self.database.execute("PRAGMA foreign_keys = ON")
+        migrations.migrate_database(self.database, through_version=12)
+        self.database.execute(
+            "INSERT INTO courses (id, slug, title) VALUES (1, 'course', 'Course')"
+        )
+        self.database.execute(
+            "INSERT INTO chapters (id, course_id, position, title) VALUES (1, 1, 1, 'Chapter')"
+        )
+        migrations.migrate_database(self.database)
+        self.assertEqual(
+            self.database.execute(
+                """
+                SELECT questions_per_attempt FROM assessment_chapter_settings
+                WHERE chapter_id = 1
+                """
+            ).fetchone()[0],
+            2,
+        )
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.database.execute(
+                """
+                INSERT INTO assessment_questions (
+                    course_id, chapter_id, question_type, prompt,
+                    correct_answer, position, difficulty
+                ) VALUES (1, 1, 'numeric', 'Question?', '1', 1, 'expert')
+                """
+            )
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.database.execute(
+                """
+                UPDATE assessment_chapter_settings
+                SET questions_per_attempt = 21 WHERE chapter_id = 1
+                """
+            )
+
+    def test_migration_snapshots_existing_attempts_and_preserves_answers_after_question_deletion(self):
+        self.database.execute("PRAGMA foreign_keys = ON")
+        migrations.migrate_database(self.database, through_version=10)
+        self.database.execute(
+            "INSERT INTO users (id, email, password_hash) VALUES (1, 'student@example.com', 'hash')"
+        )
+        self.database.execute(
+            "INSERT INTO courses (id, slug, title) VALUES (1, 'course', 'Course')"
+        )
+        self.database.execute(
+            "INSERT INTO chapters (id, course_id, position, title) VALUES (1, 1, 1, 'Chapter')"
+        )
+        self.database.execute(
+            """
+            INSERT INTO assessment_questions (
+                id, course_id, chapter_id, question_type, prompt,
+                correct_answer, position
+            ) VALUES (1, 1, 1, 'single_choice', 'Original question?', '"a"', 1)
+            """
+        )
+        self.database.execute(
+            """
+            INSERT INTO assessment_attempts (id, user_id, course_id, chapter_id, question_count)
+            VALUES (1, 1, 1, 1, 1)
+            """
+        )
+        self.database.execute(
+            "INSERT INTO assessment_attempt_questions VALUES (1, 1, 1)"
+        )
+        self.database.execute(
+            """
+            INSERT INTO assessment_attempt_answers (attempt_id, question_id, answer, is_correct)
+            VALUES (1, 1, '"a"', 1)
+            """
+        )
+        self.database.commit()
+
+        migrations.migrate_database(self.database)
+        snapshot = self.database.execute(
+            """
+            SELECT question_snapshot FROM assessment_attempt_questions
+            WHERE attempt_id = 1 AND question_id = 1
+            """
+        ).fetchone()[0]
+        self.assertEqual(json.loads(snapshot)["prompt"], "Original question?")
+        self.assertEqual(json.loads(snapshot)["difficulty"], "beginner")
+
+        self.database.execute("DELETE FROM assessment_questions WHERE id = 1")
+        self.database.commit()
+        self.assertEqual(
+            self.database.execute(
+                "SELECT COUNT(*) FROM assessment_attempt_questions"
+            ).fetchone()[0],
+            1,
+        )
+        self.assertEqual(
+            self.database.execute(
+                "SELECT COUNT(*) FROM assessment_attempt_answers"
+            ).fetchone()[0],
+            1,
         )
 
     def test_user_roles_default_to_student_and_reject_unknown_roles(self):
@@ -195,7 +362,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         with patch.object(
             migrations,
             "MIGRATIONS",
-            migrations.MIGRATIONS + ((9, "failing_migration", fail_after_ddl),),
+            migrations.MIGRATIONS + ((15, "failing_migration", fail_after_ddl),),
         ):
             with self.assertRaisesRegex(RuntimeError, "migration failed"):
                 migrations.migrate_database(self.database)
@@ -209,7 +376,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         self.assertIsNone(table)
         self.assertIsNone(
             self.database.execute(
-                "SELECT 1 FROM schema_migrations WHERE version = 9"
+                "SELECT 1 FROM schema_migrations WHERE version = 15"
             ).fetchone()
         )
 

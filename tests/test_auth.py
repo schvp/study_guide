@@ -2667,7 +2667,22 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(legacy_progress, (1, 1))
         self.assertEqual(
             migration_history,
-            [(1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,)],
+            [
+                (1,),
+                (2,),
+                (3,),
+                (4,),
+                (5,),
+                (6,),
+                (7,),
+                (8,),
+                (9,),
+                (10,),
+                (11,),
+                (12,),
+                (13,),
+                (14,),
+            ],
         )
         with closing(sqlite3.connect(database_path)) as database:
             self.assertEqual(
