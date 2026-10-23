@@ -114,6 +114,9 @@
                                     <p>До {{ quiz.question_count }} вопросов из {{ quiz.available_questions }} · случайный вариант</p>
                                 </div>
                                 {% if quiz.time_limit_seconds %}<p>{{ quiz.time_limit_seconds // 60 }} мин. на попытку{% if quiz.max_attempts %} · {{ quiz.max_attempts }} попытки{% endif %}</p>{% elif quiz.max_attempts %}<p>Максимум попыток: {{ quiz.max_attempts }}</p>{% endif %}
+                                {% if current_user and quiz.max_attempts %}
+                                    <p class="assessment-attempt-counter">Использовано попыток: {{ quiz.attempts_used }} из {{ quiz.max_attempts }}</p>
+                                {% endif %}
                                 {% if current_user %}
                                     <div class="assessment-quiz-actions">
                                         <label class="assessment-difficulty-label">
