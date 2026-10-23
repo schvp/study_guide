@@ -344,7 +344,7 @@ class AssessmentTests(unittest.TestCase):
 
         response = self._post_json(
             f"/api/assessments/attempts/{attempt['attempt_id']}/submit",
-            {"answers": self._correct_answers(attempt)},
+            {"answers": {}},
         )
 
         self.assertEqual(response.status_code, 409)
