@@ -398,6 +398,29 @@ def _version_assessment_question_bank(database):
             )
 
 
+def _add_assessment_time_and_attempt_limits(database):
+    database.execute(
+        """
+        ALTER TABLE assessment_chapter_settings
+        ADD COLUMN time_limit_seconds INTEGER
+            CHECK (time_limit_seconds IS NULL OR time_limit_seconds BETWEEN 60 AND 86400)
+        """
+    )
+    database.execute(
+        """
+        ALTER TABLE assessment_chapter_settings
+        ADD COLUMN max_attempts INTEGER
+            CHECK (max_attempts IS NULL OR max_attempts BETWEEN 1 AND 100)
+        """
+    )
+    database.execute(
+        """
+        ALTER TABLE assessment_attempts
+        ADD COLUMN expires_at TEXT
+        """
+    )
+
+
 MIGRATIONS = (
     (1, "create_user_tables", _create_user_tables),
     (2, "add_username", _add_username),
@@ -413,6 +436,7 @@ MIGRATIONS = (
     (12, "track_assessment_bank_seeding", _track_assessment_bank_seeding),
     (13, "add_assessment_difficulty_and_settings", _add_assessment_difficulty_and_settings),
     (14, "version_assessment_question_bank", _version_assessment_question_bank),
+    (15, "add_assessment_time_and_attempt_limits", _add_assessment_time_and_attempt_limits),
 )
 
 

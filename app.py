@@ -4,6 +4,7 @@ import os
 import re
 import secrets
 import sqlite3
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from urllib.parse import urlsplit
 
@@ -476,7 +477,13 @@ def create_app(test_config=None):
                     """
                     SELECT chapters.id AS chapter_id, chapters.position,
                         chapters.title, COUNT(questions.id) AS available_questions,
-                        COALESCE(settings.questions_per_attempt, 2) AS question_count
+                        COALESCE(settings.questions_per_attempt, 2) AS question_count,
+                        settings.time_limit_seconds, settings.max_attempts,
+                        (
+                            SELECT COUNT(*) FROM assessment_attempts AS user_attempts
+                            WHERE user_attempts.user_id = ?
+                                AND user_attempts.chapter_id = chapters.id
+                        ) AS attempts_used
                     FROM chapters
                     JOIN assessment_questions AS questions
                         ON questions.chapter_id = chapters.id
@@ -487,7 +494,7 @@ def create_app(test_config=None):
                     GROUP BY chapters.id
                     ORDER BY chapters.position, chapters.id
                     """,
-                    (course["id"],),
+                    (user["id"] if user else 0, course["id"]),
                 )
                 .fetchall()
                 if course
@@ -802,9 +809,13 @@ def create_app(test_config=None):
         ).fetchall()
         assessment_questions_by_chapter = {}
         assessment_settings_by_chapter = {
-            row["chapter_id"]: row["questions_per_attempt"]
+            row["chapter_id"]: dict(row)
             for row in get_db().execute(
-                "SELECT chapter_id, questions_per_attempt FROM assessment_chapter_settings"
+                """
+                SELECT chapter_id, questions_per_attempt,
+                    time_limit_seconds, max_attempts
+                FROM assessment_chapter_settings
+                """
             ).fetchall()
         }
         for question in assessment_rows:
@@ -1429,14 +1440,37 @@ def create_app(test_config=None):
         if not 1 <= question_count <= 20:
             flash("В варианте должно быть от 1 до 20 вопросов.", "error")
             return redirect_to_course_management(chapter["course_id"])
+        time_limit_text = request.form.get("time_limit_minutes", "").strip()
+        max_attempts_text = request.form.get("max_attempts", "").strip()
+        try:
+            time_limit_minutes = int(time_limit_text) if time_limit_text else None
+            max_attempts = int(max_attempts_text) if max_attempts_text else None
+        except ValueError:
+            flash("Время и число попыток должны быть целыми числами.", "error")
+            return redirect_to_course_management(chapter["course_id"])
+        if time_limit_minutes is not None and not 1 <= time_limit_minutes <= 1440:
+            flash("Ограничение времени должно быть от 1 до 1440 минут.", "error")
+            return redirect_to_course_management(chapter["course_id"])
+        if max_attempts is not None and not 1 <= max_attempts <= 100:
+            flash("Число попыток должно быть от 1 до 100.", "error")
+            return redirect_to_course_management(chapter["course_id"])
         get_db().execute(
             """
-            INSERT INTO assessment_chapter_settings (chapter_id, questions_per_attempt)
-            VALUES (?, ?)
+            INSERT INTO assessment_chapter_settings (
+                chapter_id, questions_per_attempt, time_limit_seconds, max_attempts
+            )
+            VALUES (?, ?, ?, ?)
             ON CONFLICT (chapter_id) DO UPDATE SET
-                questions_per_attempt = excluded.questions_per_attempt
+                questions_per_attempt = excluded.questions_per_attempt,
+                time_limit_seconds = excluded.time_limit_seconds,
+                max_attempts = excluded.max_attempts
             """,
-            (chapter_id, question_count),
+            (
+                chapter_id,
+                question_count,
+                time_limit_minutes * 60 if time_limit_minutes is not None else None,
+                max_attempts,
+            ),
         )
         get_db().commit()
         flash("Настройки теста по главе сохранены.", "success")
@@ -1907,6 +1941,22 @@ def create_app(test_config=None):
         ).fetchone()
         if chapter is None:
             return jsonify(error="Тест по этой теме не найден."), 404
+        if False:
+            expires_at = datetime.fromisoformat(attempt["expires_at"])
+            if datetime.now(timezone.utc) >= expires_at:
+                database.execute(
+                    """
+                    UPDATE assessment_attempts
+                    SET score = 0, submitted_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    """,
+                    (attempt_id,),
+                )
+                database.commit()
+                return jsonify(
+                    error="Время на выполнение теста истекло.", expired=True
+                ), 409
+
         question_rows = database.execute(
             """
             SELECT id, question_type, prompt, options, correct_answer,
@@ -1920,29 +1970,59 @@ def create_app(test_config=None):
         ).fetchall()
         if not question_rows:
             return jsonify(error="Для выбранного уровня в этой теме пока нет вопросов."), 404
-        question_limit = database.execute(
+        settings = database.execute(
             """
-            SELECT COALESCE(
-                (SELECT questions_per_attempt
-                FROM assessment_chapter_settings WHERE chapter_id = ?),
-                2
-            )
+            SELECT COALESCE(questions_per_attempt, 2) AS question_limit,
+                time_limit_seconds, max_attempts
+            FROM assessment_chapter_settings
+            WHERE chapter_id = ?
             """,
             (chapter_id,),
-        ).fetchone()[0]
+        ).fetchone()
+        if settings is None:
+            settings = {
+                "question_limit": 2,
+                "time_limit_seconds": None,
+                "max_attempts": None,
+            }
+        attempts_used = 0
+        if settings["max_attempts"] is not None:
+            attempts_used = database.execute(
+                """
+                SELECT COUNT(*) FROM assessment_attempts
+                WHERE user_id = ? AND chapter_id = ?
+                """,
+                (user["id"], chapter_id),
+            ).fetchone()[0]
+            if attempts_used >= settings["max_attempts"]:
+                return jsonify(
+                    error="Вы использовали все доступные попытки по этой теме."
+                ), 409
+
+        question_limit = settings["question_limit"]
         questions = secrets.SystemRandom().sample(
             question_rows,
             k=min(len(question_rows), question_limit),
         )
 
+        expires_at = None
+        if settings["time_limit_seconds"] is not None:
+            expires_at = (
+                datetime.now(timezone.utc)
+                + timedelta(seconds=settings["time_limit_seconds"])
+            ).isoformat()
+
         cursor = database.execute(
             """
             INSERT INTO assessment_attempts (
-                user_id, course_id, chapter_id, question_count
+                user_id, course_id, chapter_id, question_count, expires_at
             )
-            VALUES (?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (user["id"], chapter["course_id"], chapter_id, len(questions)),
+            (
+                user["id"], chapter["course_id"], chapter_id, len(questions),
+                expires_at,
+            ),
         )
         attempt_id = cursor.lastrowid
         database.executemany(
@@ -1977,6 +2057,13 @@ def create_app(test_config=None):
         return jsonify(
             attempt_id=attempt_id,
             chapter_title=chapter["title"],
+            expires_at=expires_at,
+            time_limit_seconds=settings["time_limit_seconds"],
+            attempts_remaining=(
+                settings["max_attempts"] - attempts_used - 1
+                if settings["max_attempts"] is not None
+                else None
+            ),
             questions=[
                 {
                     "id": question["id"],
@@ -2005,7 +2092,7 @@ def create_app(test_config=None):
         database.execute("BEGIN IMMEDIATE")
         attempt = database.execute(
             """
-            SELECT id, chapter_id, question_count, score, submitted_at
+            SELECT id, chapter_id, question_count, score, submitted_at, expires_at
             FROM assessment_attempts
             WHERE id = ? AND user_id = ?
             """,
@@ -2042,6 +2129,20 @@ def create_app(test_config=None):
         if set(answers) != expected_ids:
             database.rollback()
             return jsonify(error="Ответьте на каждый вопрос и отправьте тест снова."), 400
+
+        if attempt["expires_at"]:
+            expires_at = datetime.fromisoformat(attempt["expires_at"])
+            if datetime.now(timezone.utc) >= expires_at:
+                database.execute(
+                    """
+                    UPDATE assessment_attempts
+                    SET score = 0, submitted_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    """,
+                    (attempt_id,),
+                )
+                database.commit()
+                return jsonify(error="Time limit expired.", expired=True), 409
 
         graded_answers = []
         score = 0

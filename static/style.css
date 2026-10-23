@@ -1898,6 +1898,19 @@ a.chapter-link:hover {
     margin-top: 18px;
 }
 
+.assessment-attempt-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 10px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.assessment-attempt-details strong {
+    color: var(--ink);
+}
+
 .assessment-question {
     min-width: 0;
     margin: 0;

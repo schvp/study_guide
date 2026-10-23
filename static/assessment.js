@@ -8,6 +8,7 @@
     }
 
     let activeAttempt = null;
+    let timerId = null;
 
     async function postJson(url, payload) {
         const response = await fetch(url, {
@@ -224,6 +225,31 @@
         player.replaceChildren();
         const heading = document.createElement("h2");
         heading.textContent = data.chapter_title;
+        const details = document.createElement("p");
+        details.className = "assessment-attempt-details";
+        if (data.attempts_remaining !== null) {
+            details.textContent = `Осталось попыток после этой: ${data.attempts_remaining}`;
+        }
+        if (data.time_limit_seconds) {
+            const timer = document.createElement("strong");
+            timer.dataset.assessmentTimer = "";
+            details.append(details.textContent ? " · " : "", timer);
+            const updateTimer = () => {
+                const remaining = Math.max(
+                    0,
+                    Math.ceil((Date.parse(data.expires_at) - Date.now()) / 1000),
+                );
+                const minutes = Math.floor(remaining / 60);
+                const seconds = String(remaining % 60).padStart(2, "0");
+                timer.textContent = `Осталось времени: ${minutes}:${seconds}`;
+                if (remaining === 0) {
+                    window.clearInterval(timerId);
+                    showStatus(player, "Время истекло. Отправьте ответы, чтобы завершить попытку.", true);
+                }
+            };
+            updateTimer();
+            timerId = window.setInterval(updateTimer, 1000);
+        }
         const form = document.createElement("form");
         form.className = "assessment-form";
         form.noValidate = true;
@@ -239,7 +265,7 @@
         submit.textContent = "Проверить ответы";
         form.append(submit);
         form.addEventListener("submit", submitAttempt);
-        player.append(heading, form);
+        player.append(heading, details, form);
     }
 
     async function submitAttempt(event) {
@@ -262,6 +288,10 @@
                 { answers },
             );
             form.remove();
+            if (timerId) {
+                window.clearInterval(timerId);
+                timerId = null;
+            }
             player.querySelector("[data-assessment-status]")?.remove();
             renderResults(data, activeAttempt.chapter_title);
         } catch (error) {

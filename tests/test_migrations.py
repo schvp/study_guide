@@ -36,6 +36,7 @@ class DatabaseMigrationTests(unittest.TestCase):
                 (12, "track_assessment_bank_seeding"),
                 (13, "add_assessment_difficulty_and_settings"),
                 (14, "version_assessment_question_bank"),
+                (15, "add_assessment_time_and_attempt_limits"),
             ],
         )
         user_columns = {
@@ -63,7 +64,7 @@ class DatabaseMigrationTests(unittest.TestCase):
             self.database.execute(
                 "SELECT COUNT(*) FROM schema_migrations"
             ).fetchone()[0],
-            14,
+            15,
         )
 
     def test_assessment_tables_store_questions_and_per_user_attempt_answers(self):
@@ -362,7 +363,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         with patch.object(
             migrations,
             "MIGRATIONS",
-            migrations.MIGRATIONS + ((15, "failing_migration", fail_after_ddl),),
+            migrations.MIGRATIONS + ((16, "failing_migration", fail_after_ddl),),
         ):
             with self.assertRaisesRegex(RuntimeError, "migration failed"):
                 migrations.migrate_database(self.database)
@@ -376,7 +377,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         self.assertIsNone(table)
         self.assertIsNone(
             self.database.execute(
-                "SELECT 1 FROM schema_migrations WHERE version = 15"
+                "SELECT 1 FROM schema_migrations WHERE version = 16"
             ).fetchone()
         )
 
