@@ -162,6 +162,27 @@ class AssessmentTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Использовано попыток: 1 из 3".encode(), response.data)
 
+    def test_testing_page_disables_quiz_after_attempt_limit(self):
+        self._login_demo_user()
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            database.execute(
+                """
+                UPDATE assessment_chapter_settings
+                SET max_attempts = 1 WHERE chapter_id = 1
+                """
+            )
+            database.commit()
+        self._start_attempt()
+
+        response = self.client.get("/testing")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Попытки закончились".encode(), response.data)
+        self.assertRegex(
+            response.data,
+            rb"data-chapter-id=\"1\"\s+disabled aria-disabled=\"true\"",
+        )
+
     def test_removed_seed_questions_are_not_recreated_on_restart(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
             database.execute("DELETE FROM assessment_questions")
