@@ -1941,22 +1941,6 @@ def create_app(test_config=None):
         ).fetchone()
         if chapter is None:
             return jsonify(error="Тест по этой теме не найден."), 404
-        if False:
-            expires_at = datetime.fromisoformat(attempt["expires_at"])
-            if datetime.now(timezone.utc) >= expires_at:
-                database.execute(
-                    """
-                    UPDATE assessment_attempts
-                    SET score = 0, submitted_at = CURRENT_TIMESTAMP
-                    WHERE id = ?
-                    """,
-                    (attempt_id,),
-                )
-                database.commit()
-                return jsonify(
-                    error="Время на выполнение теста истекло.", expired=True
-                ), 409
-
         question_rows = database.execute(
             """
             SELECT id, question_type, prompt, options, correct_answer,
