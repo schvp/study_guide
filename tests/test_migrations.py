@@ -36,6 +36,7 @@ class DatabaseMigrationTests(unittest.TestCase):
                 (12, "track_assessment_bank_seeding"),
                 (13, "add_assessment_difficulty_and_settings"),
                 (14, "version_assessment_question_bank"),
+                (15, "add_assessment_time_and_attempt_limits"),
             ],
         )
         user_columns = {
@@ -63,7 +64,7 @@ class DatabaseMigrationTests(unittest.TestCase):
             self.database.execute(
                 "SELECT COUNT(*) FROM schema_migrations"
             ).fetchone()[0],
-            14,
+            15,
         )
 
     def test_assessment_tables_store_questions_and_per_user_attempt_answers(self):
@@ -156,6 +157,43 @@ class DatabaseMigrationTests(unittest.TestCase):
                 ) VALUES (1, 1, 'numeric', 'Question?', '1', 1, 'expert')
                 """
             )
+
+    def test_assessment_time_and_attempt_limit_constraints(self):
+        self.database.execute("PRAGMA foreign_keys = ON")
+        migrations.migrate_database(self.database, through_version=12)
+        self.database.execute(
+            "INSERT INTO courses (id, slug, title) VALUES (1, 'course', 'Course')"
+        )
+        self.database.execute(
+            "INSERT INTO chapters (id, course_id, position, title) VALUES (1, 1, 1, 'Chapter')"
+        )
+        migrations.migrate_database(self.database)
+
+        self.database.execute(
+            """
+            UPDATE assessment_chapter_settings
+            SET time_limit_seconds = 60, max_attempts = 1
+            WHERE chapter_id = 1
+            """
+        )
+        for invalid_time in (59, 86401):
+            with self.assertRaises(sqlite3.IntegrityError):
+                self.database.execute(
+                    """
+                    UPDATE assessment_chapter_settings
+                    SET time_limit_seconds = ? WHERE chapter_id = 1
+                    """,
+                    (invalid_time,),
+                )
+        for invalid_attempts in (0, 101):
+            with self.assertRaises(sqlite3.IntegrityError):
+                self.database.execute(
+                    """
+                    UPDATE assessment_chapter_settings
+                    SET max_attempts = ? WHERE chapter_id = 1
+                    """,
+                    (invalid_attempts,),
+                )
         with self.assertRaises(sqlite3.IntegrityError):
             self.database.execute(
                 """
@@ -362,7 +400,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         with patch.object(
             migrations,
             "MIGRATIONS",
-            migrations.MIGRATIONS + ((15, "failing_migration", fail_after_ddl),),
+            migrations.MIGRATIONS + ((16, "failing_migration", fail_after_ddl),),
         ):
             with self.assertRaisesRegex(RuntimeError, "migration failed"):
                 migrations.migrate_database(self.database)
@@ -376,7 +414,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         self.assertIsNone(table)
         self.assertIsNone(
             self.database.execute(
-                "SELECT 1 FROM schema_migrations WHERE version = 15"
+                "SELECT 1 FROM schema_migrations WHERE version = 16"
             ).fetchone()
         )
 

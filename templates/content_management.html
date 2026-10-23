@@ -207,7 +207,15 @@
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                                 <label class="management-field">
                                                     <span>Вопросов в случайном варианте (от 1 до 20)</span>
-                                                    <input type="number" name="questions_per_attempt" min="1" max="20" value="{{ assessment_settings_by_chapter.get(chapter.id, 2) }}" required>
+                                                    <input type="number" name="questions_per_attempt" min="1" max="20" value="{{ assessment_settings_by_chapter.get(chapter.id, {}).get('questions_per_attempt', 2) }}" required>
+                                                </label>
+                                                <label class="management-field">
+                                                    <span>Ограничение времени в минутах (необязательно)</span>
+                                                    <input type="number" name="time_limit_minutes" min="1" max="1440" value="{% if assessment_settings_by_chapter.get(chapter.id, {}).get('time_limit_seconds') %}{{ assessment_settings_by_chapter.get(chapter.id).get('time_limit_seconds') // 60 }}{% endif %}">
+                                                </label>
+                                                <label class="management-field">
+                                                    <span>Максимум попыток (необязательно)</span>
+                                                    <input type="number" name="max_attempts" min="1" max="100" value="{{ assessment_settings_by_chapter.get(chapter.id, {}).get('max_attempts', '') or '' }}">
                                                 </label>
                                                 <button class="management-save" type="submit">Сохранить размер варианта</button>
                                             </form>

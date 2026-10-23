@@ -145,6 +145,44 @@ class AssessmentTests(unittest.TestCase):
         self.assertIn("До 2 вопросов из 3".encode(), response.data)
         self.assertNotIn(b"correct_answer", response.data)
 
+    def test_testing_page_shows_attempt_usage_for_limited_quiz(self):
+        self._login_demo_user()
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            database.execute(
+                """
+                UPDATE assessment_chapter_settings
+                SET max_attempts = 3 WHERE chapter_id = 1
+                """
+            )
+            database.commit()
+        self._start_attempt()
+
+        response = self.client.get("/testing")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Использовано попыток: 1 из 3".encode(), response.data)
+
+    def test_testing_page_disables_quiz_after_attempt_limit(self):
+        self._login_demo_user()
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            database.execute(
+                """
+                UPDATE assessment_chapter_settings
+                SET max_attempts = 1 WHERE chapter_id = 1
+                """
+            )
+            database.commit()
+        self._start_attempt()
+
+        response = self.client.get("/testing")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Попытки закончились".encode(), response.data)
+        self.assertRegex(
+            response.data,
+            rb"data-chapter-id=\"1\"\s+disabled aria-disabled=\"true\"",
+        )
+
     def test_removed_seed_questions_are_not_recreated_on_restart(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
             database.execute("DELETE FROM assessment_questions")
@@ -244,6 +282,80 @@ class AssessmentTests(unittest.TestCase):
             ).fetchone()[0]
         self.assertEqual(attempt, (2,))
         self.assertEqual(question_count, 2)
+
+    def test_starting_attempt_returns_configured_time_and_attempt_limits(self):
+        self._login_demo_user()
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            database.execute(
+                """
+                UPDATE assessment_chapter_settings
+                SET time_limit_seconds = 120, max_attempts = 2
+                WHERE chapter_id = 1
+                """
+            )
+            database.commit()
+
+        response = self._post_json("/api/assessments/1/attempts", {})
+
+        self.assertEqual(response.status_code, 201)
+        data = response.get_json()
+        self.assertEqual(data["time_limit_seconds"], 120)
+        self.assertEqual(data["attempts_remaining"], 1)
+        self.assertTrue(data["expires_at"])
+
+    def test_starting_attempt_rejects_user_after_maximum_attempts(self):
+        self._login_demo_user()
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            database.execute(
+                """
+                UPDATE assessment_chapter_settings
+                SET max_attempts = 1 WHERE chapter_id = 1
+                """
+            )
+            database.commit()
+
+        self.assertEqual(self._start_attempt().get("attempt_id"), 1)
+        response = self._post_json("/api/assessments/1/attempts", {})
+
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("все доступные попытки", response.get_json()["error"])
+
+    def test_expired_attempt_is_closed_without_grading_answers(self):
+        self._login_demo_user()
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            database.execute(
+                """
+                UPDATE assessment_chapter_settings
+                SET time_limit_seconds = 60 WHERE chapter_id = 1
+                """
+            )
+            database.commit()
+        attempt = self._start_attempt()
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            database.execute(
+                """
+                UPDATE assessment_attempts
+                SET expires_at = '2000-01-01T00:00:00+00:00'
+                WHERE id = ?
+                """,
+                (attempt["attempt_id"],),
+            )
+            database.commit()
+
+        response = self._post_json(
+            f"/api/assessments/attempts/{attempt['attempt_id']}/submit",
+            {"answers": {}},
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue(response.get_json()["expired"])
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            saved = database.execute(
+                "SELECT score, submitted_at FROM assessment_attempts WHERE id = ?",
+                (attempt["attempt_id"],),
+            ).fetchone()
+        self.assertEqual(saved[0], 0)
+        self.assertIsNotNone(saved[1])
 
     def test_attempt_randomly_samples_configured_count_at_selected_difficulty(self):
         self._login_demo_user()
