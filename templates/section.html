@@ -133,7 +133,8 @@
                                             type="button"
                                             data-assessment-start
                                             data-chapter-id="{{ quiz.chapter_id }}"
-                                        >Начать тренировку <span aria-hidden="true">→</span></button>
+                                            {% if quiz.max_attempts and quiz.attempts_used >= quiz.max_attempts %}disabled aria-disabled="true"{% endif %}
+                                        >{% if quiz.max_attempts and quiz.attempts_used >= quiz.max_attempts %}Попытки закончились{% else %}Начать тренировку <span aria-hidden="true">→</span>{% endif %}</button>
                                     </div>
                                 {% endif %}
                             </li>
