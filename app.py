@@ -2088,6 +2088,21 @@ def create_app(test_config=None):
         if attempt["submitted_at"] is not None:
             database.rollback()
             return jsonify(error="Эта попытка уже отправлена."), 409
+        if attempt["expires_at"]:
+            expires_at = datetime.fromisoformat(attempt["expires_at"])
+            if datetime.now(timezone.utc) >= expires_at:
+                database.execute(
+                    """
+                    UPDATE assessment_attempts
+                    SET score = 0, submitted_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    """,
+                    (attempt_id,),
+                )
+                database.commit()
+                return jsonify(
+                    error="Время на выполнение теста истекло.", expired=True
+                ), 409
 
         question_rows = database.execute(
             """
@@ -2113,20 +2128,6 @@ def create_app(test_config=None):
         if set(answers) != expected_ids:
             database.rollback()
             return jsonify(error="Ответьте на каждый вопрос и отправьте тест снова."), 400
-
-        if attempt["expires_at"]:
-            expires_at = datetime.fromisoformat(attempt["expires_at"])
-            if datetime.now(timezone.utc) >= expires_at:
-                database.execute(
-                    """
-                    UPDATE assessment_attempts
-                    SET score = 0, submitted_at = CURRENT_TIMESTAMP
-                    WHERE id = ?
-                    """,
-                    (attempt_id,),
-                )
-                database.commit()
-                return jsonify(error="Time limit expired.", expired=True), 409
 
         graded_answers = []
         score = 0
