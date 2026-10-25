@@ -12,6 +12,7 @@ from flask import Flask, flash, g, jsonify, redirect, render_template, request, 
 from werkzeug.security import check_password_hash, generate_password_hash
 from assessment_bank import seed_assessment_questions
 from course_content import load_course_materials
+from laboratory_catalog import build_laboratory_catalog
 from migrations import migrate_database
 
 
@@ -470,6 +471,55 @@ def create_app(test_config=None):
     def render_app_section(active_nav):
         user = current_user()
         course = get_course()
+        if active_nav == "laboratory":
+            chapters = (
+                get_db()
+                .execute(
+                    """
+                    SELECT id, position, title
+                    FROM chapters
+                    WHERE course_id = ? AND status = 'published'
+                    ORDER BY position, id
+                    """,
+                    (course["id"],),
+                )
+                .fetchall()
+                if course
+                else []
+            )
+            completed_chapter_ids = (
+                {
+                    row["chapter_id"]
+                    for row in get_db().execute(
+                        """
+                        SELECT progress.chapter_id
+                        FROM chapter_progress AS progress
+                        JOIN chapters ON chapters.id = progress.chapter_id
+                        WHERE progress.user_id = ?
+                            AND progress.completed = 1
+                            AND chapters.course_id = ?
+                        """,
+                        (user["id"], course["id"]),
+                    )
+                }
+                if user and course
+                else set()
+            )
+            laboratories = build_laboratory_catalog(
+                chapters,
+                completed_chapter_ids=completed_chapter_ids,
+            )
+            return render_template(
+                "section.html",
+                active_nav=active_nav,
+                section=APP_SECTIONS[active_nav],
+                current_user=user,
+                laboratories=laboratories,
+                laboratory_completed_count=sum(
+                    laboratory["completed"] for laboratory in laboratories
+                ),
+                csrf_token=session["csrf_token"],
+            )
         if active_nav == "testing":
             quizzes = (
                 get_db()
