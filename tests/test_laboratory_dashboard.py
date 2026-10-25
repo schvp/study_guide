@@ -72,6 +72,46 @@ class LaboratoryDashboardTests(unittest.TestCase):
         self.assertIn("1 / 8".encode(), response.data)
         self.assertIn("Повторить".encode(), response.data)
 
+    def test_authenticated_user_can_start_available_laboratory(self):
+        self.login_demo_user()
+
+        response = self.client.post(
+            "/api/laboratories/byte-assembly/attempts",
+            headers={"X-CSRF-Token": self.csrf_token()},
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.get_json()["status"], "started")
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            saved = database.execute(
+                """
+                SELECT laboratory_slug, status
+                FROM laboratory_attempts WHERE id = ?
+                """,
+                (response.get_json()["attempt_id"],),
+            ).fetchone()
+        self.assertEqual(saved, ("byte-assembly", "started"))
+
+    def test_laboratory_start_requires_login_and_unlocked_chapter(self):
+        guest_response = self.client.post(
+            "/api/laboratories/byte-assembly/attempts",
+            headers={"X-CSRF-Token": self.csrf_token()},
+        )
+        self.assertEqual(guest_response.status_code, 401)
+
+        self.login_demo_user()
+        locked_response = self.client.post(
+            "/api/laboratories/octal-conversion/attempts",
+            headers={"X-CSRF-Token": self.csrf_token()},
+        )
+        self.assertEqual(locked_response.status_code, 409)
+
+        unknown_response = self.client.post(
+            "/api/laboratories/unknown/attempts",
+            headers={"X-CSRF-Token": self.csrf_token()},
+        )
+        self.assertEqual(unknown_response.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()
