@@ -44,6 +44,17 @@ LABORATORY_DEFINITIONS = {
     },
 }
 
+LABORATORY_BY_SLUG = {
+    definition["slug"]: {**definition, "position": position}
+    for position, definition in LABORATORY_DEFINITIONS.items()
+}
+
+
+def get_laboratory_definition(slug):
+    """Return laboratory metadata by public slug, or ``None`` when unknown."""
+
+    return LABORATORY_BY_SLUG.get(slug)
+
 
 def build_laboratory_catalog(chapters, completed_chapter_ids=()):
     """Combine published chapters with laboratory metadata and access state."""
