@@ -3321,6 +3321,23 @@ a.chapter-link:hover {
 }
 
 @media (max-width: 600px) {
+    .laboratory-summary {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .laboratory-card {
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: start;
+    }
+
+    .laboratory-card > .primary-link,
+    .laboratory-locked-note {
+        grid-column: 1 / -1;
+        justify-self: stretch;
+        text-align: center;
+    }
+
     .assessment-quiz-card,
     .assessment-history-list > li {
         align-items: stretch;
