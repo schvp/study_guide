@@ -421,6 +421,33 @@ def _add_assessment_time_and_attempt_limits(database):
     )
 
 
+def _create_laboratory_attempts(database):
+    database.execute(
+        """
+        CREATE TABLE laboratory_attempts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            chapter_id INTEGER NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+            laboratory_slug TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'started'
+                CHECK (status IN ('started', 'completed')),
+            started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            completed_at TEXT,
+            CHECK (
+                (status = 'started' AND completed_at IS NULL)
+                OR (status = 'completed' AND completed_at IS NOT NULL)
+            )
+        )
+        """
+    )
+    database.execute(
+        """
+        CREATE INDEX idx_laboratory_attempts_user_chapter
+        ON laboratory_attempts(user_id, chapter_id, started_at DESC, id DESC)
+        """
+    )
+
+
 MIGRATIONS = (
     (1, "create_user_tables", _create_user_tables),
     (2, "add_username", _add_username),
@@ -437,6 +464,7 @@ MIGRATIONS = (
     (13, "add_assessment_difficulty_and_settings", _add_assessment_difficulty_and_settings),
     (14, "version_assessment_question_bank", _version_assessment_question_bank),
     (15, "add_assessment_time_and_attempt_limits", _add_assessment_time_and_attempt_limits),
+    (16, "create_laboratory_attempts", _create_laboratory_attempts),
 )
 
 
