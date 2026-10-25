@@ -127,7 +127,12 @@
                                     <small>Глава: {{ laboratory.chapter_title }}</small>
                                 </div>
                                 {% if laboratory.available %}
-                                    <a class="primary-link" href="{{ url_for('course_chapter', chapter_id=laboratory.chapter_id) }}">{% if laboratory.completed %}Повторить{% else %}Начать{% endif %} <span aria-hidden="true">→</span></a>
+                                    <a
+                                        class="primary-link"
+                                        href="{{ url_for('course_chapter', chapter_id=laboratory.chapter_id) }}"
+                                        data-laboratory-start
+                                        data-laboratory-slug="{{ laboratory.slug }}"
+                                    >{% if laboratory.completed %}Повторить{% else %}Начать{% endif %} <span aria-hidden="true">→</span></a>
                                 {% else %}
                                     <span class="laboratory-locked-note">Сначала завершите предыдущую работу</span>
                                 {% endif %}
