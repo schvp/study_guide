@@ -195,6 +195,57 @@ class DatabaseMigrationTests(unittest.TestCase):
                     """,
                     (invalid_attempts,),
                 )
+
+    def test_laboratory_attempts_validate_status_and_cascade(self):
+        self.database.execute("PRAGMA foreign_keys = ON")
+        migrations.migrate_database(self.database)
+        self.database.execute(
+            "INSERT INTO users (id, email, password_hash) VALUES (1, 'student@example.com', 'hash')"
+        )
+        self.database.execute(
+            "INSERT INTO courses (id, slug, title) VALUES (1, 'course', 'Course')"
+        )
+        self.database.execute(
+            "INSERT INTO chapters (id, course_id, position, title) VALUES (1, 1, 1, 'Chapter')"
+        )
+        self.database.execute(
+            """
+            INSERT INTO laboratory_attempts (
+                user_id, chapter_id, laboratory_slug
+            ) VALUES (1, 1, 'byte-assembly')
+            """
+        )
+
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.database.execute(
+                """
+                INSERT INTO laboratory_attempts (
+                    user_id, chapter_id, laboratory_slug, status
+                ) VALUES (1, 1, 'byte-assembly', 'completed')
+                """
+            )
+
+        self.database.execute(
+            """
+            UPDATE laboratory_attempts
+            SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+            WHERE id = 1
+            """
+        )
+        self.assertEqual(
+            self.database.execute(
+                "SELECT status FROM laboratory_attempts WHERE id = 1"
+            ).fetchone()[0],
+            "completed",
+        )
+
+        self.database.execute("DELETE FROM users WHERE id = 1")
+        self.assertEqual(
+            self.database.execute(
+                "SELECT COUNT(*) FROM laboratory_attempts"
+            ).fetchone()[0],
+            0,
+        )
         with self.assertRaises(sqlite3.IntegrityError):
             self.database.execute(
                 """
