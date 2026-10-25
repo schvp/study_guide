@@ -158,6 +158,13 @@ class DatabaseMigrationTests(unittest.TestCase):
                 ) VALUES (1, 1, 'numeric', 'Question?', '1', 1, 'expert')
                 """
             )
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.database.execute(
+                """
+                UPDATE assessment_chapter_settings
+                SET questions_per_attempt = 21 WHERE chapter_id = 1
+                """
+            )
 
     def test_assessment_time_and_attempt_limit_constraints(self):
         self.database.execute("PRAGMA foreign_keys = ON")
@@ -246,14 +253,6 @@ class DatabaseMigrationTests(unittest.TestCase):
             ).fetchone()[0],
             0,
         )
-        with self.assertRaises(sqlite3.IntegrityError):
-            self.database.execute(
-                """
-                UPDATE assessment_chapter_settings
-                SET questions_per_attempt = 21 WHERE chapter_id = 1
-                """
-            )
-
     def test_migration_snapshots_existing_attempts_and_preserves_answers_after_question_deletion(self):
         self.database.execute("PRAGMA foreign_keys = ON")
         migrations.migrate_database(self.database, through_version=10)
