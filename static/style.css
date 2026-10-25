@@ -1771,6 +1771,116 @@ a.chapter-link:hover {
     color: #426d49;
 }
 
+.laboratory-dashboard {
+    margin-top: 30px;
+}
+
+.laboratory-summary {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.laboratory-summary h2 {
+    margin: 0 0 8px;
+    color: var(--ink);
+    font-size: clamp(20px, 3vw, 28px);
+}
+
+.laboratory-summary p:last-child {
+    max-width: 720px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+.laboratory-summary > strong {
+    color: var(--ink);
+    font-size: clamp(26px, 5vw, 42px);
+    white-space: nowrap;
+}
+
+.laboratory-list {
+    display: grid;
+    gap: 12px;
+    margin: 22px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.laboratory-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 18px;
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+}
+
+.laboratory-card.is-completed {
+    border-color: #9bb89f;
+    background: #f4f8f3;
+}
+
+.laboratory-card.is-locked {
+    opacity: 0.68;
+}
+
+.laboratory-card-number {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+}
+
+.laboratory-card-heading {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.laboratory-card h3 {
+    margin: 0;
+    color: var(--ink);
+    font-size: 16px;
+}
+
+.laboratory-card p,
+.laboratory-card small,
+.laboratory-locked-note {
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.6;
+}
+
+.laboratory-card p {
+    margin: 6px 0;
+}
+
+.laboratory-status {
+    padding: 4px 7px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.laboratory-status.is-completed {
+    border-color: #9bb89f;
+    color: #426d49;
+}
+
+.laboratory-status.is-locked {
+    color: #8a6f65;
+}
+
 .assessment-section,
 .assessment-player,
 .assessment-results,
