@@ -263,6 +263,9 @@
         <span>Учебное пособие <span aria-hidden="true">·</span> Учитесь видеть логику</span>
     </footer>
     <script src="{{ url_for('static', filename='auth.js') }}" defer></script>
+    {% if active_nav == "laboratory" %}
+        <script src="{{ url_for('static', filename='laboratory.js') }}" defer></script>
+    {% endif %}
     {% if active_nav == "testing" %}
         <script src="{{ url_for('static', filename='assessment.js') }}" defer></script>
     {% endif %}
