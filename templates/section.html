@@ -92,6 +92,52 @@
                 <p>После входа здесь появятся данные аккаунта и ваш прогресс.</p>
                 <a class="primary-link" href="{{ url_for('home', login='1') }}">Перейти ко входу <span aria-hidden="true">→</span></a>
             </section>
+        {% elif active_nav == "laboratory" %}
+            <section class="laboratory-dashboard" aria-labelledby="laboratory-list-title">
+                <div class="laboratory-summary">
+                    <div>
+                        <p class="eyebrow">ПРАКТИЧЕСКАЯ ЧАСТЬ</p>
+                        <h2 id="laboratory-list-title">Интерактивные лабораторные работы</h2>
+                        <p>Выполняйте работы по порядку: каждая следующая лаборатория открывается после завершения предыдущей главы.</p>
+                    </div>
+                    {% if current_user %}
+                        <strong>{{ laboratory_completed_count }} / {{ laboratories|length }}</strong>
+                    {% endif %}
+                </div>
+                {% if not current_user %}
+                    <p class="assessment-login-note"><a href="{{ url_for('home', login='1') }}">Войдите в аккаунт</a>, чтобы сохранять результаты лабораторных работ.</p>
+                {% endif %}
+                {% if laboratories %}
+                    <ol class="laboratory-list">
+                        {% for laboratory in laboratories %}
+                            <li class="laboratory-card{% if laboratory.completed %} is-completed{% elif not laboratory.available %} is-locked{% endif %}">
+                                <div class="laboratory-card-number">{{ "%02d"|format(laboratory.position) }}</div>
+                                <div class="laboratory-card-content">
+                                    <div class="laboratory-card-heading">
+                                        <h3>{{ laboratory.title }}</h3>
+                                        {% if laboratory.completed %}
+                                            <span class="laboratory-status is-completed">Завершена</span>
+                                        {% elif laboratory.available %}
+                                            <span class="laboratory-status">Доступна</span>
+                                        {% else %}
+                                            <span class="laboratory-status is-locked">Заблокирована</span>
+                                        {% endif %}
+                                    </div>
+                                    <p>{{ laboratory.description }}</p>
+                                    <small>Глава: {{ laboratory.chapter_title }}</small>
+                                </div>
+                                {% if laboratory.available %}
+                                    <a class="primary-link" href="{{ url_for('course_chapter', chapter_id=laboratory.chapter_id) }}">{% if laboratory.completed %}Повторить{% else %}Начать{% endif %} <span aria-hidden="true">→</span></a>
+                                {% else %}
+                                    <span class="laboratory-locked-note">Сначала завершите предыдущую работу</span>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ol>
+                {% else %}
+                    <p class="assessment-empty">Лабораторные работы пока не добавлены.</p>
+                {% endif %}
+            </section>
         {% elif active_nav == "testing" %}
             <section class="assessment-section" aria-labelledby="assessment-list-title">
                 <div class="assessment-heading">
