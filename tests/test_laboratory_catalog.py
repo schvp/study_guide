@@ -1,6 +1,10 @@
 import unittest
 
-from laboratory_catalog import LABORATORY_DEFINITIONS, build_laboratory_catalog
+from laboratory_catalog import (
+    LABORATORY_DEFINITIONS,
+    build_laboratory_catalog,
+    get_laboratory_definition,
+)
 
 
 class LaboratoryCatalogTests(unittest.TestCase):
@@ -10,6 +14,13 @@ class LaboratoryCatalogTests(unittest.TestCase):
             len({item["slug"] for item in LABORATORY_DEFINITIONS.values()}),
             8,
         )
+
+    def test_finds_laboratory_definition_by_slug(self):
+        definition = get_laboratory_definition("trigger")
+
+        self.assertEqual(definition["position"], 6)
+        self.assertEqual(definition["title"], "Исследование D-триггера")
+        self.assertIsNone(get_laboratory_definition("unknown-laboratory"))
 
     def test_builds_catalog_in_chapter_order(self):
         chapters = [
