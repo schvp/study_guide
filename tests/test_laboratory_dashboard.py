@@ -164,6 +164,34 @@ class LaboratoryDashboardTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 401)
 
+    def test_dashboard_shows_recent_completed_laboratory_attempts(self):
+        self.login_demo_user()
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            user_id = database.execute(
+                "SELECT id FROM users WHERE username = 'test'"
+            ).fetchone()[0]
+            database.execute(
+                """
+                INSERT INTO laboratory_attempts (
+                    user_id, chapter_id, laboratory_slug, status,
+                    started_at, completed_at, score, max_score
+                ) VALUES (
+                    ?, 1, 'byte-assembly', 'completed',
+                    '2026-10-28 12:00:00', '2026-10-28 12:01:15', 1, 1
+                )
+                """,
+                (user_id,),
+            )
+            database.commit()
+
+        response = self.client.get("/laboratory")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Последние лабораторные попытки".encode(), response.data)
+        self.assertIn("Сборка двоичного байта".encode(), response.data)
+        self.assertIn("75 сек.".encode(), response.data)
+        self.assertIn(b"1 / 1", response.data)
+
     def test_laboratory_start_requires_login_and_unlocked_chapter(self):
         guest_response = self.client.post(
             "/api/laboratories/byte-assembly/attempts",
