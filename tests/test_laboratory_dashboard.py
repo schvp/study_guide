@@ -125,6 +125,45 @@ class LaboratoryDashboardTests(unittest.TestCase):
         self.assertEqual(repeated.status_code, 200)
         self.assertEqual(repeated.get_json()["status"], "completed")
 
+    def test_laboratory_completion_hides_attempts_from_other_users(self):
+        self.login_demo_user()
+        started = self.client.post(
+            "/api/laboratories/byte-assembly/attempts",
+            headers={"X-CSRF-Token": self.csrf_token()},
+        ).get_json()
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            cursor = database.execute(
+                """
+                INSERT INTO users (email, username, password_hash)
+                VALUES ('other@example.com', 'other', 'hash')
+                """
+            )
+            other_user_id = cursor.lastrowid
+            database.commit()
+        with self.client.session_transaction() as session:
+            session["user_id"] = other_user_id
+
+        response = self.client.post(
+            f"/api/laboratories/attempts/{started['attempt_id']}/complete",
+            headers={"X-CSRF-Token": self.csrf_token()},
+        )
+
+        self.assertEqual(response.status_code, 404)
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            status = database.execute(
+                "SELECT status FROM laboratory_attempts WHERE id = ?",
+                (started["attempt_id"],),
+            ).fetchone()[0]
+        self.assertEqual(status, "started")
+
+    def test_laboratory_completion_requires_login(self):
+        response = self.client.post(
+            "/api/laboratories/attempts/1/complete",
+            headers={"X-CSRF-Token": self.csrf_token()},
+        )
+
+        self.assertEqual(response.status_code, 401)
+
     def test_laboratory_start_requires_login_and_unlocked_chapter(self):
         guest_response = self.client.post(
             "/api/laboratories/byte-assembly/attempts",
