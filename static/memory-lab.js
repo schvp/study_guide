@@ -231,6 +231,7 @@ if (memoryLab) {
             }
 
             setStatus("Эксперимент подтверждён: RAM и ROM ведут себя по-разному.", "success");
+            await window.completeLaboratoryAttempt?.("memory");
             window.location.reload();
         } catch (error) {
             setStatus(
