@@ -37,3 +37,43 @@ def build_student_statistics(
         "laboratory_attempts": len(laboratory_slugs),
         "laboratory_unique_count": len(set(laboratory_slugs)),
     }
+
+
+def build_chapter_statistics(
+    chapters,
+    completed_chapter_ids=(),
+    assessment_results=(),
+    laboratory_chapter_ids=(),
+):
+    """Combine chapter progress with the student's recorded results."""
+
+    completed = set(completed_chapter_ids)
+    laboratory_chapter_ids = list(laboratory_chapter_ids)
+    assessments_by_chapter = {}
+    for chapter_id, score, maximum in assessment_results:
+        if maximum <= 0:
+            continue
+        assessments_by_chapter.setdefault(chapter_id, []).append(
+            percentage(score, maximum)
+        )
+
+    return [
+        {
+            "chapter_id": chapter["id"],
+            "position": chapter["position"],
+            "title": chapter["title"],
+            "completed": chapter["id"] in completed,
+            "assessment_attempts": len(
+                assessments_by_chapter.get(chapter["id"], [])
+            ),
+            "assessment_best_percent": max(
+                assessments_by_chapter.get(chapter["id"], []),
+                default=None,
+            ),
+            "laboratory_attempts": laboratory_chapter_ids.count(chapter["id"]),
+        }
+        for chapter in sorted(
+            chapters,
+            key=lambda item: (item["position"], item["id"]),
+        )
+    ]
