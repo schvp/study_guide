@@ -4523,6 +4523,10 @@ textarea:focus-visible {
     .learning-note a {
         grid-column: 2;
     }
+
+    .profile-statistics-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 460px) {
@@ -4622,6 +4626,10 @@ textarea:focus-visible {
         flex-basis: 100%;
         margin: 9px 0 0 71px;
         text-align: left;
+    }
+
+    .profile-statistics-grid {
+        grid-template-columns: 1fr;
     }
 
     .profile-history-list li {
