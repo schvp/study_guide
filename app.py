@@ -716,6 +716,68 @@ def create_app(test_config=None):
                 if user and course
                 else []
             )
+            recent_activity_rows = (
+                get_db().execute(
+                    """
+                    SELECT activity_type, chapter_title, laboratory_slug,
+                        score, maximum,
+                        strftime(
+                            '%d.%m.%Y %H:%M', occurred_at, 'localtime'
+                        ) AS occurred_at
+                    FROM (
+                        SELECT 'chapter' AS activity_type,
+                            chapters.title AS chapter_title,
+                            NULL AS laboratory_slug,
+                            NULL AS score, NULL AS maximum,
+                            history.completed_at AS occurred_at
+                        FROM chapter_completion_history AS history
+                        JOIN chapters ON chapters.id = history.chapter_id
+                        WHERE history.user_id = ? AND chapters.course_id = ?
+                        UNION ALL
+                        SELECT 'assessment', chapters.title, NULL,
+                            attempts.score, attempts.question_count,
+                            attempts.submitted_at
+                        FROM assessment_attempts AS attempts
+                        JOIN chapters ON chapters.id = attempts.chapter_id
+                        WHERE attempts.user_id = ?
+                            AND attempts.submitted_at IS NOT NULL
+                            AND chapters.course_id = ?
+                        UNION ALL
+                        SELECT 'laboratory', chapters.title,
+                            attempts.laboratory_slug,
+                            attempts.score, attempts.max_score,
+                            attempts.completed_at
+                        FROM laboratory_attempts AS attempts
+                        JOIN chapters ON chapters.id = attempts.chapter_id
+                        WHERE attempts.user_id = ?
+                            AND attempts.status = 'completed'
+                            AND chapters.course_id = ?
+                    )
+                    ORDER BY occurred_at DESC
+                    LIMIT 10
+                    """,
+                    (
+                        user["id"], course["id"],
+                        user["id"], course["id"],
+                        user["id"], course["id"],
+                    ),
+                ).fetchall()
+                if user and course
+                else []
+            )
+            recent_activity = []
+            for row in recent_activity_rows:
+                item = dict(row)
+                if item["activity_type"] == "laboratory":
+                    definition = get_laboratory_definition(
+                        item["laboratory_slug"]
+                    )
+                    item["title"] = (
+                        definition["title"] if definition else item["chapter_title"]
+                    )
+                else:
+                    item["title"] = item["chapter_title"]
+                recent_activity.append(item)
             return render_template(
                 "section.html",
                 active_nav=active_nav,
@@ -755,6 +817,7 @@ def create_app(test_config=None):
                         row["chapter_id"] for row in laboratory_result_rows
                     ],
                 ),
+                recent_activity=recent_activity,
                 completion_history=completion_history,
                 can_reset_course_progress=course is not None,
                 csrf_token=session["csrf_token"],
