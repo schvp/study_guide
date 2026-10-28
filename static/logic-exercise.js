@@ -167,6 +167,7 @@ if (logicExercise) {
 
             status.textContent = "Все комбинации совпали с заданием. Открываем следующий раздел…";
             status.dataset.state = "success";
+            await window.completeLaboratoryAttempt?.("boolean-circuit");
             window.location.reload();
         } catch (error) {
             status.textContent = error instanceof TypeError
