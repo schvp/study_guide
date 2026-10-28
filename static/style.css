@@ -3805,6 +3805,73 @@ a.chapter-link:hover {
     margin-top: 20px;
 }
 
+.profile-chapters {
+    margin-top: 35px;
+}
+
+.profile-chapter-list {
+    display: grid;
+    gap: 0;
+    margin: 18px 0 0;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+    list-style: none;
+}
+
+.profile-chapter-list > li {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 15px;
+    padding: 15px 18px;
+    border-top: 1px solid var(--line);
+}
+
+.profile-chapter-list > li:first-child {
+    border-top: 0;
+}
+
+.profile-chapter-position {
+    color: var(--muted);
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 11px;
+}
+
+.profile-chapter-list a {
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.profile-chapter-list small {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 9px;
+}
+
+.profile-chapter-list dl {
+    display: flex;
+    gap: 22px;
+    margin: 0;
+    text-align: right;
+}
+
+.profile-chapter-list dt {
+    color: var(--muted);
+    font-size: 8px;
+}
+
+.profile-chapter-list dd {
+    margin: 4px 0 0;
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 12px;
+    font-weight: 700;
+}
+
 .profile-history {
     margin-top: 35px;
     padding: clamp(24px, 5vw, 42px);
