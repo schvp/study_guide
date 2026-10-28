@@ -92,6 +92,9 @@ class StudentProfileStatisticsTests(unittest.TestCase):
         self.assertIn(b"100%", response.data)
         self.assertIn("1 / 8".encode(), response.data)
         self.assertIn("2 попыток".encode(), response.data)
+        self.assertIn("Статистика по разделам".encode(), response.data)
+        self.assertIn("Раздел пройден".encode(), response.data)
+        self.assertIn("Лабораторных попыток".encode(), response.data)
 
 
 if __name__ == "__main__":
