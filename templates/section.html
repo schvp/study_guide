@@ -93,6 +93,33 @@
                     <button class="management-delete" type="submit">Сбросить прогресс курса</button>
                 </form>
             {% endif %}
+            <section class="profile-chapters" aria-labelledby="profile-chapters-title">
+                <div class="profile-history-heading">
+                    <p class="profile-label">ПО ТЕМАМ</p>
+                    <h2 id="profile-chapters-title">Статистика по разделам</h2>
+                </div>
+                <ol class="profile-chapter-list">
+                    {% for chapter in chapter_statistics %}
+                        <li>
+                            <span class="profile-chapter-position">{{ "%02d"|format(chapter.position) }}</span>
+                            <div>
+                                <a href="{{ url_for('course_chapter', chapter_id=chapter.chapter_id) }}">{{ chapter.title }}</a>
+                                <small>{% if chapter.completed %}Раздел пройден{% else %}Раздел не завершён{% endif %}</small>
+                            </div>
+                            <dl>
+                                <div>
+                                    <dt>Лучший тест</dt>
+                                    <dd>{% if chapter.assessment_best_percent is not none %}{{ chapter.assessment_best_percent }}%{% else %}—{% endif %}</dd>
+                                </div>
+                                <div>
+                                    <dt>Лабораторных попыток</dt>
+                                    <dd>{{ chapter.laboratory_attempts }}</dd>
+                                </div>
+                            </dl>
+                        </li>
+                    {% endfor %}
+                </ol>
+            </section>
             <section class="profile-history" aria-labelledby="profile-history-title">
                 <div class="profile-history-heading">
                     <p class="profile-label">ИСТОРИЯ ОБУЧЕНИЯ</p>
