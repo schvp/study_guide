@@ -92,6 +92,39 @@ class LaboratoryDashboardTests(unittest.TestCase):
             ).fetchone()
         self.assertEqual(saved, ("byte-assembly", "started"))
 
+    def test_user_can_complete_started_laboratory_attempt(self):
+        self.login_demo_user()
+        started = self.client.post(
+            "/api/laboratories/byte-assembly/attempts",
+            headers={"X-CSRF-Token": self.csrf_token()},
+        ).get_json()
+
+        response = self.client.post(
+            f"/api/laboratories/attempts/{started['attempt_id']}/complete",
+            headers={"X-CSRF-Token": self.csrf_token()},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["status"], "completed")
+        self.assertEqual(response.get_json()["score"], 1)
+        self.assertEqual(response.get_json()["max_score"], 1)
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            saved = database.execute(
+                """
+                SELECT status, score, max_score, completed_at IS NOT NULL
+                FROM laboratory_attempts WHERE id = ?
+                """,
+                (started["attempt_id"],),
+            ).fetchone()
+        self.assertEqual(saved, ("completed", 1, 1, 1))
+
+        repeated = self.client.post(
+            f"/api/laboratories/attempts/{started['attempt_id']}/complete",
+            headers={"X-CSRF-Token": self.csrf_token()},
+        )
+        self.assertEqual(repeated.status_code, 200)
+        self.assertEqual(repeated.get_json()["status"], "completed")
+
     def test_laboratory_start_requires_login_and_unlocked_chapter(self):
         guest_response = self.client.post(
             "/api/laboratories/byte-assembly/attempts",
