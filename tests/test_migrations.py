@@ -254,6 +254,35 @@ class DatabaseMigrationTests(unittest.TestCase):
             ).fetchone()[0],
             0,
         )
+
+    def test_laboratory_result_migration_preserves_started_attempts(self):
+        migrations.migrate_database(self.database, through_version=16)
+        self.database.execute(
+            "INSERT INTO users (id, email, password_hash) VALUES (1, 'student@example.com', 'hash')"
+        )
+        self.database.execute(
+            "INSERT INTO courses (id, slug, title) VALUES (1, 'course', 'Course')"
+        )
+        self.database.execute(
+            "INSERT INTO chapters (id, course_id, position, title) VALUES (1, 1, 1, 'Chapter')"
+        )
+        self.database.execute(
+            """
+            INSERT INTO laboratory_attempts (
+                user_id, chapter_id, laboratory_slug
+            ) VALUES (1, 1, 'byte-assembly')
+            """
+        )
+
+        migrations.migrate_database(self.database)
+
+        self.assertEqual(
+            self.database.execute(
+                "SELECT status, score, max_score FROM laboratory_attempts WHERE id = 1"
+            ).fetchone(),
+            ("started", None, None),
+        )
+
     def test_migration_snapshots_existing_attempts_and_preserves_answers_after_question_deletion(self):
         self.database.execute("PRAGMA foreign_keys = ON")
         migrations.migrate_database(self.database, through_version=10)
