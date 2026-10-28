@@ -523,9 +523,10 @@ def create_app(test_config=None):
                         MAX(
                             0,
                             CAST(
-                                (julianday(attempts.completed_at)
-                                    - julianday(attempts.started_at)) * 86400
-                                AS INTEGER
+                                ROUND(
+                                    (julianday(attempts.completed_at)
+                                        - julianday(attempts.started_at)) * 86400
+                                ) AS INTEGER
                             )
                         ) AS duration_seconds,
                         chapters.title AS chapter_title
