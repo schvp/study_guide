@@ -2025,6 +2025,48 @@ def create_app(test_config=None):
             status="started",
         ), 201
 
+    @app.post("/api/laboratories/attempts/<int:attempt_id>/complete")
+    @csrf_protected
+    def complete_laboratory_attempt(attempt_id):
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы сохранить результат лабораторной работы."), 401
+
+        database = get_db()
+        attempt = database.execute(
+            """
+            SELECT id, laboratory_slug, chapter_id, status, score, max_score
+            FROM laboratory_attempts
+            WHERE id = ? AND user_id = ?
+            """,
+            (attempt_id, user["id"]),
+        ).fetchone()
+        if attempt is None:
+            return jsonify(error="Попытка лабораторной работы не найдена."), 404
+
+        if attempt["status"] == "started":
+            database.execute(
+                """
+                UPDATE laboratory_attempts
+                SET status = 'completed', completed_at = CURRENT_TIMESTAMP,
+                    score = 1, max_score = 1
+                WHERE id = ?
+                """,
+                (attempt_id,),
+            )
+            database.commit()
+
+        return jsonify(
+            attempt_id=attempt["id"],
+            laboratory_slug=attempt["laboratory_slug"],
+            chapter_id=attempt["chapter_id"],
+            status="completed",
+            score=attempt["score"] if attempt["score"] is not None else 1,
+            max_score=(
+                attempt["max_score"] if attempt["max_score"] is not None else 1
+            ),
+        )
+
     @app.post("/api/assessments/<int:chapter_id>/attempts")
     @csrf_protected
     def start_assessment_attempt(chapter_id):
