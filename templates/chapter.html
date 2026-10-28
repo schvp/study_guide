@@ -983,6 +983,9 @@
         <span>Учебное пособие <span aria-hidden="true">·</span> Учитесь видеть логику</span>
     </footer>
     <script src="{{ url_for('static', filename='auth.js') }}" defer></script>
+    {% if access_state == "available" and not completed %}
+        <script src="{{ url_for('static', filename='laboratory-attempt.js') }}" defer></script>
+    {% endif %}
     {% if access_state == "available" and chapter.position == 1 and not completed %}
         <script src="{{ url_for('static', filename='byte-exercise.js') }}" defer></script>
     {% endif %}

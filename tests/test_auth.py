@@ -2684,6 +2684,7 @@ class AuthenticationTests(unittest.TestCase):
                 (14,),
                 (15,),
                 (16,),
+                (17,),
             ],
         )
         with closing(sqlite3.connect(database_path)) as database:

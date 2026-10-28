@@ -142,6 +142,7 @@ if (triggerLab) {
             }
 
             setStatus("Последовательность верна: триггер хранит состояние между фронтами.", "success");
+            await window.completeLaboratoryAttempt?.("trigger");
             window.location.reload();
         } catch (error) {
             setStatus(

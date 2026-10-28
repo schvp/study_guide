@@ -509,6 +509,54 @@ def create_app(test_config=None):
                 chapters,
                 completed_chapter_ids=completed_chapter_ids,
             )
+            laboratory_history_rows = (
+                get_db()
+                .execute(
+                    """
+                    SELECT attempts.id, attempts.laboratory_slug,
+                        attempts.score, attempts.max_score,
+                        strftime(
+                            '%d.%m.%Y %H:%M',
+                            attempts.completed_at,
+                            'localtime'
+                        ) AS completed_at,
+                        MAX(
+                            0,
+                            CAST(
+                                ROUND(
+                                    (julianday(attempts.completed_at)
+                                        - julianday(attempts.started_at)) * 86400
+                                ) AS INTEGER
+                            )
+                        ) AS duration_seconds,
+                        chapters.title AS chapter_title
+                    FROM laboratory_attempts AS attempts
+                    JOIN chapters ON chapters.id = attempts.chapter_id
+                    WHERE attempts.user_id = ?
+                        AND attempts.status = 'completed'
+                        AND chapters.course_id = ?
+                    ORDER BY attempts.completed_at DESC, attempts.id DESC
+                    LIMIT 10
+                    """,
+                    (user["id"], course["id"]),
+                )
+                .fetchall()
+                if user and course
+                else []
+            )
+            laboratory_history = []
+            for row in laboratory_history_rows:
+                definition = get_laboratory_definition(row["laboratory_slug"])
+                laboratory_history.append(
+                    {
+                        **dict(row),
+                        "laboratory_title": (
+                            definition["title"]
+                            if definition
+                            else row["laboratory_slug"]
+                        ),
+                    }
+                )
             return render_template(
                 "section.html",
                 active_nav=active_nav,
@@ -518,6 +566,7 @@ def create_app(test_config=None):
                 laboratory_completed_count=sum(
                     laboratory["completed"] for laboratory in laboratories
                 ),
+                laboratory_history=laboratory_history,
                 csrf_token=session["csrf_token"],
             )
         if active_nav == "testing":
@@ -2024,6 +2073,48 @@ def create_app(test_config=None):
             chapter_title=chapter["title"],
             status="started",
         ), 201
+
+    @app.post("/api/laboratories/attempts/<int:attempt_id>/complete")
+    @csrf_protected
+    def complete_laboratory_attempt(attempt_id):
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы сохранить результат лабораторной работы."), 401
+
+        database = get_db()
+        attempt = database.execute(
+            """
+            SELECT id, laboratory_slug, chapter_id, status, score, max_score
+            FROM laboratory_attempts
+            WHERE id = ? AND user_id = ?
+            """,
+            (attempt_id, user["id"]),
+        ).fetchone()
+        if attempt is None:
+            return jsonify(error="Попытка лабораторной работы не найдена."), 404
+
+        if attempt["status"] == "started":
+            database.execute(
+                """
+                UPDATE laboratory_attempts
+                SET status = 'completed', completed_at = CURRENT_TIMESTAMP,
+                    score = 1, max_score = 1
+                WHERE id = ?
+                """,
+                (attempt_id,),
+            )
+            database.commit()
+
+        return jsonify(
+            attempt_id=attempt["id"],
+            laboratory_slug=attempt["laboratory_slug"],
+            chapter_id=attempt["chapter_id"],
+            status="completed",
+            score=attempt["score"] if attempt["score"] is not None else 1,
+            max_score=(
+                attempt["max_score"] if attempt["max_score"] is not None else 1
+            ),
+        )
 
     @app.post("/api/assessments/<int:chapter_id>/attempts")
     @csrf_protected

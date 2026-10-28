@@ -143,6 +143,32 @@
                     <p class="assessment-empty">Лабораторные работы пока не добавлены.</p>
                 {% endif %}
             </section>
+            {% if current_user %}
+                <section class="laboratory-history" aria-labelledby="laboratory-history-title">
+                    <div class="assessment-heading">
+                        <p class="eyebrow">ИСТОРИЯ ПРАКТИКИ</p>
+                        <h2 id="laboratory-history-title">Последние лабораторные попытки</h2>
+                    </div>
+                    {% if laboratory_history %}
+                        <ol class="laboratory-history-list">
+                            {% for attempt in laboratory_history %}
+                                <li>
+                                    <span>
+                                        <strong>{{ attempt.laboratory_title }}</strong>
+                                        <small>{{ attempt.chapter_title }}</small>
+                                    </span>
+                                    <span>
+                                        <strong>{{ attempt.score }} / {{ attempt.max_score }}</strong>
+                                        <small>{{ attempt.completed_at }} · {{ attempt.duration_seconds }} сек.</small>
+                                    </span>
+                                </li>
+                            {% endfor %}
+                        </ol>
+                    {% else %}
+                        <p class="assessment-empty">Завершённые лабораторные работы появятся здесь.</p>
+                    {% endif %}
+                </section>
+            {% endif %}
         {% elif active_nav == "testing" %}
             <section class="assessment-section" aria-labelledby="assessment-list-title">
                 <div class="assessment-heading">

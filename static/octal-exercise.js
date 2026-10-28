@@ -55,6 +55,7 @@ if (octalExercise) {
 
             status.textContent = `Верно! Остатки снизу вверх дают ${result.octal}₈. Открываем следующий раздел…`;
             status.dataset.state = "success";
+            await window.completeLaboratoryAttempt?.("octal-conversion");
             window.location.reload();
         } catch (error) {
             status.textContent = error instanceof TypeError

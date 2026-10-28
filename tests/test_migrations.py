@@ -38,6 +38,7 @@ class DatabaseMigrationTests(unittest.TestCase):
                 (14, "version_assessment_question_bank"),
                 (15, "add_assessment_time_and_attempt_limits"),
                 (16, "create_laboratory_attempts"),
+                (17, "add_laboratory_attempt_results"),
             ],
         )
         user_columns = {
@@ -65,7 +66,7 @@ class DatabaseMigrationTests(unittest.TestCase):
             self.database.execute(
                 "SELECT COUNT(*) FROM schema_migrations"
             ).fetchone()[0],
-            16,
+            17,
         )
 
     def test_assessment_tables_store_questions_and_per_user_attempt_answers(self):
@@ -253,6 +254,35 @@ class DatabaseMigrationTests(unittest.TestCase):
             ).fetchone()[0],
             0,
         )
+
+    def test_laboratory_result_migration_preserves_started_attempts(self):
+        migrations.migrate_database(self.database, through_version=16)
+        self.database.execute(
+            "INSERT INTO users (id, email, password_hash) VALUES (1, 'student@example.com', 'hash')"
+        )
+        self.database.execute(
+            "INSERT INTO courses (id, slug, title) VALUES (1, 'course', 'Course')"
+        )
+        self.database.execute(
+            "INSERT INTO chapters (id, course_id, position, title) VALUES (1, 1, 1, 'Chapter')"
+        )
+        self.database.execute(
+            """
+            INSERT INTO laboratory_attempts (
+                user_id, chapter_id, laboratory_slug
+            ) VALUES (1, 1, 'byte-assembly')
+            """
+        )
+
+        migrations.migrate_database(self.database)
+
+        self.assertEqual(
+            self.database.execute(
+                "SELECT status, score, max_score FROM laboratory_attempts WHERE id = 1"
+            ).fetchone(),
+            ("started", None, None),
+        )
+
     def test_migration_snapshots_existing_attempts_and_preserves_answers_after_question_deletion(self):
         self.database.execute("PRAGMA foreign_keys = ON")
         migrations.migrate_database(self.database, through_version=10)
@@ -451,7 +481,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         with patch.object(
             migrations,
             "MIGRATIONS",
-            migrations.MIGRATIONS + ((17, "failing_migration", fail_after_ddl),),
+            migrations.MIGRATIONS + ((18, "failing_migration", fail_after_ddl),),
         ):
             with self.assertRaisesRegex(RuntimeError, "migration failed"):
                 migrations.migrate_database(self.database)
@@ -465,7 +495,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         self.assertIsNone(table)
         self.assertIsNone(
             self.database.execute(
-                "SELECT 1 FROM schema_migrations WHERE version = 17"
+                "SELECT 1 FROM schema_migrations WHERE version = 18"
             ).fetchone()
         )
 

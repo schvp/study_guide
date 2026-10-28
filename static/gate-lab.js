@@ -164,6 +164,7 @@ if (gateLab) {
 
             status.textContent = "Все комбинации совпали. Шлюз открыт, переходим дальше…";
             status.dataset.state = "success";
+            await window.completeLaboratoryAttempt?.("nand-gate");
             window.location.reload();
         } catch (error) {
             status.textContent = error instanceof TypeError

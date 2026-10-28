@@ -150,6 +150,7 @@ if (muxLab) {
 
             status.textContent = "Все комбинации совпали. Маршрутизатор собран!";
             status.dataset.state = "success";
+            await window.completeLaboratoryAttempt?.("multiplexer");
             window.location.reload();
         } catch (error) {
             status.textContent = error instanceof TypeError

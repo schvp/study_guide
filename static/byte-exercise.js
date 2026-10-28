@@ -72,6 +72,7 @@ if (byteExercise) {
 
             status.textContent = "Верно! Открываем следующий раздел…";
             status.dataset.state = "success";
+            await window.completeLaboratoryAttempt?.("byte-assembly");
             window.location.reload();
         } catch (error) {
             status.textContent = error instanceof TypeError

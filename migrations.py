@@ -448,6 +448,15 @@ def _create_laboratory_attempts(database):
     )
 
 
+def _add_laboratory_attempt_results(database):
+    database.execute(
+        "ALTER TABLE laboratory_attempts ADD COLUMN score INTEGER"
+    )
+    database.execute(
+        "ALTER TABLE laboratory_attempts ADD COLUMN max_score INTEGER"
+    )
+
+
 MIGRATIONS = (
     (1, "create_user_tables", _create_user_tables),
     (2, "add_username", _add_username),
@@ -465,6 +474,7 @@ MIGRATIONS = (
     (14, "version_assessment_question_bank", _version_assessment_question_bank),
     (15, "add_assessment_time_and_attempt_limits", _add_assessment_time_and_attempt_limits),
     (16, "create_laboratory_attempts", _create_laboratory_attempts),
+    (17, "add_laboratory_attempt_results", _add_laboratory_attempt_results),
 )
 
 

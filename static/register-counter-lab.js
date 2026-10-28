@@ -140,6 +140,7 @@ if (registerCounterLab) {
             }
 
             setStatus("Пакет принят: регистр и счётчик работают верно.", "success");
+            await window.completeLaboratoryAttempt?.("register-counter");
             window.location.reload();
         } catch (error) {
             setStatus(

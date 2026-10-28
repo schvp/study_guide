@@ -34,6 +34,10 @@
             if (!response.ok) {
                 throw new Error(data.error || "Не удалось начать лабораторную работу.");
             }
+            window.sessionStorage.setItem(
+                `laboratory-attempt:${data.laboratory_slug}`,
+                String(data.attempt_id),
+            );
             window.location.assign(link.href);
         } catch (error) {
             showLaunchError(card, error.message);
