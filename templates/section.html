@@ -120,6 +120,32 @@
                     {% endfor %}
                 </ol>
             </section>
+            <section class="profile-activity" aria-labelledby="profile-activity-title">
+                <div class="profile-history-heading">
+                    <p class="profile-label">АКТИВНОСТЬ</p>
+                    <h2 id="profile-activity-title">Последние действия</h2>
+                </div>
+                {% if recent_activity %}
+                    <ol class="profile-activity-list">
+                        {% for item in recent_activity %}
+                            <li>
+                                <span class="profile-activity-type is-{{ item.activity_type }}">
+                                    {% if item.activity_type == "chapter" %}Раздел{% elif item.activity_type == "assessment" %}Тест{% else %}Лабораторная{% endif %}
+                                </span>
+                                <div>
+                                    <strong>{{ item.title }}</strong>
+                                    <small>{{ item.occurred_at }}</small>
+                                </div>
+                                {% if item.score is not none %}
+                                    <span class="profile-activity-score">{{ item.score }} / {{ item.maximum }}</span>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ol>
+                {% else %}
+                    <p class="profile-history-empty">Учебные действия появятся здесь после прохождения разделов.</p>
+                {% endif %}
+            </section>
             <section class="profile-history" aria-labelledby="profile-history-title">
                 <div class="profile-history-heading">
                     <p class="profile-label">ИСТОРИЯ ОБУЧЕНИЯ</p>
