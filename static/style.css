@@ -1896,7 +1896,8 @@ a.chapter-link:hover {
 .assessment-section,
 .assessment-player,
 .assessment-results,
-.assessment-history {
+.assessment-history,
+.laboratory-history {
     margin-top: 30px;
 }
 
@@ -1925,6 +1926,7 @@ a.chapter-link:hover {
 
 .assessment-quiz-list,
 .assessment-history-list,
+.laboratory-history-list,
 .assessment-result-list {
     display: grid;
     gap: 12px;
@@ -1935,6 +1937,7 @@ a.chapter-link:hover {
 
 .assessment-quiz-card,
 .assessment-history-list > li,
+.laboratory-history-list > li,
 .assessment-question,
 .assessment-result {
     border: 1px solid var(--line);
@@ -1943,7 +1946,8 @@ a.chapter-link:hover {
 }
 
 .assessment-quiz-card,
-.assessment-history-list > li {
+.assessment-history-list > li,
+.laboratory-history-list > li {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -2127,16 +2131,23 @@ a.chapter-link:hover {
     color: var(--ink);
 }
 
-.assessment-history-list > li {
+.assessment-history-list > li,
+.laboratory-history-list > li {
     font-size: 12px;
 }
 
-.assessment-history-list > li > span:first-child {
+.assessment-history-list > li > span:first-child,
+.laboratory-history-list > li > span {
     display: grid;
     gap: 4px;
 }
 
-.assessment-history-list small {
+.laboratory-history-list > li > span:last-child {
+    text-align: right;
+}
+
+.assessment-history-list small,
+.laboratory-history-list small {
     color: var(--muted);
 }
 
@@ -3351,9 +3362,14 @@ a.chapter-link:hover {
     }
 
     .assessment-quiz-card,
-    .assessment-history-list > li {
+    .assessment-history-list > li,
+    .laboratory-history-list > li {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .laboratory-history-list > li > span:last-child {
+        text-align: left;
     }
 
     .byte-bits {
