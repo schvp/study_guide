@@ -54,6 +54,32 @@
                     <span>разделов пройдено</span>
                 </div>
             </section>
+            <section class="profile-statistics" aria-labelledby="profile-statistics-title">
+                <div class="profile-history-heading">
+                    <p class="profile-label">СВОДКА</p>
+                    <h2 id="profile-statistics-title">Результаты обучения</h2>
+                </div>
+                <dl class="profile-statistics-grid">
+                    <div>
+                        <dt>Пройдено курса</dt>
+                        <dd>{{ student_statistics.completion_percent }}%</dd>
+                    </div>
+                    <div>
+                        <dt>Лабораторные работы</dt>
+                        <dd>{{ student_statistics.laboratory_unique_count }} / {{ chapters_count }}</dd>
+                        <small>завершено · {{ student_statistics.laboratory_attempts }} попыток</small>
+                    </div>
+                    <div>
+                        <dt>Средний результат тестов</dt>
+                        <dd>{% if student_statistics.assessment_average_percent is not none %}{{ student_statistics.assessment_average_percent }}%{% else %}—{% endif %}</dd>
+                        <small>{{ student_statistics.assessment_attempts }} завершённых попыток</small>
+                    </div>
+                    <div>
+                        <dt>Лучший результат теста</dt>
+                        <dd>{% if student_statistics.assessment_best_percent is not none %}{{ student_statistics.assessment_best_percent }}%{% else %}—{% endif %}</dd>
+                    </div>
+                </dl>
+            </section>
             <a class="primary-link section-course-link" href="{{ url_for('home', _anchor='my-course') }}">Продолжить обучение <span aria-hidden="true">→</span></a>
             {% if can_manage_content %}
                 <a class="secondary-link section-course-link" href="{{ url_for('content_management') }}">Управление контентом <span aria-hidden="true">→</span></a>
