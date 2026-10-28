@@ -48,6 +48,8 @@ class StudentProfileStatisticsTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Результаты обучения".encode(), response.data)
         self.assertIn("Пройдено курса".encode(), response.data)
+        self.assertIn(b"0%", response.data)
+        self.assertIn("0 завершённых попыток".encode(), response.data)
 
     def test_profile_aggregates_course_results(self):
         self.login_demo_user()
@@ -90,8 +92,6 @@ class StudentProfileStatisticsTests(unittest.TestCase):
         self.assertIn(b"100%", response.data)
         self.assertIn("1 / 8".encode(), response.data)
         self.assertIn("2 попыток".encode(), response.data)
-        self.assertIn(b"0%", response.data)
-        self.assertIn("0 завершённых попыток".encode(), response.data)
 
 
 if __name__ == "__main__":
