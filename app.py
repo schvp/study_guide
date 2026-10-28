@@ -12,6 +12,7 @@ from flask import Flask, flash, g, jsonify, redirect, render_template, request, 
 from werkzeug.security import check_password_hash, generate_password_hash
 from assessment_bank import seed_assessment_questions
 from course_content import load_course_materials
+from laboratory_catalog import build_laboratory_catalog, get_laboratory_definition
 from migrations import migrate_database
 
 
@@ -470,6 +471,55 @@ def create_app(test_config=None):
     def render_app_section(active_nav):
         user = current_user()
         course = get_course()
+        if active_nav == "laboratory":
+            chapters = (
+                get_db()
+                .execute(
+                    """
+                    SELECT id, position, title
+                    FROM chapters
+                    WHERE course_id = ? AND status = 'published'
+                    ORDER BY position, id
+                    """,
+                    (course["id"],),
+                )
+                .fetchall()
+                if course
+                else []
+            )
+            completed_chapter_ids = (
+                {
+                    row["chapter_id"]
+                    for row in get_db().execute(
+                        """
+                        SELECT progress.chapter_id
+                        FROM chapter_progress AS progress
+                        JOIN chapters ON chapters.id = progress.chapter_id
+                        WHERE progress.user_id = ?
+                            AND progress.completed = 1
+                            AND chapters.course_id = ?
+                        """,
+                        (user["id"], course["id"]),
+                    )
+                }
+                if user and course
+                else set()
+            )
+            laboratories = build_laboratory_catalog(
+                chapters,
+                completed_chapter_ids=completed_chapter_ids,
+            )
+            return render_template(
+                "section.html",
+                active_nav=active_nav,
+                section=APP_SECTIONS[active_nav],
+                current_user=user,
+                laboratories=laboratories,
+                laboratory_completed_count=sum(
+                    laboratory["completed"] for laboratory in laboratories
+                ),
+                csrf_token=session["csrf_token"],
+            )
         if active_nav == "testing":
             quizzes = (
                 get_db()
@@ -1909,6 +1959,71 @@ def create_app(test_config=None):
     def logout():
         session.clear()
         return jsonify(success=True)
+
+    @app.post("/api/laboratories/<slug>/attempts")
+    @csrf_protected
+    def start_laboratory_attempt(slug):
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы начать лабораторную работу."), 401
+
+        laboratory = get_laboratory_definition(slug)
+        if laboratory is None:
+            return jsonify(error="Лабораторная работа не найдена."), 404
+
+        database = get_db()
+        chapter = database.execute(
+            """
+            SELECT chapters.id, chapters.course_id, chapters.title, chapters.position
+            FROM chapters
+            JOIN courses ON courses.id = chapters.course_id
+            WHERE chapters.position = ?
+                AND chapters.status = 'published'
+                AND courses.slug = ?
+                AND courses.status = 'published'
+            """,
+            (laboratory["position"], COURSE_SLUG),
+        ).fetchone()
+        if chapter is None:
+            return jsonify(error="Глава лабораторной работы не опубликована."), 404
+
+        unfinished_previous = database.execute(
+            """
+            SELECT COUNT(*)
+            FROM chapters AS previous
+            WHERE previous.course_id = ?
+                AND previous.status = 'published'
+                AND previous.position < ?
+                AND NOT EXISTS (
+                    SELECT 1 FROM chapter_progress AS progress
+                    WHERE progress.user_id = ?
+                        AND progress.chapter_id = previous.id
+                        AND progress.completed = 1
+                )
+            """,
+            (chapter["course_id"], chapter["position"], user["id"]),
+        ).fetchone()[0]
+        if unfinished_previous:
+            return jsonify(
+                error="Сначала завершите предыдущую лабораторную работу."
+            ), 409
+
+        cursor = database.execute(
+            """
+            INSERT INTO laboratory_attempts (
+                user_id, chapter_id, laboratory_slug
+            ) VALUES (?, ?, ?)
+            """,
+            (user["id"], chapter["id"], slug),
+        )
+        database.commit()
+        return jsonify(
+            attempt_id=cursor.lastrowid,
+            laboratory_slug=slug,
+            chapter_id=chapter["id"],
+            chapter_title=chapter["title"],
+            status="started",
+        ), 201
 
     @app.post("/api/assessments/<int:chapter_id>/attempts")
     @csrf_protected

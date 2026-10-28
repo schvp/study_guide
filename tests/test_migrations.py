@@ -37,6 +37,7 @@ class DatabaseMigrationTests(unittest.TestCase):
                 (13, "add_assessment_difficulty_and_settings"),
                 (14, "version_assessment_question_bank"),
                 (15, "add_assessment_time_and_attempt_limits"),
+                (16, "create_laboratory_attempts"),
             ],
         )
         user_columns = {
@@ -64,7 +65,7 @@ class DatabaseMigrationTests(unittest.TestCase):
             self.database.execute(
                 "SELECT COUNT(*) FROM schema_migrations"
             ).fetchone()[0],
-            15,
+            16,
         )
 
     def test_assessment_tables_store_questions_and_per_user_attempt_answers(self):
@@ -157,6 +158,13 @@ class DatabaseMigrationTests(unittest.TestCase):
                 ) VALUES (1, 1, 'numeric', 'Question?', '1', 1, 'expert')
                 """
             )
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.database.execute(
+                """
+                UPDATE assessment_chapter_settings
+                SET questions_per_attempt = 21 WHERE chapter_id = 1
+                """
+            )
 
     def test_assessment_time_and_attempt_limit_constraints(self):
         self.database.execute("PRAGMA foreign_keys = ON")
@@ -194,14 +202,57 @@ class DatabaseMigrationTests(unittest.TestCase):
                     """,
                     (invalid_attempts,),
                 )
+
+    def test_laboratory_attempts_validate_status_and_cascade(self):
+        self.database.execute("PRAGMA foreign_keys = ON")
+        migrations.migrate_database(self.database)
+        self.database.execute(
+            "INSERT INTO users (id, email, password_hash) VALUES (1, 'student@example.com', 'hash')"
+        )
+        self.database.execute(
+            "INSERT INTO courses (id, slug, title) VALUES (1, 'course', 'Course')"
+        )
+        self.database.execute(
+            "INSERT INTO chapters (id, course_id, position, title) VALUES (1, 1, 1, 'Chapter')"
+        )
+        self.database.execute(
+            """
+            INSERT INTO laboratory_attempts (
+                user_id, chapter_id, laboratory_slug
+            ) VALUES (1, 1, 'byte-assembly')
+            """
+        )
+
         with self.assertRaises(sqlite3.IntegrityError):
             self.database.execute(
                 """
-                UPDATE assessment_chapter_settings
-                SET questions_per_attempt = 21 WHERE chapter_id = 1
+                INSERT INTO laboratory_attempts (
+                    user_id, chapter_id, laboratory_slug, status
+                ) VALUES (1, 1, 'byte-assembly', 'completed')
                 """
             )
 
+        self.database.execute(
+            """
+            UPDATE laboratory_attempts
+            SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+            WHERE id = 1
+            """
+        )
+        self.assertEqual(
+            self.database.execute(
+                "SELECT status FROM laboratory_attempts WHERE id = 1"
+            ).fetchone()[0],
+            "completed",
+        )
+
+        self.database.execute("DELETE FROM users WHERE id = 1")
+        self.assertEqual(
+            self.database.execute(
+                "SELECT COUNT(*) FROM laboratory_attempts"
+            ).fetchone()[0],
+            0,
+        )
     def test_migration_snapshots_existing_attempts_and_preserves_answers_after_question_deletion(self):
         self.database.execute("PRAGMA foreign_keys = ON")
         migrations.migrate_database(self.database, through_version=10)
@@ -400,7 +451,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         with patch.object(
             migrations,
             "MIGRATIONS",
-            migrations.MIGRATIONS + ((16, "failing_migration", fail_after_ddl),),
+            migrations.MIGRATIONS + ((17, "failing_migration", fail_after_ddl),),
         ):
             with self.assertRaisesRegex(RuntimeError, "migration failed"):
                 migrations.migrate_database(self.database)
@@ -414,7 +465,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         self.assertIsNone(table)
         self.assertIsNone(
             self.database.execute(
-                "SELECT 1 FROM schema_migrations WHERE version = 16"
+                "SELECT 1 FROM schema_migrations WHERE version = 17"
             ).fetchone()
         )
 
