@@ -1,6 +1,10 @@
 import unittest
 
-from student_statistics import build_student_statistics, percentage
+from student_statistics import (
+    build_chapter_statistics,
+    build_student_statistics,
+    percentage,
+)
 
 
 class StudentStatisticsTests(unittest.TestCase):
@@ -30,6 +34,27 @@ class StudentStatisticsTests(unittest.TestCase):
         self.assertIsNone(statistics["assessment_average_percent"])
         self.assertIsNone(statistics["assessment_best_percent"])
         self.assertEqual(statistics["laboratory_attempts"], 0)
+
+    def test_chapter_statistics_are_ordered_and_aggregated(self):
+        chapters = [
+            {"id": 2, "position": 2, "title": "Вторая"},
+            {"id": 1, "position": 1, "title": "Первая"},
+        ]
+
+        statistics = build_chapter_statistics(
+            chapters,
+            completed_chapter_ids={1},
+            assessment_results=[(1, 1, 2), (1, 2, 2), (2, 0, 0)],
+            laboratory_chapter_ids=[1, 1, 2],
+        )
+
+        self.assertEqual([item["chapter_id"] for item in statistics], [1, 2])
+        self.assertTrue(statistics[0]["completed"])
+        self.assertEqual(statistics[0]["assessment_attempts"], 2)
+        self.assertEqual(statistics[0]["assessment_best_percent"], 100)
+        self.assertEqual(statistics[0]["laboratory_attempts"], 2)
+        self.assertFalse(statistics[1]["completed"])
+        self.assertIsNone(statistics[1]["assessment_best_percent"])
 
 
 if __name__ == "__main__":
