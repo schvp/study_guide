@@ -14,6 +14,7 @@ from assessment_bank import seed_assessment_questions
 from course_content import load_course_materials
 from laboratory_catalog import build_laboratory_catalog, get_laboratory_definition
 from migrations import migrate_database
+from student_statistics import build_student_statistics
 
 
 COURSE_SLUG = "digital-circuits"
@@ -628,6 +629,68 @@ def create_app(test_config=None):
                 csrf_token=session["csrf_token"],
             )
         if active_nav == "profile":
+            chapters_count = (
+                get_db().execute(
+                    """
+                    SELECT COUNT(*) FROM chapters
+                    WHERE course_id = ? AND status = 'published'
+                    """,
+                    (course["id"],),
+                ).fetchone()[0]
+                if course
+                else 0
+            )
+            completed_count = (
+                get_db()
+                .execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM chapter_progress AS progress
+                    JOIN chapters ON chapters.id = progress.chapter_id
+                    WHERE progress.user_id = ?
+                        AND progress.completed = 1
+                        AND chapters.course_id = ?
+                        AND chapters.status = 'published'
+                    """,
+                    (user["id"], course["id"]),
+                )
+                .fetchone()[0]
+                if user and course
+                else 0
+            )
+            assessment_scores = (
+                get_db().execute(
+                    """
+                    SELECT attempts.score, attempts.question_count
+                    FROM assessment_attempts AS attempts
+                    JOIN chapters ON chapters.id = attempts.chapter_id
+                    WHERE attempts.user_id = ?
+                        AND attempts.submitted_at IS NOT NULL
+                        AND chapters.course_id = ?
+                    """,
+                    (user["id"], course["id"]),
+                ).fetchall()
+                if user and course
+                else []
+            )
+            laboratory_slugs = (
+                [
+                    row["laboratory_slug"]
+                    for row in get_db().execute(
+                        """
+                        SELECT attempts.laboratory_slug
+                        FROM laboratory_attempts AS attempts
+                        JOIN chapters ON chapters.id = attempts.chapter_id
+                        WHERE attempts.user_id = ?
+                            AND attempts.status = 'completed'
+                            AND chapters.course_id = ?
+                        """,
+                        (user["id"], course["id"]),
+                    ).fetchall()
+                ]
+                if user and course
+                else []
+            )
             completion_history = (
                 get_db()
                 .execute(
@@ -664,34 +727,13 @@ def create_app(test_config=None):
                 can_manage_content=(
                     user is not None and user["role"] in {"teacher", "admin"}
                 ),
-                chapters_count=(
-                    get_db().execute(
-                        """
-                        SELECT COUNT(*) FROM chapters
-                        WHERE course_id = ? AND status = 'published'
-                        """,
-                        (course["id"],),
-                    ).fetchone()[0]
-                    if course
-                    else 0
-                ),
-                completed_count=(
-                    get_db()
-                    .execute(
-                        """
-                        SELECT COUNT(*)
-                        FROM chapter_progress AS progress
-                        JOIN chapters ON chapters.id = progress.chapter_id
-                        WHERE progress.user_id = ?
-                            AND progress.completed = 1
-                            AND chapters.course_id = ?
-                            AND chapters.status = 'published'
-                        """,
-                        (user["id"], course["id"]),
-                    )
-                    .fetchone()[0]
-                    if user and course
-                    else 0
+                chapters_count=chapters_count,
+                completed_count=completed_count,
+                student_statistics=build_student_statistics(
+                    chapters_count,
+                    completed_count,
+                    [tuple(score) for score in assessment_scores],
+                    laboratory_slugs,
                 ),
                 completion_history=completion_history,
                 can_reset_course_progress=course is not None,
