@@ -3759,6 +3759,48 @@ a.chapter-link:hover {
     font-size: 17px;
 }
 
+.profile-statistics {
+    margin-top: 30px;
+}
+
+.profile-statistics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin: 18px 0 0;
+}
+
+.profile-statistics-grid > div {
+    min-width: 0;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+}
+
+.profile-statistics-grid dt {
+    min-height: 30px;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.5;
+}
+
+.profile-statistics-grid dd {
+    margin: 8px 0 0;
+    color: var(--ink);
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.profile-statistics-grid small {
+    display: block;
+    margin-top: 7px;
+    color: var(--muted);
+    font-size: 9px;
+    line-height: 1.5;
+}
+
 .profile-reset-form {
     margin-top: 20px;
 }
