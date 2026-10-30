@@ -1,5 +1,8 @@
 """Aggregation helpers for teacher-facing course reports."""
 
+import csv
+import io
+
 from student_statistics import percentage
 
 
@@ -64,3 +67,40 @@ def filter_student_reports(reports, query):
         if normalized in (report["username"] or "").casefold()
         or normalized in report["email"].casefold()
     ]
+
+
+def serialize_student_reports_csv(reports, chapters_count):
+    """Serialize student reports as a UTF-8 compatible CSV document."""
+
+    output = io.StringIO(newline="")
+    writer = csv.writer(output)
+    writer.writerow(
+        [
+            "Логин",
+            "Email",
+            "Пройдено глав",
+            "Всего глав",
+            "Прогресс, %",
+            "Попыток тестов",
+            "Средний тест, %",
+            "Запусков лабораторных",
+            "Завершено лабораторных",
+        ]
+    )
+    for report in reports:
+        writer.writerow(
+            [
+                report["username"] or "",
+                report["email"],
+                report["completed_count"],
+                chapters_count,
+                report["completion_percent"],
+                report["assessment_attempts"],
+                report["assessment_average_percent"]
+                if report["assessment_average_percent"] is not None
+                else "",
+                report["laboratory_attempts"],
+                report["laboratory_completed_count"],
+            ]
+        )
+    return output.getvalue()
