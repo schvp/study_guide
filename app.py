@@ -944,9 +944,7 @@ def create_app(test_config=None):
             csrf_token=session["csrf_token"],
         )
 
-    @app.get("/teacher/reports")
-    @roles_required("teacher", "admin")
-    def teacher_reports():
+    def load_teacher_report_data():
         course = get_course()
         chapters_count = (
             get_db().execute(
@@ -1007,6 +1005,12 @@ def create_app(test_config=None):
             else []
         )
         reports = [build_student_report(row, chapters_count) for row in rows]
+        return course, chapters_count, reports
+
+    @app.get("/teacher/reports")
+    @roles_required("teacher", "admin")
+    def teacher_reports():
+        course, chapters_count, reports = load_teacher_report_data()
         query = request.args.get("q", "")[:100]
         filtered_reports = filter_student_reports(reports, query)
         return render_template(
