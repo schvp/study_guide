@@ -5,6 +5,7 @@ from teacher_reports import (
     build_teacher_totals,
     filter_student_reports,
     serialize_student_reports_csv,
+    sort_student_reports,
 )
 
 
@@ -70,6 +71,22 @@ class TeacherReportTests(unittest.TestCase):
 
         self.assertTrue(document.startswith("Логин,Email,"))
         self.assertIn("student,student@example.com,3,8,38,2,88,4,2", document)
+
+    def test_report_sorting_places_missing_scores_last(self):
+        reports = [
+            {"user_id": 1, "username": "beta", "email": "b@example.com", "completion_percent": 25, "assessment_average_percent": None},
+            {"user_id": 2, "username": "alpha", "email": "a@example.com", "completion_percent": 75, "assessment_average_percent": 80},
+            {"user_id": 3, "username": "gamma", "email": "g@example.com", "completion_percent": 50, "assessment_average_percent": 95},
+        ]
+
+        self.assertEqual(
+            [item["username"] for item in sort_student_reports(reports, "progress")],
+            ["alpha", "gamma", "beta"],
+        )
+        self.assertEqual(
+            [item["username"] for item in sort_student_reports(reports, "assessment")],
+            ["gamma", "alpha", "beta"],
+        )
 
 
 if __name__ == "__main__":
