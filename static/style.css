@@ -3986,6 +3986,127 @@ a.chapter-link:hover {
     margin: 18px 0 0;
 }
 
+.teacher-report-main {
+    min-height: calc(100vh - 125px);
+    padding: 62px 0 80px;
+}
+
+.teacher-report-main h1 {
+    margin: 10px 0 12px;
+    color: var(--ink);
+    font-size: clamp(31px, 5vw, 48px);
+    letter-spacing: -0.05em;
+}
+
+.teacher-report-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 30px;
+}
+
+.teacher-report-summary > div {
+    display: grid;
+    gap: 7px;
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+}
+
+.teacher-report-summary strong {
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 24px;
+}
+
+.teacher-report-summary span {
+    color: var(--muted);
+    font-size: 9px;
+    line-height: 1.5;
+}
+
+.teacher-report-search {
+    margin-top: 30px;
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+}
+
+.teacher-report-search label {
+    display: block;
+    margin-bottom: 9px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.teacher-report-search > div {
+    display: flex;
+    gap: 9px;
+}
+
+.teacher-report-search input {
+    min-width: 0;
+    flex: 1;
+    padding: 0 13px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: #fff;
+}
+
+.teacher-report-table-wrap {
+    margin-top: 24px;
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+}
+
+.teacher-report-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fbfbf7;
+}
+
+.teacher-report-table th,
+.teacher-report-table td {
+    padding: 15px 18px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+}
+
+.teacher-report-table th {
+    color: var(--muted);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.teacher-report-table td {
+    font-size: 12px;
+}
+
+.teacher-report-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.teacher-report-table td strong,
+.teacher-report-table td small {
+    display: block;
+}
+
+.teacher-report-table td small,
+.teacher-report-empty {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 9px;
+}
+
+.teacher-report-empty {
+    padding: 28px;
+    border: 1px dashed var(--line);
+    text-align: center;
+}
+
 .library-materials {
     margin-top: 35px;
 }
