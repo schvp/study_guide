@@ -15,6 +15,11 @@ from course_content import load_course_materials
 from laboratory_catalog import build_laboratory_catalog, get_laboratory_definition
 from migrations import migrate_database
 from student_statistics import build_chapter_statistics, build_student_statistics
+from teacher_reports import (
+    build_student_report,
+    build_teacher_totals,
+    filter_student_reports,
+)
 
 
 COURSE_SLUG = "digital-circuits"
@@ -936,6 +941,82 @@ def create_app(test_config=None):
             current_user=current_user(),
             active_nav="profile",
             role_labels=USER_ROLE_LABELS,
+            csrf_token=session["csrf_token"],
+        )
+
+    @app.get("/teacher/reports")
+    @roles_required("teacher", "admin")
+    def teacher_reports():
+        course = get_course()
+        chapters_count = (
+            get_db().execute(
+                "SELECT COUNT(*) FROM chapters WHERE course_id = ? AND status = 'published'",
+                (course["id"],),
+            ).fetchone()[0]
+            if course
+            else 0
+        )
+        rows = (
+            get_db().execute(
+                """
+                SELECT users.id AS user_id, users.username, users.email,
+                    (
+                        SELECT COUNT(*)
+                        FROM chapter_progress AS progress
+                        JOIN chapters ON chapters.id = progress.chapter_id
+                        WHERE progress.user_id = users.id
+                            AND progress.completed = 1
+                            AND chapters.course_id = ?
+                            AND chapters.status = 'published'
+                    ) AS completed_count,
+                    (
+                        SELECT COUNT(*) FROM assessment_attempts AS attempts
+                        WHERE attempts.user_id = users.id
+                            AND attempts.course_id = ?
+                            AND attempts.submitted_at IS NOT NULL
+                    ) AS assessment_attempts,
+                    (
+                        SELECT AVG(100.0 * attempts.score / attempts.question_count)
+                        FROM assessment_attempts AS attempts
+                        WHERE attempts.user_id = users.id
+                            AND attempts.course_id = ?
+                            AND attempts.submitted_at IS NOT NULL
+                    ) AS assessment_average,
+                    (
+                        SELECT COUNT(*)
+                        FROM laboratory_attempts AS attempts
+                        JOIN chapters ON chapters.id = attempts.chapter_id
+                        WHERE attempts.user_id = users.id
+                            AND chapters.course_id = ?
+                    ) AS laboratory_attempts,
+                    (
+                        SELECT COUNT(DISTINCT attempts.laboratory_slug)
+                        FROM laboratory_attempts AS attempts
+                        JOIN chapters ON chapters.id = attempts.chapter_id
+                        WHERE attempts.user_id = users.id
+                            AND attempts.status = 'completed'
+                            AND chapters.course_id = ?
+                    ) AS laboratory_completed_count
+                FROM users
+                WHERE users.role = 'student'
+                ORDER BY COALESCE(users.username, users.email), users.id
+                """,
+                (course["id"],) * 5,
+            ).fetchall()
+            if course
+            else []
+        )
+        reports = [build_student_report(row, chapters_count) for row in rows]
+        query = request.args.get("q", "")[:100]
+        filtered_reports = filter_student_reports(reports, query)
+        return render_template(
+            "teacher_reports.html",
+            current_user=current_user(),
+            course=course,
+            chapters_count=chapters_count,
+            reports=filtered_reports,
+            totals=build_teacher_totals(reports),
+            search_query=query,
             csrf_token=session["csrf_token"],
         )
 
