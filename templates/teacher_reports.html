@@ -40,6 +40,7 @@
                 <input id="teacher-report-query" name="q" value="{{ search_query }}" maxlength="100" placeholder="Например, student@example.com">
                 <button class="primary-link" type="submit">Найти</button>
                 {% if search_query %}<a class="secondary-link" href="{{ url_for('teacher_reports') }}">Сбросить</a>{% endif %}
+                <a class="secondary-link" href="{{ url_for('export_teacher_reports', q=search_query) }}">Скачать CSV</a>
             </div>
         </form>
 
