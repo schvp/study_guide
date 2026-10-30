@@ -69,6 +69,31 @@ def filter_student_reports(reports, query):
     ]
 
 
+def sort_student_reports(reports, sort_key):
+    """Sort reports using one of the supported teacher-facing orders."""
+
+    reports = list(reports)
+    name_key = lambda report: (
+        (report["username"] or report["email"]).casefold(),
+        report["user_id"],
+    )
+    if sort_key == "progress":
+        return sorted(
+            reports,
+            key=lambda report: (-report["completion_percent"], *name_key(report)),
+        )
+    if sort_key == "assessment":
+        return sorted(
+            reports,
+            key=lambda report: (
+                report["assessment_average_percent"] is None,
+                -(report["assessment_average_percent"] or 0),
+                *name_key(report),
+            ),
+        )
+    return sorted(reports, key=name_key)
+
+
 def serialize_student_reports_csv(reports, chapters_count):
     """Serialize student reports as a UTF-8 compatible CSV document."""
 
