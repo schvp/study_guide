@@ -54,6 +54,32 @@
                     <span>разделов пройдено</span>
                 </div>
             </section>
+            <section class="profile-statistics" aria-labelledby="profile-statistics-title">
+                <div class="profile-history-heading">
+                    <p class="profile-label">СВОДКА</p>
+                    <h2 id="profile-statistics-title">Результаты обучения</h2>
+                </div>
+                <dl class="profile-statistics-grid">
+                    <div>
+                        <dt>Пройдено курса</dt>
+                        <dd>{{ student_statistics.completion_percent }}%</dd>
+                    </div>
+                    <div>
+                        <dt>Лабораторные работы</dt>
+                        <dd>{{ student_statistics.laboratory_unique_count }} / {{ chapters_count }}</dd>
+                        <small>завершено · {{ student_statistics.laboratory_attempts }} попыток</small>
+                    </div>
+                    <div>
+                        <dt>Средний результат тестов</dt>
+                        <dd>{% if student_statistics.assessment_average_percent is not none %}{{ student_statistics.assessment_average_percent }}%{% else %}—{% endif %}</dd>
+                        <small>{{ student_statistics.assessment_attempts }} завершённых попыток</small>
+                    </div>
+                    <div>
+                        <dt>Лучший результат теста</dt>
+                        <dd>{% if student_statistics.assessment_best_percent is not none %}{{ student_statistics.assessment_best_percent }}%{% else %}—{% endif %}</dd>
+                    </div>
+                </dl>
+            </section>
             <a class="primary-link section-course-link" href="{{ url_for('home', _anchor='my-course') }}">Продолжить обучение <span aria-hidden="true">→</span></a>
             {% if can_manage_content %}
                 <a class="secondary-link section-course-link" href="{{ url_for('content_management') }}">Управление контентом <span aria-hidden="true">→</span></a>
@@ -67,6 +93,59 @@
                     <button class="management-delete" type="submit">Сбросить прогресс курса</button>
                 </form>
             {% endif %}
+            <section class="profile-chapters" aria-labelledby="profile-chapters-title">
+                <div class="profile-history-heading">
+                    <p class="profile-label">ПО ТЕМАМ</p>
+                    <h2 id="profile-chapters-title">Статистика по разделам</h2>
+                </div>
+                <ol class="profile-chapter-list">
+                    {% for chapter in chapter_statistics %}
+                        <li>
+                            <span class="profile-chapter-position">{{ "%02d"|format(chapter.position) }}</span>
+                            <div>
+                                <a href="{{ url_for('course_chapter', chapter_id=chapter.chapter_id) }}">{{ chapter.title }}</a>
+                                <small>{% if chapter.completed %}Раздел пройден{% else %}Раздел не завершён{% endif %}</small>
+                            </div>
+                            <dl>
+                                <div>
+                                    <dt>Лучший тест</dt>
+                                    <dd>{% if chapter.assessment_best_percent is not none %}{{ chapter.assessment_best_percent }}%{% else %}—{% endif %}</dd>
+                                </div>
+                                <div>
+                                    <dt>Лабораторных попыток</dt>
+                                    <dd>{{ chapter.laboratory_attempts }}</dd>
+                                </div>
+                            </dl>
+                        </li>
+                    {% endfor %}
+                </ol>
+            </section>
+            <section class="profile-activity" aria-labelledby="profile-activity-title">
+                <div class="profile-history-heading">
+                    <p class="profile-label">АКТИВНОСТЬ</p>
+                    <h2 id="profile-activity-title">Последние действия</h2>
+                </div>
+                {% if recent_activity %}
+                    <ol class="profile-activity-list">
+                        {% for item in recent_activity %}
+                            <li>
+                                <span class="profile-activity-type is-{{ item.activity_type }}">
+                                    {% if item.activity_type == "chapter" %}Раздел{% elif item.activity_type == "assessment" %}Тест{% else %}Лабораторная{% endif %}
+                                </span>
+                                <div>
+                                    <strong>{{ item.title }}</strong>
+                                    <small>{{ item.occurred_at }}</small>
+                                </div>
+                                {% if item.score is not none %}
+                                    <span class="profile-activity-score">{{ item.score }} / {{ item.maximum }}</span>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ol>
+                {% else %}
+                    <p class="profile-history-empty">Учебные действия появятся здесь после прохождения разделов.</p>
+                {% endif %}
+            </section>
             <section class="profile-history" aria-labelledby="profile-history-title">
                 <div class="profile-history-heading">
                     <p class="profile-label">ИСТОРИЯ ОБУЧЕНИЯ</p>

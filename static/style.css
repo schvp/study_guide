@@ -3759,8 +3759,179 @@ a.chapter-link:hover {
     font-size: 17px;
 }
 
+.profile-statistics {
+    margin-top: 30px;
+}
+
+.profile-statistics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin: 18px 0 0;
+}
+
+.profile-statistics-grid > div {
+    min-width: 0;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+}
+
+.profile-statistics-grid dt {
+    min-height: 30px;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.5;
+}
+
+.profile-statistics-grid dd {
+    margin: 8px 0 0;
+    color: var(--ink);
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.profile-statistics-grid small {
+    display: block;
+    margin-top: 7px;
+    color: var(--muted);
+    font-size: 9px;
+    line-height: 1.5;
+}
+
 .profile-reset-form {
     margin-top: 20px;
+}
+
+.profile-chapters {
+    margin-top: 35px;
+}
+
+.profile-chapter-list {
+    display: grid;
+    gap: 0;
+    margin: 18px 0 0;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+    list-style: none;
+}
+
+.profile-chapter-list > li {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 15px;
+    padding: 15px 18px;
+    border-top: 1px solid var(--line);
+}
+
+.profile-chapter-list > li:first-child {
+    border-top: 0;
+}
+
+.profile-chapter-position {
+    color: var(--muted);
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 11px;
+}
+
+.profile-chapter-list a {
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.profile-chapter-list small {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 9px;
+}
+
+.profile-chapter-list dl {
+    display: flex;
+    gap: 22px;
+    margin: 0;
+    text-align: right;
+}
+
+.profile-chapter-list dt {
+    color: var(--muted);
+    font-size: 8px;
+}
+
+.profile-chapter-list dd {
+    margin: 4px 0 0;
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.profile-activity {
+    margin-top: 35px;
+}
+
+.profile-activity-list {
+    display: grid;
+    gap: 10px;
+    margin: 18px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.profile-activity-list > li {
+    display: grid;
+    grid-template-columns: 90px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+}
+
+.profile-activity-type {
+    padding: 5px 7px;
+    border-radius: 3px;
+    background: #eef2ec;
+    color: #557d5c;
+    font-size: 8px;
+    font-weight: 700;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.profile-activity-type.is-assessment {
+    background: #f3eee8;
+    color: #8c624c;
+}
+
+.profile-activity-type.is-laboratory {
+    background: #eceff3;
+    color: #536a83;
+}
+
+.profile-activity-list strong,
+.profile-activity-list small {
+    display: block;
+}
+
+.profile-activity-list small {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 9px;
+}
+
+.profile-activity-score {
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
 }
 
 .profile-history {
@@ -4481,6 +4652,28 @@ textarea:focus-visible {
     .learning-note a {
         grid-column: 2;
     }
+
+    .profile-statistics-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .profile-chapter-list > li {
+        grid-template-columns: 32px minmax(0, 1fr);
+    }
+
+    .profile-chapter-list dl {
+        grid-column: 2;
+        justify-content: flex-start;
+        text-align: left;
+    }
+
+    .profile-activity-list > li {
+        grid-template-columns: 80px minmax(0, 1fr);
+    }
+
+    .profile-activity-score {
+        grid-column: 2;
+    }
 }
 
 @media (max-width: 460px) {
@@ -4580,6 +4773,16 @@ textarea:focus-visible {
         flex-basis: 100%;
         margin: 9px 0 0 71px;
         text-align: left;
+    }
+
+    .profile-statistics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-chapter-list dl {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
     }
 
     .profile-history-list li {

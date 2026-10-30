@@ -14,6 +14,7 @@ from assessment_bank import seed_assessment_questions
 from course_content import load_course_materials
 from laboratory_catalog import build_laboratory_catalog, get_laboratory_definition
 from migrations import migrate_database
+from student_statistics import build_chapter_statistics, build_student_statistics
 
 
 COURSE_SLUG = "digital-circuits"
@@ -628,6 +629,70 @@ def create_app(test_config=None):
                 csrf_token=session["csrf_token"],
             )
         if active_nav == "profile":
+            chapters_count = (
+                get_db().execute(
+                    """
+                    SELECT COUNT(*) FROM chapters
+                    WHERE course_id = ? AND status = 'published'
+                    """,
+                    (course["id"],),
+                ).fetchone()[0]
+                if course
+                else 0
+            )
+            completed_chapter_rows = (
+                get_db()
+                .execute(
+                    """
+                    SELECT progress.chapter_id
+                    FROM chapter_progress AS progress
+                    JOIN chapters ON chapters.id = progress.chapter_id
+                    WHERE progress.user_id = ?
+                        AND progress.completed = 1
+                        AND chapters.course_id = ?
+                        AND chapters.status = 'published'
+                    """,
+                    (user["id"], course["id"]),
+                )
+                .fetchall()
+                if user and course
+                else []
+            )
+            completed_chapter_ids = [
+                row["chapter_id"] for row in completed_chapter_rows
+            ]
+            completed_count = len(completed_chapter_ids)
+            assessment_result_rows = (
+                get_db().execute(
+                    """
+                    SELECT attempts.chapter_id, attempts.score,
+                        attempts.question_count
+                    FROM assessment_attempts AS attempts
+                    JOIN chapters ON chapters.id = attempts.chapter_id
+                    WHERE attempts.user_id = ?
+                        AND attempts.submitted_at IS NOT NULL
+                        AND chapters.course_id = ?
+                    """,
+                    (user["id"], course["id"]),
+                ).fetchall()
+                if user and course
+                else []
+            )
+            laboratory_result_rows = (
+                get_db().execute(
+                    """
+                    SELECT attempts.chapter_id, attempts.laboratory_slug
+                    FROM laboratory_attempts AS attempts
+                    JOIN chapters ON chapters.id = attempts.chapter_id
+                    WHERE attempts.user_id = ?
+                        AND attempts.status = 'completed'
+                        AND chapters.course_id = ?
+                    """,
+                    (user["id"], course["id"]),
+                ).fetchall()
+                if user and course
+                else []
+            )
             completion_history = (
                 get_db()
                 .execute(
@@ -651,6 +716,68 @@ def create_app(test_config=None):
                 if user and course
                 else []
             )
+            recent_activity_rows = (
+                get_db().execute(
+                    """
+                    SELECT activity_type, chapter_title, laboratory_slug,
+                        score, maximum,
+                        strftime(
+                            '%d.%m.%Y %H:%M', occurred_at, 'localtime'
+                        ) AS occurred_at
+                    FROM (
+                        SELECT 'chapter' AS activity_type,
+                            chapters.title AS chapter_title,
+                            NULL AS laboratory_slug,
+                            NULL AS score, NULL AS maximum,
+                            history.completed_at AS occurred_at
+                        FROM chapter_completion_history AS history
+                        JOIN chapters ON chapters.id = history.chapter_id
+                        WHERE history.user_id = ? AND chapters.course_id = ?
+                        UNION ALL
+                        SELECT 'assessment', chapters.title, NULL,
+                            attempts.score, attempts.question_count,
+                            attempts.submitted_at
+                        FROM assessment_attempts AS attempts
+                        JOIN chapters ON chapters.id = attempts.chapter_id
+                        WHERE attempts.user_id = ?
+                            AND attempts.submitted_at IS NOT NULL
+                            AND chapters.course_id = ?
+                        UNION ALL
+                        SELECT 'laboratory', chapters.title,
+                            attempts.laboratory_slug,
+                            attempts.score, attempts.max_score,
+                            attempts.completed_at
+                        FROM laboratory_attempts AS attempts
+                        JOIN chapters ON chapters.id = attempts.chapter_id
+                        WHERE attempts.user_id = ?
+                            AND attempts.status = 'completed'
+                            AND chapters.course_id = ?
+                    )
+                    ORDER BY occurred_at DESC
+                    LIMIT 10
+                    """,
+                    (
+                        user["id"], course["id"],
+                        user["id"], course["id"],
+                        user["id"], course["id"],
+                    ),
+                ).fetchall()
+                if user and course
+                else []
+            )
+            recent_activity = []
+            for row in recent_activity_rows:
+                item = dict(row)
+                if item["activity_type"] == "laboratory":
+                    definition = get_laboratory_definition(
+                        item["laboratory_slug"]
+                    )
+                    item["title"] = (
+                        definition["title"] if definition else item["chapter_title"]
+                    )
+                else:
+                    item["title"] = item["chapter_title"]
+                recent_activity.append(item)
             return render_template(
                 "section.html",
                 active_nav=active_nav,
@@ -664,35 +791,33 @@ def create_app(test_config=None):
                 can_manage_content=(
                     user is not None and user["role"] in {"teacher", "admin"}
                 ),
-                chapters_count=(
-                    get_db().execute(
-                        """
-                        SELECT COUNT(*) FROM chapters
-                        WHERE course_id = ? AND status = 'published'
-                        """,
-                        (course["id"],),
-                    ).fetchone()[0]
-                    if course
-                    else 0
+                chapters_count=chapters_count,
+                completed_count=completed_count,
+                student_statistics=build_student_statistics(
+                    chapters_count,
+                    completed_count,
+                    [
+                        (row["score"], row["question_count"])
+                        for row in assessment_result_rows
+                    ],
+                    [row["laboratory_slug"] for row in laboratory_result_rows],
                 ),
-                completed_count=(
-                    get_db()
-                    .execute(
-                        """
-                        SELECT COUNT(*)
-                        FROM chapter_progress AS progress
-                        JOIN chapters ON chapters.id = progress.chapter_id
-                        WHERE progress.user_id = ?
-                            AND progress.completed = 1
-                            AND chapters.course_id = ?
-                            AND chapters.status = 'published'
-                        """,
-                        (user["id"], course["id"]),
-                    )
-                    .fetchone()[0]
-                    if user and course
-                    else 0
+                chapter_statistics=build_chapter_statistics(
+                    get_course_chapters(course["id"]) if course else [],
+                    completed_chapter_ids=completed_chapter_ids,
+                    assessment_results=[
+                        (
+                            row["chapter_id"],
+                            row["score"],
+                            row["question_count"],
+                        )
+                        for row in assessment_result_rows
+                    ],
+                    laboratory_chapter_ids=[
+                        row["chapter_id"] for row in laboratory_result_rows
+                    ],
                 ),
+                recent_activity=recent_activity,
                 completion_history=completion_history,
                 can_reset_course_progress=course is not None,
                 csrf_token=session["csrf_token"],
