@@ -4045,13 +4045,19 @@ a.chapter-link:hover {
     gap: 9px;
 }
 
-.teacher-report-search input {
+.teacher-report-search input,
+.teacher-report-search select {
     min-width: 0;
     flex: 1;
     padding: 0 13px;
     border: 1px solid var(--line);
     border-radius: 4px;
     background: #fff;
+}
+
+.teacher-report-search select {
+    padding-right: 30px;
+    color: var(--ink);
 }
 
 .teacher-report-table-wrap {
@@ -4919,7 +4925,8 @@ textarea:focus-visible {
         flex-direction: column;
     }
 
-    .teacher-report-search input {
+    .teacher-report-search input,
+    .teacher-report-search select {
         min-height: 42px;
     }
 
