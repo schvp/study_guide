@@ -1,7 +1,9 @@
 import os
 import re
+import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 
 from app import create_app
 
@@ -54,6 +56,47 @@ class TeacherDashboardTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Результаты учащихся".encode(), response.data)
         self.assertIn(b"test@example.com", response.data)
+
+    def test_report_aggregates_student_course_results(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            user_id = database.execute(
+                "SELECT id FROM users WHERE username = 'test'"
+            ).fetchone()[0]
+            database.executemany(
+                """
+                INSERT INTO chapter_progress (user_id, chapter_id, completed)
+                VALUES (?, ?, 1)
+                """,
+                [(user_id, 1), (user_id, 2)],
+            )
+            database.execute(
+                """
+                INSERT INTO assessment_attempts (
+                    user_id, course_id, chapter_id, score,
+                    question_count, submitted_at
+                ) VALUES (?, 1, 1, 3, 4, CURRENT_TIMESTAMP)
+                """,
+                (user_id,),
+            )
+            database.executemany(
+                """
+                INSERT INTO laboratory_attempts (
+                    user_id, chapter_id, laboratory_slug, status,
+                    completed_at, score, max_score
+                ) VALUES (?, 1, 'byte-assembly', 'completed', CURRENT_TIMESTAMP, 1, 1)
+                """,
+                [(user_id,), (user_id,)],
+            )
+            database.commit()
+        self.login("admin", "admin")
+
+        response = self.client.get("/teacher/reports")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"25%", response.data)
+        self.assertIn(b"75%", response.data)
+        self.assertIn("2 / 8 глав".encode(), response.data)
+        self.assertIn("2 запусков".encode(), response.data)
 
 
 if __name__ == "__main__":
