@@ -116,6 +116,20 @@ class TeacherDashboardTests(unittest.TestCase):
         self.assertNotIn(b"test@example.com", response.data)
         self.assertIn(b'value="learner@example"', response.data)
 
+    def test_admin_can_download_filtered_csv_report(self):
+        self.login("admin", "admin")
+
+        response = self.client.get("/teacher/reports.csv?q=test")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "text/csv")
+        self.assertIn(
+            'attachment; filename="student-course-report.csv"',
+            response.headers["Content-Disposition"],
+        )
+        self.assertTrue(response.data.startswith(b"\xef\xbb\xbf"))
+        self.assertIn(b"test,test@example.com", response.data)
+
 
 if __name__ == "__main__":
     unittest.main()
