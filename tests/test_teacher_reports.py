@@ -4,6 +4,7 @@ from teacher_reports import (
     build_student_report,
     build_teacher_totals,
     filter_student_reports,
+    serialize_student_reports_csv,
 )
 
 
@@ -49,6 +50,26 @@ class TeacherReportTests(unittest.TestCase):
         self.assertEqual(len(filter_student_reports(reports, "ALP")), 1)
         self.assertEqual(len(filter_student_reports(reports, "second@")), 1)
         self.assertEqual(len(filter_student_reports(reports, "")), 2)
+
+    def test_csv_serialization_contains_report_values(self):
+        document = serialize_student_reports_csv(
+            [
+                {
+                    "username": "student",
+                    "email": "student@example.com",
+                    "completed_count": 3,
+                    "completion_percent": 38,
+                    "assessment_attempts": 2,
+                    "assessment_average_percent": 88,
+                    "laboratory_attempts": 4,
+                    "laboratory_completed_count": 2,
+                }
+            ],
+            chapters_count=8,
+        )
+
+        self.assertTrue(document.startswith("Логин,Email,"))
+        self.assertIn("student,student@example.com,3,8,38,2,88,4,2", document)
 
 
 if __name__ == "__main__":
