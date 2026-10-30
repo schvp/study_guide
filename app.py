@@ -19,6 +19,7 @@ from teacher_reports import (
     build_student_report,
     build_teacher_totals,
     filter_student_reports,
+    serialize_student_reports_csv,
 )
 
 
@@ -1022,6 +1023,26 @@ def create_app(test_config=None):
             totals=build_teacher_totals(reports),
             search_query=query,
             csrf_token=session["csrf_token"],
+        )
+
+    @app.get("/teacher/reports.csv")
+    @roles_required("teacher", "admin")
+    def export_teacher_reports():
+        _course, chapters_count, reports = load_teacher_report_data()
+        query = request.args.get("q", "")[:100]
+        reports = filter_student_reports(reports, query)
+        document = "\ufeff" + serialize_student_reports_csv(
+            reports,
+            chapters_count,
+        )
+        return app.response_class(
+            document,
+            content_type="text/csv; charset=utf-8",
+            headers={
+                "Content-Disposition": (
+                    'attachment; filename="student-course-report.csv"'
+                )
+            },
         )
 
     @app.post("/admin/users/<int:user_id>/role")
