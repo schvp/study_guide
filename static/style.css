@@ -4795,6 +4795,10 @@ textarea:focus-visible {
     .profile-activity-score {
         grid-column: 2;
     }
+
+    .teacher-report-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 460px) {
@@ -4904,6 +4908,19 @@ textarea:focus-visible {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 12px;
+    }
+
+    .teacher-report-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .teacher-report-search > div {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .teacher-report-search input {
+        min-height: 42px;
     }
 
     .profile-history-list li {
