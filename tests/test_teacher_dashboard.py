@@ -130,6 +130,33 @@ class TeacherDashboardTests(unittest.TestCase):
         self.assertTrue(response.data.startswith(b"\xef\xbb\xbf"))
         self.assertIn(b"test,test@example.com", response.data)
 
+    def test_report_can_sort_students_by_progress(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            cursor = database.execute(
+                """
+                INSERT INTO users (email, username, password_hash, role)
+                VALUES ('leader@example.com', 'leader', 'hash', 'student')
+                """
+            )
+            database.executemany(
+                """
+                INSERT INTO chapter_progress (user_id, chapter_id, completed)
+                VALUES (?, ?, 1)
+                """,
+                [(cursor.lastrowid, 1), (cursor.lastrowid, 2)],
+            )
+            database.commit()
+        self.login("admin", "admin")
+
+        response = self.client.get("/teacher/reports?sort=progress")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertLess(
+            response.data.index(b"leader@example.com"),
+            response.data.index(b"test@example.com"),
+        )
+        self.assertIn(b'<option value="progress" selected>', response.data)
+
 
 if __name__ == "__main__":
     unittest.main()
