@@ -20,6 +20,7 @@ from teacher_reports import (
     build_teacher_totals,
     filter_student_reports,
     serialize_student_reports_csv,
+    sort_student_reports,
 )
 
 
@@ -1013,7 +1014,13 @@ def create_app(test_config=None):
     def teacher_reports():
         course, chapters_count, reports = load_teacher_report_data()
         query = request.args.get("q", "")[:100]
-        filtered_reports = filter_student_reports(reports, query)
+        sort_key = request.args.get("sort", "name")
+        if sort_key not in {"name", "progress", "assessment"}:
+            sort_key = "name"
+        filtered_reports = sort_student_reports(
+            filter_student_reports(reports, query),
+            sort_key,
+        )
         return render_template(
             "teacher_reports.html",
             current_user=current_user(),
@@ -1022,6 +1029,7 @@ def create_app(test_config=None):
             reports=filtered_reports,
             totals=build_teacher_totals(reports),
             search_query=query,
+            sort_key=sort_key,
             csrf_token=session["csrf_token"],
         )
 
@@ -1030,7 +1038,11 @@ def create_app(test_config=None):
     def export_teacher_reports():
         _course, chapters_count, reports = load_teacher_report_data()
         query = request.args.get("q", "")[:100]
-        reports = filter_student_reports(reports, query)
+        sort_key = request.args.get("sort", "name")
+        reports = sort_student_reports(
+            filter_student_reports(reports, query),
+            sort_key,
+        )
         document = "\ufeff" + serialize_student_reports_csv(
             reports,
             chapters_count,
