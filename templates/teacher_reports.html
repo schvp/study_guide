@@ -38,9 +38,14 @@
             <label for="teacher-report-query">Поиск по имени или email</label>
             <div>
                 <input id="teacher-report-query" name="q" value="{{ search_query }}" maxlength="100" placeholder="Например, student@example.com">
+                <select name="sort" aria-label="Сортировка отчёта">
+                    <option value="name"{% if sort_key == "name" %} selected{% endif %}>По имени</option>
+                    <option value="progress"{% if sort_key == "progress" %} selected{% endif %}>По прогрессу</option>
+                    <option value="assessment"{% if sort_key == "assessment" %} selected{% endif %}>По тестам</option>
+                </select>
                 <button class="primary-link" type="submit">Найти</button>
                 {% if search_query %}<a class="secondary-link" href="{{ url_for('teacher_reports') }}">Сбросить</a>{% endif %}
-                <a class="secondary-link" href="{{ url_for('export_teacher_reports', q=search_query) }}">Скачать CSV</a>
+                <a class="secondary-link" href="{{ url_for('export_teacher_reports', q=search_query, sort=sort_key) }}">Скачать CSV</a>
             </div>
         </form>
 
