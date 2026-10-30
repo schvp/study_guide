@@ -98,6 +98,24 @@ class TeacherDashboardTests(unittest.TestCase):
         self.assertIn("2 / 8 глав".encode(), response.data)
         self.assertIn("2 запусков".encode(), response.data)
 
+    def test_report_search_filters_username_and_email(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            database.execute(
+                """
+                INSERT INTO users (email, username, password_hash, role)
+                VALUES ('learner@example.com', 'learner', 'hash', 'student')
+                """
+            )
+            database.commit()
+        self.login("admin", "admin")
+
+        response = self.client.get("/teacher/reports?q=learner%40example")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"learner@example.com", response.data)
+        self.assertNotIn(b"test@example.com", response.data)
+        self.assertIn(b'value="learner@example"', response.data)
+
 
 if __name__ == "__main__":
     unittest.main()
