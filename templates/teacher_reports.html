@@ -1,0 +1,83 @@
+{% from "_navigation.html" import header_navigation, side_navigation %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>Отчёты учащихся — Учебный навигатор</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="app-layout">
+    <header class="site-header">
+        <a class="brand" href="{{ url_for('home') }}" aria-label="На главную">
+            <span class="brand-mark" aria-hidden="true">Σ</span>
+            <span>Учебный навигатор</span>
+        </a>
+        {{ header_navigation("profile", current_user) }}
+        <div class="header-account">
+            <span class="header-user">{{ current_user.email }}</span>
+            <button class="header-auth" type="button" data-auth-logout>Выйти</button>
+        </div>
+    </header>
+    {{ side_navigation("profile", current_user) }}
+
+    <main class="teacher-report-main">
+        <p class="eyebrow">ПРЕПОДАВАТЕЛЬ <span aria-hidden="true">/</span> ОТЧЁТЫ</p>
+        <h1>Результаты учащихся</h1>
+        <p class="section-description">Сводный прогресс, тесты и лабораторные работы по курсу «{{ course.title if course else 'Курс' }}».</p>
+
+        <section class="teacher-report-summary" aria-label="Сводка по учащимся">
+            <div><strong>{{ totals.students_count }}</strong><span>учащихся</span></div>
+            <div><strong>{{ totals.average_completion_percent }}%</strong><span>среднее прохождение</span></div>
+            <div><strong>{% if totals.average_assessment_percent is not none %}{{ totals.average_assessment_percent }}%{% else %}—{% endif %}</strong><span>средний результат тестов</span></div>
+            <div><strong>{{ totals.completed_students_count }}</strong><span>завершили курс</span></div>
+        </section>
+
+        <form class="teacher-report-search" method="get" action="{{ url_for('teacher_reports') }}">
+            <label for="teacher-report-query">Поиск по имени или email</label>
+            <div>
+                <input id="teacher-report-query" name="q" value="{{ search_query }}" maxlength="100" placeholder="Например, student@example.com">
+                <select name="sort" aria-label="Сортировка отчёта">
+                    <option value="name"{% if sort_key == "name" %} selected{% endif %}>По имени</option>
+                    <option value="progress"{% if sort_key == "progress" %} selected{% endif %}>По прогрессу</option>
+                    <option value="assessment"{% if sort_key == "assessment" %} selected{% endif %}>По тестам</option>
+                </select>
+                <button class="primary-link" type="submit">Найти</button>
+                {% if search_query %}<a class="secondary-link" href="{{ url_for('teacher_reports') }}">Сбросить</a>{% endif %}
+                <a class="secondary-link" href="{{ url_for('export_teacher_reports', q=search_query, sort=sort_key) }}">Скачать CSV</a>
+            </div>
+        </form>
+
+        {% if reports %}
+            <div class="teacher-report-table-wrap">
+                <table class="teacher-report-table">
+                    <thead>
+                        <tr>
+                            <th>Учащийся</th>
+                            <th>Прогресс</th>
+                            <th>Тесты</th>
+                            <th>Лабораторные</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in reports %}
+                            <tr>
+                                <td><strong>{{ report.username or "Без логина" }}</strong><small>{{ report.email }}</small></td>
+                                <td><strong>{{ report.completion_percent }}%</strong><small>{{ report.completed_count }} / {{ chapters_count }} глав</small></td>
+                                <td><strong>{% if report.assessment_average_percent is not none %}{{ report.assessment_average_percent }}%{% else %}—{% endif %}</strong><small>{{ report.assessment_attempts }} попыток</small></td>
+                                <td><strong>{{ report.laboratory_completed_count }} / {{ chapters_count }}</strong><small>{{ report.laboratory_attempts }} запусков</small></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="teacher-report-empty">Учащиеся по заданному запросу не найдены.</p>
+        {% endif %}
+    </main>
+
+    <footer class="site-footer"><span>Схемотехника цифровых систем</span><span>Отчёты преподавателя</span></footer>
+    <script src="{{ url_for('static', filename='auth.js') }}" defer></script>
+</body>
+</html>

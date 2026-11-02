@@ -83,6 +83,7 @@
             <a class="primary-link section-course-link" href="{{ url_for('home', _anchor='my-course') }}">Продолжить обучение <span aria-hidden="true">→</span></a>
             {% if can_manage_content %}
                 <a class="secondary-link section-course-link" href="{{ url_for('content_management') }}">Управление контентом <span aria-hidden="true">→</span></a>
+                <a class="secondary-link section-course-link" href="{{ url_for('teacher_reports') }}">Отчёты учащихся <span aria-hidden="true">→</span></a>
             {% endif %}
             {% if current_user.role == "admin" %}
                 <a class="secondary-link section-course-link" href="{{ url_for('admin_users') }}">Пользователи и роли <span aria-hidden="true">→</span></a>
