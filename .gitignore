@@ -5,3 +5,12 @@ __pycache__/
 .env
 instance/
 *.sqlite3
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+build/
+dist/
+*.egg-info/
