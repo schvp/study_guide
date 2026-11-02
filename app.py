@@ -428,6 +428,18 @@ def create_app(test_config=None):
             csrf_token=session["csrf_token"],
         )
 
+    @app.get("/health")
+    def health_check():
+        get_db().execute("SELECT 1").fetchone()
+        migration_version = get_db().execute(
+            "SELECT COALESCE(MAX(version), 0) FROM schema_migrations"
+        ).fetchone()[0]
+        return jsonify(
+            status="ok",
+            database="available",
+            schema_version=migration_version,
+        )
+
     @app.get("/courses/<slug>")
     def course_overview(slug):
         course = get_course_by_slug(slug)
