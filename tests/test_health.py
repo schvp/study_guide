@@ -34,6 +34,17 @@ class HealthCheckTests(unittest.TestCase):
             },
         )
 
+    def test_responses_include_baseline_security_headers(self):
+        response = self.client.get("/")
+
+        self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
+        self.assertEqual(response.headers["X-Frame-Options"], "DENY")
+        self.assertEqual(response.headers["Referrer-Policy"], "same-origin")
+        self.assertEqual(
+            response.headers["Permissions-Policy"],
+            "camera=(), microphone=(), geolocation=()",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
