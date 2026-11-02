@@ -363,6 +363,17 @@ def create_app(test_config=None):
         if "csrf_token" not in session:
             session["csrf_token"] = secrets.token_urlsafe(32)
 
+    @app.after_request
+    def add_security_headers(response):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "same-origin")
+        response.headers.setdefault(
+            "Permissions-Policy",
+            "camera=(), microphone=(), geolocation=()",
+        )
+        return response
+
     @app.get("/")
     def home():
         user = current_user()
@@ -426,6 +437,18 @@ def create_app(test_config=None):
             current_user=current_user(),
             active_nav="learning",
             csrf_token=session["csrf_token"],
+        )
+
+    @app.get("/health")
+    def health_check():
+        get_db().execute("SELECT 1").fetchone()
+        migration_version = get_db().execute(
+            "SELECT COALESCE(MAX(version), 0) FROM schema_migrations"
+        ).fetchone()[0]
+        return jsonify(
+            status="ok",
+            database="available",
+            schema_version=migration_version,
         )
 
     @app.get("/courses/<slug>")
