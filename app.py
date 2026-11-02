@@ -363,6 +363,17 @@ def create_app(test_config=None):
         if "csrf_token" not in session:
             session["csrf_token"] = secrets.token_urlsafe(32)
 
+    @app.after_request
+    def add_security_headers(response):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "same-origin")
+        response.headers.setdefault(
+            "Permissions-Policy",
+            "camera=(), microphone=(), geolocation=()",
+        )
+        return response
+
     @app.get("/")
     def home():
         user = current_user()
