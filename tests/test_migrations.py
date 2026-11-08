@@ -39,6 +39,7 @@ class DatabaseMigrationTests(unittest.TestCase):
                 (15, "add_assessment_time_and_attempt_limits"),
                 (16, "create_laboratory_attempts"),
                 (17, "add_laboratory_attempt_results"),
+                (18, "add_library_catalog_metadata"),
             ],
         )
         user_columns = {
@@ -66,7 +67,7 @@ class DatabaseMigrationTests(unittest.TestCase):
             self.database.execute(
                 "SELECT COUNT(*) FROM schema_migrations"
             ).fetchone()[0],
-            17,
+            18,
         )
 
     def test_assessment_tables_store_questions_and_per_user_attempt_answers(self):
@@ -410,6 +411,12 @@ class DatabaseMigrationTests(unittest.TestCase):
                 "resource_url",
                 "content",
                 "position",
+                "slug",
+                "chapter_id",
+                "category",
+                "difficulty",
+                "estimated_minutes",
+                "status",
             }.issubset(columns)
         )
         self.database.execute(
@@ -426,6 +433,43 @@ class DatabaseMigrationTests(unittest.TestCase):
                 """
                 INSERT INTO library_materials (course_id, title, material_type)
                 VALUES (99, 'Invalid', 'article')
+                """
+            )
+
+    def test_library_catalog_metadata_preserves_existing_materials(self):
+        self.database.execute("PRAGMA foreign_keys = ON")
+        migrations.migrate_database(self.database, through_version=17)
+        self.database.execute(
+            "INSERT INTO courses (id, slug, title) VALUES (1, 'course', 'Course')"
+        )
+        self.database.execute(
+            "INSERT INTO chapters (id, course_id, position, title) "
+            "VALUES (1, 1, 1, 'Chapter')"
+        )
+        self.database.execute(
+            "INSERT INTO library_materials (id, course_id, title) "
+            "VALUES (7, 1, 'Existing reference')"
+        )
+        self.database.commit()
+
+        migrations.migrate_database(self.database)
+
+        material = self.database.execute(
+            """
+            SELECT slug, category, difficulty, estimated_minutes, status
+            FROM library_materials WHERE id = 7
+            """
+        ).fetchone()
+        self.assertEqual(
+            material,
+            ("legacy-7", "general", "basic", 5, "published"),
+        )
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.database.execute(
+                """
+                INSERT INTO library_materials (
+                    course_id, slug, title, difficulty, estimated_minutes
+                ) VALUES (1, 'reference', 'Broken', 'expert', 0)
                 """
             )
 
@@ -481,7 +525,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         with patch.object(
             migrations,
             "MIGRATIONS",
-            migrations.MIGRATIONS + ((18, "failing_migration", fail_after_ddl),),
+            migrations.MIGRATIONS + ((19, "failing_migration", fail_after_ddl),),
         ):
             with self.assertRaisesRegex(RuntimeError, "migration failed"):
                 migrations.migrate_database(self.database)
@@ -495,7 +539,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         self.assertIsNone(table)
         self.assertIsNone(
             self.database.execute(
-                "SELECT 1 FROM schema_migrations WHERE version = 18"
+                "SELECT 1 FROM schema_migrations WHERE version = 19"
             ).fetchone()
         )
 
