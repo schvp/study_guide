@@ -4401,6 +4401,58 @@ a.chapter-link:hover {
     font-size: 12px;
 }
 
+.profile-library {
+    margin-top: 38px;
+    padding: clamp(22px, 4vw, 32px);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+}
+
+.profile-library-statistics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: 18px;
+}
+
+.profile-library-recent {
+    display: grid;
+    gap: 1px;
+    margin: 22px 0;
+    padding: 0;
+    border: 1px solid var(--line);
+    background: var(--line);
+    list-style: none;
+}
+
+.profile-library-recent li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 14px 16px;
+    background: white;
+}
+
+.profile-library-recent li div {
+    display: grid;
+    gap: 4px;
+}
+
+.profile-library-recent small,
+.profile-library-recent li > span {
+    color: var(--muted);
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 8px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+@media (max-width: 560px) {
+    .profile-library-statistics {
+        grid-template-columns: 1fr;
+    }
+}
+
 .library-article-content {
     max-width: 760px;
     padding: clamp(28px, 6vw, 58px);
