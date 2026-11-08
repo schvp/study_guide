@@ -1113,6 +1113,79 @@ def create_app(test_config=None):
             csrf_token=session["csrf_token"],
         )
 
+    def get_published_library_material(slug):
+        course = get_course()
+        if course is None:
+            return None
+        return get_db().execute(
+            """
+            SELECT id, course_id, slug, title
+            FROM library_materials
+            WHERE course_id = ? AND slug = ? AND status = 'published'
+            """,
+            (course["id"], slug),
+        ).fetchone()
+
+    @app.post("/api/library/<slug>/favorite")
+    @csrf_protected
+    def update_library_favorite(slug):
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы добавлять материалы в избранное."), 401
+        payload = json_payload()
+        if payload is None or not isinstance(payload.get("value"), bool):
+            return jsonify(error="Передайте новое состояние избранного."), 400
+        material = get_published_library_material(slug)
+        if material is None:
+            return jsonify(error="Материал библиотеки не найден."), 404
+        get_db().execute(
+            """
+            INSERT INTO library_user_progress (
+                user_id, material_id, is_favorite
+            ) VALUES (?, ?, ?)
+            ON CONFLICT(user_id, material_id) DO UPDATE SET
+                is_favorite = excluded.is_favorite,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (user["id"], material["id"], int(payload["value"])),
+        )
+        get_db().commit()
+        return jsonify(favorite=payload["value"])
+
+    @app.post("/api/library/<slug>/completion")
+    @csrf_protected
+    def update_library_completion(slug):
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы сохранять прогресс чтения."), 401
+        payload = json_payload()
+        if payload is None or not isinstance(payload.get("value"), bool):
+            return jsonify(error="Передайте новое состояние материала."), 400
+        material = get_published_library_material(slug)
+        if material is None:
+            return jsonify(error="Материал библиотеки не найден."), 404
+        get_db().execute(
+            """
+            INSERT INTO library_user_progress (
+                user_id, material_id, is_completed, completed_at
+            ) VALUES (
+                ?, ?, ?, CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END
+            )
+            ON CONFLICT(user_id, material_id) DO UPDATE SET
+                is_completed = excluded.is_completed,
+                completed_at = excluded.completed_at,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (
+                user["id"],
+                material["id"],
+                int(payload["value"]),
+                int(payload["value"]),
+            ),
+        )
+        get_db().commit()
+        return jsonify(completed=payload["value"])
+
     @app.get("/laboratory")
     def laboratory():
         return render_app_section("laboratory")

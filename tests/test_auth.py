@@ -1202,6 +1202,75 @@ class AuthenticationTests(unittest.TestCase):
         self.assertNotIn("Черновик преподавателя".encode(), filtered.data)
         self.assertIn("Найдено материалов: <strong>1</strong>".encode(), filtered.data)
 
+    def test_library_progress_apis_require_auth_csrf_and_isolate_user_data(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            database.execute(
+                """
+                INSERT INTO library_materials (
+                    id, course_id, slug, title, status, position
+                ) VALUES (50, 1, 'timing-guide', 'Временной анализ', 'published', 1)
+                """
+            )
+            database.commit()
+
+        anonymous = self._post_json(
+            "/api/library/timing-guide/favorite",
+            {"value": True},
+        )
+        self.assertEqual(anonymous.status_code, 401)
+
+        self.assertEqual(
+            self._post_json(
+                "/api/auth/login",
+                {"login": "test", "password": "test"},
+            ).status_code,
+            200,
+        )
+        self.csrf_token = self._load_csrf_token()
+        missing_csrf = self.client.post(
+            "/api/library/timing-guide/favorite",
+            json={"value": True},
+        )
+        self.assertEqual(missing_csrf.status_code, 400)
+
+        favorite = self._post_json(
+            "/api/library/timing-guide/favorite",
+            {"value": True},
+        )
+        completed = self._post_json(
+            "/api/library/timing-guide/completion",
+            {"value": True},
+        )
+        self.assertEqual(favorite.status_code, 200)
+        self.assertEqual(favorite.get_json(), {"favorite": True})
+        self.assertEqual(completed.status_code, 200)
+        self.assertEqual(completed.get_json(), {"completed": True})
+
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            rows = database.execute(
+                """
+                SELECT users.username, progress.is_favorite,
+                    progress.is_completed, progress.completed_at
+                FROM library_user_progress AS progress
+                JOIN users ON users.id = progress.user_id
+                WHERE progress.material_id = 50
+                """
+            ).fetchall()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0][:3], ("test", 1, 1))
+        self.assertIsNotNone(rows[0][3])
+
+        missing = self._post_json(
+            "/api/library/missing/completion",
+            {"value": True},
+        )
+        invalid = self._post_json(
+            "/api/library/timing-guide/completion",
+            {"value": 1},
+        )
+        self.assertEqual(missing.status_code, 404)
+        self.assertEqual(invalid.status_code, 400)
+
     def test_library_material_management_creates_edits_reorders_and_deletes(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
             database.executemany(
