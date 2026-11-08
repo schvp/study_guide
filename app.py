@@ -92,6 +92,21 @@ LIBRARY_MATERIAL_TYPES = {
     "link": "Ссылка",
     "file": "Файл",
 }
+LIBRARY_CATEGORIES = {
+    "fundamentals": "Основы",
+    "number-systems": "Системы счисления",
+    "boolean-algebra": "Булева алгебра",
+    "logic-elements": "Логические элементы",
+    "combinational": "Комбинационные устройства",
+    "sequential": "Последовательностные устройства",
+    "memory": "Память",
+    "general": "Общие материалы",
+}
+LIBRARY_DIFFICULTIES = {
+    "basic": "Начальный",
+    "intermediate": "Средний",
+    "advanced": "Продвинутый",
+}
 
 
 def is_http_resource_url(value):
@@ -917,15 +932,57 @@ def create_app(test_config=None):
                 csrf_token=session["csrf_token"],
             )
         if active_nav == "library":
-            library_materials = get_db().execute(
-                """
-                SELECT id, title, description, material_type, resource_url, content
-                FROM library_materials
-                WHERE course_id = ?
-                ORDER BY position, id
-                """,
-                (course["id"],),
-            ).fetchall() if course else []
+            search_query = request.args.get("q", "").strip()[:100]
+            category = request.args.get("category", "")
+            difficulty = request.args.get("difficulty", "")
+            material_type = request.args.get("type", "")
+            chapter_value = request.args.get("chapter", "")
+            category = category if category in LIBRARY_CATEGORIES else ""
+            difficulty = difficulty if difficulty in LIBRARY_DIFFICULTIES else ""
+            material_type = (
+                material_type if material_type in LIBRARY_MATERIAL_TYPES else ""
+            )
+            try:
+                chapter_position = int(chapter_value) if chapter_value else None
+            except ValueError:
+                chapter_position = None
+
+            conditions = ["materials.course_id = ?", "materials.status = 'published'"]
+            parameters = [course["id"]] if course else []
+            if category:
+                conditions.append("materials.category = ?")
+                parameters.append(category)
+            if difficulty:
+                conditions.append("materials.difficulty = ?")
+                parameters.append(difficulty)
+            if material_type:
+                conditions.append("materials.material_type = ?")
+                parameters.append(material_type)
+            if chapter_position is not None:
+                conditions.append("chapters.position = ?")
+                parameters.append(chapter_position)
+
+            library_materials = (
+                get_db()
+                .execute(
+                    f"""
+                    SELECT materials.id, materials.slug, materials.title,
+                        materials.description, materials.material_type,
+                        materials.resource_url, materials.content,
+                        materials.category, materials.difficulty,
+                        materials.estimated_minutes, chapters.position AS chapter_position,
+                        chapters.title AS chapter_title
+                    FROM library_materials AS materials
+                    LEFT JOIN chapters ON chapters.id = materials.chapter_id
+                    WHERE {' AND '.join(conditions)}
+                    ORDER BY materials.position, materials.id
+                    """,
+                    parameters,
+                )
+                .fetchall()
+                if course
+                else []
+            )
             library_materials = [
                 {
                     **dict(material),
@@ -937,6 +994,20 @@ def create_app(test_config=None):
                 }
                 for material in library_materials
             ]
+            if search_query:
+                normalized_query = search_query.casefold()
+                library_materials = [
+                    material
+                    for material in library_materials
+                    if normalized_query
+                    in " ".join(
+                        (
+                            material["title"],
+                            material["description"],
+                            material["content"],
+                        )
+                    ).casefold()
+                ]
             return render_template(
                 "section.html",
                 active_nav=active_nav,
@@ -944,6 +1015,18 @@ def create_app(test_config=None):
                 current_user=user,
                 library_materials=library_materials,
                 library_material_types=LIBRARY_MATERIAL_TYPES,
+                library_categories=LIBRARY_CATEGORIES,
+                library_difficulties=LIBRARY_DIFFICULTIES,
+                library_chapters=(
+                    get_course_chapters(course["id"]) if course else []
+                ),
+                library_filters={
+                    "q": search_query,
+                    "category": category,
+                    "difficulty": difficulty,
+                    "type": material_type,
+                    "chapter": chapter_position,
+                },
                 csrf_token=session["csrf_token"],
             )
         return render_template(

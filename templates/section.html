@@ -324,6 +324,53 @@
                 </section>
             {% endif %}
         {% elif active_nav == "library" %}
+            <form class="library-filters" method="get" action="{{ url_for('library') }}" aria-label="Фильтры библиотеки">
+                <label class="library-search-field">
+                    <span>Поиск</span>
+                    <input type="search" name="q" value="{{ library_filters.q }}" maxlength="100" placeholder="Название, тема или термин">
+                </label>
+                <label>
+                    <span>Глава</span>
+                    <select name="chapter">
+                        <option value="">Все главы</option>
+                        {% for chapter in library_chapters %}
+                            <option value="{{ chapter.position }}" {% if library_filters.chapter == chapter.position %}selected{% endif %}>{{ chapter.position }}. {{ chapter.title }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>
+                    <span>Категория</span>
+                    <select name="category">
+                        <option value="">Все категории</option>
+                        {% for value, label in library_categories.items() %}
+                            <option value="{{ value }}" {% if library_filters.category == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>
+                    <span>Уровень</span>
+                    <select name="difficulty">
+                        <option value="">Любой уровень</option>
+                        {% for value, label in library_difficulties.items() %}
+                            <option value="{{ value }}" {% if library_filters.difficulty == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>
+                    <span>Тип</span>
+                    <select name="type">
+                        <option value="">Все типы</option>
+                        {% for value, label in library_material_types.items() %}
+                            <option value="{{ value }}" {% if library_filters.type == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <div class="library-filter-actions">
+                    <button class="management-save" type="submit">Найти</button>
+                    <a href="{{ url_for('library') }}">Сбросить</a>
+                </div>
+            </form>
+            <p class="library-result-count">Найдено материалов: <strong>{{ library_materials|length }}</strong></p>
             <section class="library-materials" aria-label="Материалы библиотеки">
                 {% if library_materials %}
                     <ul class="library-material-list">
@@ -331,6 +378,12 @@
                             <li class="library-material">
                                 <span class="library-material-type">{{ library_material_types[material.material_type] }}</span>
                                 <h2>{{ material.title }}</h2>
+                                <p class="library-material-meta">
+                                    {% if material.chapter_position %}Глава {{ material.chapter_position }}{% endif %}
+                                    {% if material.category %}<span>{{ library_categories.get(material.category, material.category) }}</span>{% endif %}
+                                    <span>{{ library_difficulties.get(material.difficulty, material.difficulty) }}</span>
+                                    <span>{{ material.estimated_minutes }} мин</span>
+                                </p>
                                 {% if material.description %}
                                     <p>{{ material.description }}</p>
                                 {% endif %}
