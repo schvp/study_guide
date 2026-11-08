@@ -4174,6 +4174,54 @@ a.chapter-link:hover {
     font-size: 11px;
 }
 
+.library-progress-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1px;
+    margin: 18px 0 0;
+    border: 1px solid var(--line);
+    background: var(--line);
+}
+
+.library-progress-summary div {
+    display: grid;
+    gap: 5px;
+    padding: 16px 18px;
+    background: #fbfbf7;
+}
+
+.library-progress-summary dt {
+    color: var(--muted);
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 8px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.library-progress-summary dd {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.library-card-status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    float: right;
+}
+
+.library-card-status span {
+    padding: 4px 7px;
+    border-radius: 999px;
+    background: #e9f1eb;
+    color: #31513d;
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 8px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
 .library-material-meta {
     display: flex;
     flex-wrap: wrap;
@@ -4307,6 +4355,163 @@ a.chapter-link:hover {
     font-size: 12px;
 }
 
+.library-reader-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-top: 28px;
+}
+
+.library-progress-button {
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    font: 10px/1.3 "DM Mono", Consolas, monospace;
+    letter-spacing: 0.04em;
+}
+
+.library-progress-button:hover,
+.library-progress-button:focus-visible {
+    border-color: #718178;
+}
+
+.library-progress-button.is-active {
+    border-color: #436753;
+    background: #e9f1eb;
+    color: #254632;
+}
+
+.library-progress-button:disabled {
+    cursor: wait;
+    opacity: 0.55;
+}
+
+.library-progress-status {
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.library-login-note {
+    margin: 25px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.profile-library {
+    margin-top: 38px;
+    padding: clamp(22px, 4vw, 32px);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+}
+
+.profile-library-statistics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: 18px;
+}
+
+.profile-library-recent {
+    display: grid;
+    gap: 1px;
+    margin: 22px 0;
+    padding: 0;
+    border: 1px solid var(--line);
+    background: var(--line);
+    list-style: none;
+}
+
+.profile-library-recent li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 14px 16px;
+    background: white;
+}
+
+.profile-library-recent li div {
+    display: grid;
+    gap: 4px;
+}
+
+.profile-library-recent small,
+.profile-library-recent li > span {
+    color: var(--muted);
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 8px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.lesson-library {
+    margin: 0 clamp(22px, 5vw, 48px) 34px;
+    padding: clamp(20px, 4vw, 30px);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: #f5f7f1;
+}
+
+.lesson-library h2 {
+    margin: 7px 0 18px;
+    font-size: 22px;
+}
+
+.lesson-library ul {
+    display: grid;
+    gap: 1px;
+    margin: 0 0 20px;
+    padding: 0;
+    border: 1px solid var(--line);
+    background: var(--line);
+    list-style: none;
+}
+
+.lesson-library li {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 22px;
+    padding: 15px 17px;
+    background: white;
+}
+
+.lesson-library li div {
+    display: grid;
+    gap: 5px;
+}
+
+.lesson-library li p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.lesson-library li > span {
+    flex: none;
+    color: var(--muted);
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 8px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+@media (max-width: 560px) {
+    .lesson-library li {
+        display: grid;
+    }
+}
+
+@media (max-width: 560px) {
+    .profile-library-statistics {
+        grid-template-columns: 1fr;
+    }
+}
+
 .library-article-content {
     max-width: 760px;
     padding: clamp(28px, 6vw, 58px);
@@ -4387,6 +4592,10 @@ a.chapter-link:hover {
 
     .library-search-field {
         grid-column: auto;
+    }
+
+    .library-progress-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 

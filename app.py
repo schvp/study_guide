@@ -887,6 +887,56 @@ def create_app(test_config=None):
                 else:
                     item["title"] = item["chapter_title"]
                 recent_activity.append(item)
+            library_statistics = {
+                "total": 0,
+                "completed": 0,
+                "favorite": 0,
+                "completion_percent": 0,
+            }
+            library_recent = []
+            if user and course:
+                library_statistics_row = get_db().execute(
+                    """
+                    SELECT COUNT(materials.id) AS total,
+                        COALESCE(SUM(progress.is_completed), 0) AS completed,
+                        COALESCE(SUM(progress.is_favorite), 0) AS favorite
+                    FROM library_materials AS materials
+                    LEFT JOIN library_user_progress AS progress
+                        ON progress.material_id = materials.id
+                        AND progress.user_id = ?
+                    WHERE materials.course_id = ?
+                        AND materials.status = 'published'
+                    """,
+                    (user["id"], course["id"]),
+                ).fetchone()
+                library_statistics.update(dict(library_statistics_row))
+                if library_statistics["total"]:
+                    library_statistics["completion_percent"] = round(
+                        library_statistics["completed"]
+                        * 100
+                        / library_statistics["total"]
+                    )
+                library_recent = get_db().execute(
+                    """
+                    SELECT materials.slug, materials.title,
+                        progress.is_completed, progress.is_favorite,
+                        strftime(
+                            '%d.%m.%Y %H:%M',
+                            progress.last_opened_at,
+                            'localtime'
+                        ) AS opened_at
+                    FROM library_user_progress AS progress
+                    JOIN library_materials AS materials
+                        ON materials.id = progress.material_id
+                    WHERE progress.user_id = ?
+                        AND materials.course_id = ?
+                        AND materials.status = 'published'
+                        AND progress.last_opened_at IS NOT NULL
+                    ORDER BY progress.last_opened_at DESC, materials.id DESC
+                    LIMIT 5
+                    """,
+                    (user["id"], course["id"]),
+                ).fetchall()
             return render_template(
                 "section.html",
                 active_nav=active_nav,
@@ -928,6 +978,8 @@ def create_app(test_config=None):
                 ),
                 recent_activity=recent_activity,
                 completion_history=completion_history,
+                library_statistics=library_statistics,
+                library_recent=library_recent,
                 can_reset_course_progress=course is not None,
                 csrf_token=session["csrf_token"],
             )
@@ -937,10 +989,16 @@ def create_app(test_config=None):
             difficulty = request.args.get("difficulty", "")
             material_type = request.args.get("type", "")
             chapter_value = request.args.get("chapter", "")
+            progress_state = request.args.get("state", "")
             category = category if category in LIBRARY_CATEGORIES else ""
             difficulty = difficulty if difficulty in LIBRARY_DIFFICULTIES else ""
             material_type = (
                 material_type if material_type in LIBRARY_MATERIAL_TYPES else ""
+            )
+            progress_state = (
+                progress_state
+                if user is not None and progress_state in {"favorite", "completed"}
+                else ""
             )
             try:
                 chapter_position = int(chapter_value) if chapter_value else None
@@ -948,7 +1006,11 @@ def create_app(test_config=None):
                 chapter_position = None
 
             conditions = ["materials.course_id = ?", "materials.status = 'published'"]
-            parameters = [course["id"]] if course else []
+            parameters = (
+                [user["id"] if user is not None else -1, course["id"]]
+                if course
+                else []
+            )
             if category:
                 conditions.append("materials.category = ?")
                 parameters.append(category)
@@ -961,6 +1023,10 @@ def create_app(test_config=None):
             if chapter_position is not None:
                 conditions.append("chapters.position = ?")
                 parameters.append(chapter_position)
+            if progress_state == "favorite":
+                conditions.append("progress.is_favorite = 1")
+            elif progress_state == "completed":
+                conditions.append("progress.is_completed = 1")
 
             library_materials = (
                 get_db()
@@ -971,9 +1037,14 @@ def create_app(test_config=None):
                         materials.resource_url, materials.content,
                         materials.category, materials.difficulty,
                         materials.estimated_minutes, chapters.position AS chapter_position,
-                        chapters.title AS chapter_title
+                        chapters.title AS chapter_title,
+                        COALESCE(progress.is_favorite, 0) AS is_favorite,
+                        COALESCE(progress.is_completed, 0) AS is_completed
                     FROM library_materials AS materials
                     LEFT JOIN chapters ON chapters.id = materials.chapter_id
+                    LEFT JOIN library_user_progress AS progress
+                        ON progress.material_id = materials.id
+                        AND progress.user_id = ?
                     WHERE {' AND '.join(conditions)}
                     ORDER BY materials.position, materials.id
                     """,
@@ -1008,6 +1079,22 @@ def create_app(test_config=None):
                         )
                     ).casefold()
                 ]
+            library_summary = {"total": 0, "favorite": 0, "completed": 0}
+            if course:
+                summary = get_db().execute(
+                    """
+                    SELECT COUNT(materials.id) AS total,
+                        COALESCE(SUM(progress.is_favorite), 0) AS favorite,
+                        COALESCE(SUM(progress.is_completed), 0) AS completed
+                    FROM library_materials AS materials
+                    LEFT JOIN library_user_progress AS progress
+                        ON progress.material_id = materials.id
+                        AND progress.user_id = ?
+                    WHERE materials.course_id = ? AND materials.status = 'published'
+                    """,
+                    (user["id"] if user is not None else -1, course["id"]),
+                ).fetchone()
+                library_summary = dict(summary)
             return render_template(
                 "section.html",
                 active_nav=active_nav,
@@ -1020,12 +1107,14 @@ def create_app(test_config=None):
                 library_chapters=(
                     get_course_chapters(course["id"]) if course else []
                 ),
+                library_summary=library_summary,
                 library_filters={
                     "q": search_query,
                     "category": category,
                     "difficulty": difficulty,
                     "type": material_type,
                     "chapter": chapter_position,
+                    "state": progress_state,
                 },
                 csrf_token=session["csrf_token"],
             )
@@ -1056,6 +1145,7 @@ def create_app(test_config=None):
     @app.get("/library/<slug>")
     def library_material(slug):
         course = get_course()
+        user = current_user()
         material = (
             get_db()
             .execute(
@@ -1101,17 +1191,129 @@ def create_app(test_config=None):
             """,
             (course["id"], material["category"], material["id"]),
         ).fetchall()
+        progress = (
+            get_db().execute(
+                """
+                SELECT is_favorite, is_completed, completed_at
+                FROM library_user_progress
+                WHERE user_id = ? AND material_id = ?
+                """,
+                (user["id"], material["id"]),
+            ).fetchone()
+            if user is not None
+            else None
+        )
         return render_template(
             "library_material.html",
             active_nav="library",
-            current_user=current_user(),
+            current_user=user,
             material=material,
             related_materials=related_materials,
+            library_progress={
+                "favorite": bool(progress["is_favorite"]) if progress else False,
+                "completed": bool(progress["is_completed"]) if progress else False,
+            },
             library_material_types=LIBRARY_MATERIAL_TYPES,
             library_categories=LIBRARY_CATEGORIES,
             library_difficulties=LIBRARY_DIFFICULTIES,
             csrf_token=session["csrf_token"],
         )
+
+    def get_published_library_material(slug):
+        course = get_course()
+        if course is None:
+            return None
+        return get_db().execute(
+            """
+            SELECT id, course_id, slug, title
+            FROM library_materials
+            WHERE course_id = ? AND slug = ? AND status = 'published'
+            """,
+            (course["id"], slug),
+        ).fetchone()
+
+    @app.post("/api/library/<slug>/favorite")
+    @csrf_protected
+    def update_library_favorite(slug):
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы добавлять материалы в избранное."), 401
+        payload = json_payload()
+        if payload is None or not isinstance(payload.get("value"), bool):
+            return jsonify(error="Передайте новое состояние избранного."), 400
+        material = get_published_library_material(slug)
+        if material is None:
+            return jsonify(error="Материал библиотеки не найден."), 404
+        get_db().execute(
+            """
+            INSERT INTO library_user_progress (
+                user_id, material_id, is_favorite
+            ) VALUES (?, ?, ?)
+            ON CONFLICT(user_id, material_id) DO UPDATE SET
+                is_favorite = excluded.is_favorite,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (user["id"], material["id"], int(payload["value"])),
+        )
+        get_db().commit()
+        return jsonify(favorite=payload["value"])
+
+    @app.post("/api/library/<slug>/completion")
+    @csrf_protected
+    def update_library_completion(slug):
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы сохранять прогресс чтения."), 401
+        payload = json_payload()
+        if payload is None or not isinstance(payload.get("value"), bool):
+            return jsonify(error="Передайте новое состояние материала."), 400
+        material = get_published_library_material(slug)
+        if material is None:
+            return jsonify(error="Материал библиотеки не найден."), 404
+        get_db().execute(
+            """
+            INSERT INTO library_user_progress (
+                user_id, material_id, is_completed, completed_at
+            ) VALUES (
+                ?, ?, ?, CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END
+            )
+            ON CONFLICT(user_id, material_id) DO UPDATE SET
+                is_completed = excluded.is_completed,
+                completed_at = excluded.completed_at,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (
+                user["id"],
+                material["id"],
+                int(payload["value"]),
+                int(payload["value"]),
+            ),
+        )
+        get_db().commit()
+        return jsonify(completed=payload["value"])
+
+    @app.post("/api/library/<slug>/opened")
+    @csrf_protected
+    def record_library_open(slug):
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы сохранять историю чтения."), 401
+        material = get_published_library_material(slug)
+        if material is None:
+            return jsonify(error="Материал библиотеки не найден."), 404
+        get_db().execute(
+            """
+            INSERT INTO library_user_progress (
+                user_id, material_id, last_opened_at
+            ) VALUES (?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(user_id, material_id) DO UPDATE SET
+                last_opened_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (user["id"], material["id"]),
+        )
+        get_db().commit()
+        return jsonify(recorded=True)
 
     @app.get("/laboratory")
     def laboratory():
@@ -2314,6 +2516,23 @@ def create_app(test_config=None):
             ),
             None,
         )
+        chapter_library_materials = database.execute(
+            """
+            SELECT materials.slug, materials.title, materials.description,
+                materials.difficulty, materials.estimated_minutes,
+                COALESCE(progress.is_favorite, 0) AS is_favorite,
+                COALESCE(progress.is_completed, 0) AS is_completed
+            FROM library_materials AS materials
+            LEFT JOIN library_user_progress AS progress
+                ON progress.material_id = materials.id
+                AND progress.user_id = ?
+            WHERE materials.chapter_id = ? AND materials.status = 'published'
+                AND materials.slug IS NOT NULL
+            ORDER BY materials.position, materials.id
+            LIMIT 4
+            """,
+            (user["id"], chapter_id),
+        ).fetchall()
         return render_template(
             "chapter.html",
             chapter=chapter_by_id,
@@ -2396,6 +2615,8 @@ def create_app(test_config=None):
                 else None
             ),
             development_mode=app.debug,
+            chapter_library_materials=chapter_library_materials,
+            library_difficulties=LIBRARY_DIFFICULTIES,
             course=course,
             csrf_token=session["csrf_token"],
         )
