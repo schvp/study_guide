@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "finite-state-machines",
+  "chapter_position": 7,
+  "position": 15,
+  "title": "Конечные автоматы Мура и Мили",
+  "description": "Методика проектирования управляющего автомата: диаграмма состояний, кодирование, выходы и безопасные переходы.",
+  "category": "sequential",
+  "difficulty": "advanced",
+  "material_type": "article",
+  "estimated_minutes": 15,
+  "content_file": "15-finite-state-machines.md"
+}
