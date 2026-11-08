@@ -492,6 +492,36 @@ def _add_library_catalog_metadata(database):
     )
 
 
+def _create_library_user_progress(database):
+    database.execute(
+        """
+        CREATE TABLE library_user_progress (
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            material_id INTEGER NOT NULL
+                REFERENCES library_materials(id) ON DELETE CASCADE,
+            is_favorite INTEGER NOT NULL DEFAULT 0
+                CHECK (is_favorite IN (0, 1)),
+            is_completed INTEGER NOT NULL DEFAULT 0
+                CHECK (is_completed IN (0, 1)),
+            last_opened_at TEXT,
+            completed_at TEXT,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, material_id),
+            CHECK (
+                (is_completed = 0 AND completed_at IS NULL)
+                OR (is_completed = 1 AND completed_at IS NOT NULL)
+            )
+        )
+        """
+    )
+    database.execute(
+        """
+        CREATE INDEX idx_library_user_progress_activity
+        ON library_user_progress(user_id, updated_at DESC, material_id)
+        """
+    )
+
+
 MIGRATIONS = (
     (1, "create_user_tables", _create_user_tables),
     (2, "add_username", _add_username),
@@ -511,6 +541,7 @@ MIGRATIONS = (
     (16, "create_laboratory_attempts", _create_laboratory_attempts),
     (17, "add_laboratory_attempt_results", _add_laboratory_attempt_results),
     (18, "add_library_catalog_metadata", _add_library_catalog_metadata),
+    (19, "create_library_user_progress", _create_library_user_progress),
 )
 
 

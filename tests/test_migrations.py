@@ -40,6 +40,7 @@ class DatabaseMigrationTests(unittest.TestCase):
                 (16, "create_laboratory_attempts"),
                 (17, "add_laboratory_attempt_results"),
                 (18, "add_library_catalog_metadata"),
+                (19, "create_library_user_progress"),
             ],
         )
         user_columns = {
@@ -67,7 +68,7 @@ class DatabaseMigrationTests(unittest.TestCase):
             self.database.execute(
                 "SELECT COUNT(*) FROM schema_migrations"
             ).fetchone()[0],
-            18,
+            19,
         )
 
     def test_assessment_tables_store_questions_and_per_user_attempt_answers(self):
@@ -473,6 +474,48 @@ class DatabaseMigrationTests(unittest.TestCase):
                 """
             )
 
+    def test_library_progress_is_private_and_cascades_with_owners(self):
+        self.database.execute("PRAGMA foreign_keys = ON")
+        migrations.migrate_database(self.database)
+        self.database.execute(
+            "INSERT INTO users (id, email, password_hash) "
+            "VALUES (1, 'reader@example.com', 'hash')"
+        )
+        self.database.execute(
+            "INSERT INTO courses (id, slug, title) VALUES (1, 'course', 'Course')"
+        )
+        self.database.execute(
+            "INSERT INTO library_materials (id, course_id, title) "
+            "VALUES (1, 1, 'Reference')"
+        )
+        self.database.execute(
+            """
+            INSERT INTO library_user_progress (
+                user_id, material_id, is_favorite, is_completed, completed_at
+            ) VALUES (1, 1, 1, 1, CURRENT_TIMESTAMP)
+            """
+        )
+        self.database.commit()
+
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.database.execute(
+                """
+                INSERT INTO library_user_progress (
+                    user_id, material_id, is_completed, completed_at
+                ) VALUES (1, 1, 0, CURRENT_TIMESTAMP)
+                """
+            )
+        self.database.rollback()
+
+        self.database.execute("DELETE FROM library_materials WHERE id = 1")
+        self.database.commit()
+        self.assertEqual(
+            self.database.execute(
+                "SELECT COUNT(*) FROM library_user_progress"
+            ).fetchone()[0],
+            0,
+        )
+
     def test_progress_references_chapters_and_cascades_on_deletion(self):
         self.database.execute("PRAGMA foreign_keys = ON")
         migrations.migrate_database(self.database)
@@ -525,7 +568,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         with patch.object(
             migrations,
             "MIGRATIONS",
-            migrations.MIGRATIONS + ((19, "failing_migration", fail_after_ddl),),
+            migrations.MIGRATIONS + ((20, "failing_migration", fail_after_ddl),),
         ):
             with self.assertRaisesRegex(RuntimeError, "migration failed"):
                 migrations.migrate_database(self.database)
@@ -539,7 +582,7 @@ class DatabaseMigrationTests(unittest.TestCase):
         self.assertIsNone(table)
         self.assertIsNone(
             self.database.execute(
-                "SELECT 1 FROM schema_migrations WHERE version = 19"
+                "SELECT 1 FROM schema_migrations WHERE version = 20"
             ).fetchone()
         )
 
