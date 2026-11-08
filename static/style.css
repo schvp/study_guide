@@ -4117,6 +4117,80 @@ a.chapter-link:hover {
     margin-top: 35px;
 }
 
+.library-filters {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 32px;
+    padding: clamp(20px, 3vw, 28px);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+}
+
+.library-filters label {
+    display: grid;
+    gap: 7px;
+    color: var(--muted);
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.library-filters input,
+.library-filters select {
+    min-width: 0;
+    width: 100%;
+    padding: 11px 12px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: white;
+    color: var(--ink);
+    font: 12px/1.4 Inter, Arial, sans-serif;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.library-search-field {
+    grid-column: span 2;
+}
+
+.library-filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    align-self: end;
+}
+
+.library-filter-actions a {
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.library-result-count {
+    margin: 16px 0 -18px;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.library-material-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    margin: 0 0 12px !important;
+    color: #6f7d73 !important;
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 9px !important;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.library-material-meta span::before {
+    content: "·";
+    margin-right: 14px;
+}
+
 .library-material-list {
     display: grid;
     gap: 14px;
@@ -4171,6 +4245,22 @@ a.chapter-link:hover {
 
 .library-empty-state {
     margin: 0;
+}
+
+@media (max-width: 900px) {
+    .library-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .library-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .library-search-field {
+        grid-column: auto;
+    }
 }
 
 .course-catalog {
