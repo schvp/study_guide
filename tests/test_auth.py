@@ -1093,10 +1093,10 @@ class AuthenticationTests(unittest.TestCase):
             database.execute(
                 """
                 INSERT INTO library_materials (
-                    course_id, title, description, material_type, resource_url,
+                    course_id, slug, title, description, material_type, resource_url,
                     content, position
                 )
-                SELECT id, ?, ?, ?, ?, ?, ?
+                SELECT id, 'logic-reference', ?, ?, ?, ?, ?, ?
                 FROM courses
                 WHERE slug = 'digital-circuits'
                 """,
@@ -1126,13 +1126,19 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("Справочник по логике".encode(), populated_page.data)
         self.assertIn("Дополнительное описание".encode(), populated_page.data)
         self.assertIn("Книга".encode(), populated_page.data)
-        self.assertIn("Текст из библиотеки".encode(), populated_page.data)
+        self.assertNotIn("Текст из библиотеки".encode(), populated_page.data)
+        self.assertIn(b'href="/library/logic-reference"', populated_page.data)
         self.assertIn(
             b'href="https://example.org/reference"',
             populated_page.data,
         )
         self.assertIn("javascript:alert(1)".encode(), populated_page.data)
         self.assertNotIn(b'href="javascript:alert(1)"', populated_page.data)
+
+        detail_page = self.client.get("/library/logic-reference")
+        self.assertEqual(detail_page.status_code, 200)
+        self.assertIn("Текст из библиотеки".encode(), detail_page.data)
+        self.assertEqual(self.client.get("/library/missing").status_code, 404)
 
     def test_library_search_filters_published_materials(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:

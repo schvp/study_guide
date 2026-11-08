@@ -1053,6 +1053,66 @@ def create_app(test_config=None):
     def library():
         return render_app_section("library")
 
+    @app.get("/library/<slug>")
+    def library_material(slug):
+        course = get_course()
+        material = (
+            get_db()
+            .execute(
+                """
+                SELECT materials.id, materials.slug, materials.title,
+                    materials.description, materials.material_type,
+                    materials.resource_url, materials.content,
+                    materials.category, materials.difficulty,
+                    materials.estimated_minutes, chapters.position AS chapter_position,
+                    chapters.title AS chapter_title
+                FROM library_materials AS materials
+                LEFT JOIN chapters ON chapters.id = materials.chapter_id
+                WHERE materials.course_id = ? AND materials.slug = ?
+                    AND materials.status = 'published'
+                """,
+                (course["id"], slug),
+            )
+            .fetchone()
+            if course
+            else None
+        )
+        if material is None:
+            return render_template(
+                "404.html",
+                current_user=current_user(),
+            ), 404
+        material = {
+            **dict(material),
+            "safe_resource_url": (
+                material["resource_url"]
+                if is_http_resource_url(material["resource_url"])
+                else None
+            ),
+        }
+        related_materials = get_db().execute(
+            """
+            SELECT slug, title, description, estimated_minutes
+            FROM library_materials
+            WHERE course_id = ? AND category = ? AND status = 'published'
+                AND id != ? AND slug IS NOT NULL
+            ORDER BY position, id
+            LIMIT 3
+            """,
+            (course["id"], material["category"], material["id"]),
+        ).fetchall()
+        return render_template(
+            "library_material.html",
+            active_nav="library",
+            current_user=current_user(),
+            material=material,
+            related_materials=related_materials,
+            library_material_types=LIBRARY_MATERIAL_TYPES,
+            library_categories=LIBRARY_CATEGORIES,
+            library_difficulties=LIBRARY_DIFFICULTIES,
+            csrf_token=session["csrf_token"],
+        )
+
     @app.get("/laboratory")
     def laboratory():
         return render_app_section("laboratory")

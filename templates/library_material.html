@@ -1,0 +1,81 @@
+{% from "_navigation.html" import header_navigation, side_navigation %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <meta name="description" content="{{ material.description }}">
+    <title>{{ material.title }} — Библиотека</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="app-layout">
+    <header class="site-header">
+        <a class="brand" href="{{ url_for('home') }}" aria-label="На главную">
+            <span class="brand-mark" aria-hidden="true">Σ</span>
+            <span>Учебный навигатор</span>
+        </a>
+        {{ header_navigation(active_nav, current_user) }}
+        <div class="header-account">
+            {% if current_user %}
+                <span class="header-user">{{ current_user.email }}</span>
+                <button class="header-auth" type="button" data-auth-logout>Выйти</button>
+            {% else %}
+                <a class="header-auth" href="{{ url_for('home', login='1') }}">Войти</a>
+            {% endif %}
+        </div>
+    </header>
+    {{ side_navigation(active_nav, current_user) }}
+
+    <main class="section-main library-reader">
+        <a class="library-back-link" href="{{ url_for('library') }}">← Вернуться в библиотеку</a>
+        <article class="library-article">
+            <header class="library-article-heading">
+                <p class="eyebrow">{{ library_material_types[material.material_type] }}{% if material.chapter_position %} <span aria-hidden="true">/</span> Глава {{ material.chapter_position }}{% endif %}</p>
+                <h1>{{ material.title }}</h1>
+                <p class="section-description">{{ material.description }}</p>
+                <dl class="library-article-facts">
+                    <div><dt>Категория</dt><dd>{{ library_categories.get(material.category, material.category) }}</dd></div>
+                    <div><dt>Уровень</dt><dd>{{ library_difficulties.get(material.difficulty, material.difficulty) }}</dd></div>
+                    <div><dt>Время</dt><dd>{{ material.estimated_minutes }} минут</dd></div>
+                </dl>
+            </header>
+            <div class="library-article-content">
+                {% for block in material.content.split('\n\n') %}
+                    {% if block.startswith('## ') %}
+                        <h2>{{ block[3:] }}</h2>
+                    {% elif block.startswith('### ') %}
+                        <h3>{{ block[4:] }}</h3>
+                    {% else %}
+                        <p>{{ block }}</p>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            {% if material.safe_resource_url %}
+                <p class="library-source-link"><a href="{{ material.safe_resource_url }}" target="_blank" rel="noopener noreferrer">Открыть дополнительный источник ↗</a></p>
+            {% endif %}
+        </article>
+
+        {% if related_materials %}
+            <section class="library-related" aria-labelledby="library-related-title">
+                <p class="eyebrow">ПРОДОЛЖИТЬ ИЗУЧЕНИЕ</p>
+                <h2 id="library-related-title">Материалы по теме</h2>
+                <ul>
+                    {% for related in related_materials %}
+                        <li>
+                            <a href="{{ url_for('library_material', slug=related.slug) }}">{{ related.title }}</a>
+                            <span>{{ related.estimated_minutes }} мин</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </section>
+        {% endif %}
+    </main>
+
+    <footer class="site-footer">
+        <span>Схемотехника цифровых систем</span>
+        <span>Учебное пособие <span aria-hidden="true">·</span> Учитесь видеть логику</span>
+    </footer>
+    <script src="{{ url_for('static', filename='auth.js') }}" defer></script>
+</body>
+</html>

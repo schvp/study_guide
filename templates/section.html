@@ -387,9 +387,6 @@
                                 {% if material.description %}
                                     <p>{{ material.description }}</p>
                                 {% endif %}
-                                {% if material.content %}
-                                    <div class="library-material-content">{{ material.content }}</div>
-                                {% endif %}
                                 {% if material.resource_url %}
                                     <p class="library-material-reference">Ссылка:
                                         {% if material.safe_resource_url %}
@@ -398,6 +395,9 @@
                                             {{ material.resource_url }}
                                         {% endif %}
                                     </p>
+                                {% endif %}
+                                {% if material.slug %}
+                                    <a class="primary-link" href="{{ url_for('library_material', slug=material.slug) }}">Читать материал <span aria-hidden="true">→</span></a>
                                 {% endif %}
                             </li>
                         {% endfor %}
