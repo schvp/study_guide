@@ -4307,6 +4307,52 @@ a.chapter-link:hover {
     font-size: 12px;
 }
 
+.library-reader-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-top: 28px;
+}
+
+.library-progress-button {
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    font: 10px/1.3 "DM Mono", Consolas, monospace;
+    letter-spacing: 0.04em;
+}
+
+.library-progress-button:hover,
+.library-progress-button:focus-visible {
+    border-color: #718178;
+}
+
+.library-progress-button.is-active {
+    border-color: #436753;
+    background: #e9f1eb;
+    color: #254632;
+}
+
+.library-progress-button:disabled {
+    cursor: wait;
+    opacity: 0.55;
+}
+
+.library-progress-status {
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.library-login-note {
+    margin: 25px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
 .library-article-content {
     max-width: 760px;
     padding: clamp(28px, 6vw, 58px);
