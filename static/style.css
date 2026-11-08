@@ -4174,6 +4174,54 @@ a.chapter-link:hover {
     font-size: 11px;
 }
 
+.library-progress-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1px;
+    margin: 18px 0 0;
+    border: 1px solid var(--line);
+    background: var(--line);
+}
+
+.library-progress-summary div {
+    display: grid;
+    gap: 5px;
+    padding: 16px 18px;
+    background: #fbfbf7;
+}
+
+.library-progress-summary dt {
+    color: var(--muted);
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 8px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.library-progress-summary dd {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.library-card-status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    float: right;
+}
+
+.library-card-status span {
+    padding: 4px 7px;
+    border-radius: 999px;
+    background: #e9f1eb;
+    color: #31513d;
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 8px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
 .library-material-meta {
     display: flex;
     flex-wrap: wrap;
@@ -4433,6 +4481,10 @@ a.chapter-link:hover {
 
     .library-search-field {
         grid-column: auto;
+    }
+
+    .library-progress-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
