@@ -13,6 +13,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from assessment_bank import seed_assessment_questions
 from course_content import load_course_materials
 from laboratory_catalog import build_laboratory_catalog, get_laboratory_definition
+from library_content import load_library_materials
 from migrations import migrate_database
 from student_statistics import build_chapter_statistics, build_student_statistics
 from teacher_reports import (
@@ -42,6 +43,10 @@ COURSE_DESCRIPTION = (
 COURSE_MATERIALS_DIRECTORY = os.path.join(
     os.path.dirname(__file__),
     "course_materials",
+)
+LIBRARY_MATERIALS_DIRECTORY = os.path.join(
+    os.path.dirname(__file__),
+    "library_materials",
 )
 INITIAL_CHAPTERS = [
     "Введение в цифровую схемотехнику",
@@ -126,6 +131,7 @@ def create_app(test_config=None):
         not in {"0", "false", "no"},
         SEED_DEMO_ADMIN=os.environ.get("SEED_DEMO_ADMIN", "1").lower()
         not in {"0", "false", "no"},
+        LIBRARY_MATERIALS_DIRECTORY=LIBRARY_MATERIALS_DIRECTORY,
     )
     if test_config:
         app.config.update(test_config)
@@ -239,6 +245,64 @@ def create_app(test_config=None):
                 )
         database.commit()
         migrate_database(database)
+        for material in load_library_materials(
+            app.config["LIBRARY_MATERIALS_DIRECTORY"]
+        ):
+            library_context = database.execute(
+                """
+                SELECT courses.id AS course_id, chapters.id AS chapter_id
+                FROM courses
+                JOIN chapters ON chapters.course_id = courses.id
+                WHERE courses.slug = ? AND chapters.position = ?
+                """,
+                (material["course"], material["chapter_position"]),
+            ).fetchone()
+            if library_context is None:
+                app.logger.warning(
+                    "Skipping library material %s for missing course chapter %s:%s.",
+                    material["slug"],
+                    material["course"],
+                    material["chapter_position"],
+                )
+                continue
+            database.execute(
+                """
+                INSERT INTO library_materials (
+                    course_id, chapter_id, slug, title, description,
+                    material_type, resource_url, content, position,
+                    category, difficulty, estimated_minutes, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(course_id, slug) DO UPDATE SET
+                    chapter_id = excluded.chapter_id,
+                    title = excluded.title,
+                    description = excluded.description,
+                    material_type = excluded.material_type,
+                    resource_url = excluded.resource_url,
+                    content = excluded.content,
+                    position = excluded.position,
+                    category = excluded.category,
+                    difficulty = excluded.difficulty,
+                    estimated_minutes = excluded.estimated_minutes,
+                    status = excluded.status,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (
+                    library_context["course_id"],
+                    library_context["chapter_id"],
+                    material["slug"],
+                    material["title"],
+                    material["description"],
+                    material["material_type"],
+                    material["resource_url"] or None,
+                    material["content"],
+                    material["position"],
+                    material["category"],
+                    material["difficulty"],
+                    material["estimated_minutes"],
+                    material["status"],
+                ),
+            )
+        database.commit()
         seed_assessment_questions(database, course_id)
         database.commit()
         if app.config["SEED_DEMO_ADMIN"]:
