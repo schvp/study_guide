@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "hazards-and-glitches",
+  "chapter_position": 5,
+  "position": 12,
+  "title": "Опасности и ложные импульсы в логике",
+  "description": "Почему правильная таблица истинности не гарантирует чистый сигнал и как находить статические и динамические опасности.",
+  "category": "combinational",
+  "difficulty": "advanced",
+  "material_type": "article",
+  "estimated_minutes": 13,
+  "content_file": "12-hazards-and-glitches.md"
+}
