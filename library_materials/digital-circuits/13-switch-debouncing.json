@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "switch-debouncing",
+  "chapter_position": 6,
+  "position": 13,
+  "title": "Подавление дребезга контактов",
+  "description": "Аппаратные и цифровые способы превратить нестабильное переключение кнопки в одно надёжное событие.",
+  "category": "sequential",
+  "difficulty": "basic",
+  "material_type": "article",
+  "estimated_minutes": 9,
+  "content_file": "13-switch-debouncing.md"
+}
