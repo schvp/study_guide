@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "multiplexers-decoders",
+  "chapter_position": 5,
+  "position": 18,
+  "title": "Мультиплексоры, дешифраторы и селекторы данных",
+  "description": "Построение деревьев выбора, каскадирование, реализация функций и предотвращение конфликтов на шине.",
+  "category": "combinational",
+  "difficulty": "basic",
+  "material_type": "article",
+  "estimated_minutes": 12,
+  "content_file": "18-multiplexers-decoders.md"
+}
