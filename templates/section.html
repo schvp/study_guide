@@ -365,11 +365,29 @@
                         {% endfor %}
                     </select>
                 </label>
+                {% if current_user %}
+                    <label>
+                        <span>Мои отметки</span>
+                        <select name="state">
+                            <option value="">Все материалы</option>
+                            <option value="favorite" {% if library_filters.state == "favorite" %}selected{% endif %}>Избранное</option>
+                            <option value="completed" {% if library_filters.state == "completed" %}selected{% endif %}>Прочитанные</option>
+                        </select>
+                    </label>
+                {% endif %}
                 <div class="library-filter-actions">
                     <button class="management-save" type="submit">Найти</button>
                     <a href="{{ url_for('library') }}">Сбросить</a>
                 </div>
             </form>
+            {% if current_user %}
+                <dl class="library-progress-summary" aria-label="Прогресс чтения">
+                    <div><dt>Материалов</dt><dd>{{ library_summary.total }}</dd></div>
+                    <div><dt>Прочитано</dt><dd>{{ library_summary.completed }}</dd></div>
+                    <div><dt>В избранном</dt><dd>{{ library_summary.favorite }}</dd></div>
+                    <div><dt>Прогресс</dt><dd>{{ ((library_summary.completed * 100 / library_summary.total)|round|int) if library_summary.total else 0 }}%</dd></div>
+                </dl>
+            {% endif %}
             <p class="library-result-count">Найдено материалов: <strong>{{ library_materials|length }}</strong></p>
             <section class="library-materials" aria-label="Материалы библиотеки">
                 {% if library_materials %}
@@ -377,6 +395,12 @@
                         {% for material in library_materials %}
                             <li class="library-material">
                                 <span class="library-material-type">{{ library_material_types[material.material_type] }}</span>
+                                {% if material.is_completed or material.is_favorite %}
+                                    <span class="library-card-status">
+                                        {% if material.is_completed %}<span>Прочитано</span>{% endif %}
+                                        {% if material.is_favorite %}<span>Избранное</span>{% endif %}
+                                    </span>
+                                {% endif %}
                                 <h2>{{ material.title }}</h2>
                                 <p class="library-material-meta">
                                     {% if material.chapter_position %}Глава {{ material.chapter_position }}{% endif %}

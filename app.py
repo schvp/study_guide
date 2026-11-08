@@ -937,10 +937,16 @@ def create_app(test_config=None):
             difficulty = request.args.get("difficulty", "")
             material_type = request.args.get("type", "")
             chapter_value = request.args.get("chapter", "")
+            progress_state = request.args.get("state", "")
             category = category if category in LIBRARY_CATEGORIES else ""
             difficulty = difficulty if difficulty in LIBRARY_DIFFICULTIES else ""
             material_type = (
                 material_type if material_type in LIBRARY_MATERIAL_TYPES else ""
+            )
+            progress_state = (
+                progress_state
+                if user is not None and progress_state in {"favorite", "completed"}
+                else ""
             )
             try:
                 chapter_position = int(chapter_value) if chapter_value else None
@@ -948,7 +954,11 @@ def create_app(test_config=None):
                 chapter_position = None
 
             conditions = ["materials.course_id = ?", "materials.status = 'published'"]
-            parameters = [course["id"]] if course else []
+            parameters = (
+                [user["id"] if user is not None else -1, course["id"]]
+                if course
+                else []
+            )
             if category:
                 conditions.append("materials.category = ?")
                 parameters.append(category)
@@ -961,6 +971,10 @@ def create_app(test_config=None):
             if chapter_position is not None:
                 conditions.append("chapters.position = ?")
                 parameters.append(chapter_position)
+            if progress_state == "favorite":
+                conditions.append("progress.is_favorite = 1")
+            elif progress_state == "completed":
+                conditions.append("progress.is_completed = 1")
 
             library_materials = (
                 get_db()
@@ -971,9 +985,14 @@ def create_app(test_config=None):
                         materials.resource_url, materials.content,
                         materials.category, materials.difficulty,
                         materials.estimated_minutes, chapters.position AS chapter_position,
-                        chapters.title AS chapter_title
+                        chapters.title AS chapter_title,
+                        COALESCE(progress.is_favorite, 0) AS is_favorite,
+                        COALESCE(progress.is_completed, 0) AS is_completed
                     FROM library_materials AS materials
                     LEFT JOIN chapters ON chapters.id = materials.chapter_id
+                    LEFT JOIN library_user_progress AS progress
+                        ON progress.material_id = materials.id
+                        AND progress.user_id = ?
                     WHERE {' AND '.join(conditions)}
                     ORDER BY materials.position, materials.id
                     """,
@@ -1008,6 +1027,22 @@ def create_app(test_config=None):
                         )
                     ).casefold()
                 ]
+            library_summary = {"total": 0, "favorite": 0, "completed": 0}
+            if course:
+                summary = get_db().execute(
+                    """
+                    SELECT COUNT(materials.id) AS total,
+                        COALESCE(SUM(progress.is_favorite), 0) AS favorite,
+                        COALESCE(SUM(progress.is_completed), 0) AS completed
+                    FROM library_materials AS materials
+                    LEFT JOIN library_user_progress AS progress
+                        ON progress.material_id = materials.id
+                        AND progress.user_id = ?
+                    WHERE materials.course_id = ? AND materials.status = 'published'
+                    """,
+                    (user["id"] if user is not None else -1, course["id"]),
+                ).fetchone()
+                library_summary = dict(summary)
             return render_template(
                 "section.html",
                 active_nav=active_nav,
@@ -1020,12 +1055,14 @@ def create_app(test_config=None):
                 library_chapters=(
                     get_course_chapters(course["id"]) if course else []
                 ),
+                library_summary=library_summary,
                 library_filters={
                     "q": search_query,
                     "category": category,
                     "difficulty": difficulty,
                     "type": material_type,
                     "chapter": chapter_position,
+                    "state": progress_state,
                 },
                 csrf_token=session["csrf_token"],
             )

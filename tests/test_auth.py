@@ -1269,6 +1269,13 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("В избранном".encode(), detail.data)
         self.assertIn("Прочитано".encode(), detail.data)
 
+        favorites = self.client.get("/library?state=favorite")
+        self.assertEqual(favorites.status_code, 200)
+        self.assertIn("Временной анализ".encode(), favorites.data)
+        self.assertIn("В избранном".encode(), favorites.data)
+        self.assertIn("Прогресс".encode(), favorites.data)
+        self.assertIn("100%".encode(), favorites.data)
+
         missing = self._post_json(
             "/api/library/missing/completion",
             {"value": True},
