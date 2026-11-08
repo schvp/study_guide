@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "logic-family-parameters",
+  "chapter_position": 4,
+  "position": 4,
+  "title": "Параметры TTL и CMOS без путаницы",
+  "description": "Как читать электрические характеристики логических микросхем и проверять совместимость выходов со входами.",
+  "category": "logic-elements",
+  "difficulty": "intermediate",
+  "material_type": "article",
+  "estimated_minutes": 13,
+  "content_file": "04-logic-family-parameters.md"
+}
