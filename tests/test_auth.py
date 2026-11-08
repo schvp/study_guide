@@ -1285,6 +1285,12 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("Прогресс".encode(), favorites.data)
         self.assertIn("100%".encode(), favorites.data)
 
+        profile = self.client.get("/profile")
+        self.assertEqual(profile.status_code, 200)
+        self.assertIn("Прогресс чтения".encode(), profile.data)
+        self.assertIn("Временной анализ".encode(), profile.data)
+        self.assertIn("1 / 1".encode(), profile.data)
+
         missing = self._post_json(
             "/api/library/missing/completion",
             {"value": True},

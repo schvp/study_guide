@@ -887,6 +887,56 @@ def create_app(test_config=None):
                 else:
                     item["title"] = item["chapter_title"]
                 recent_activity.append(item)
+            library_statistics = {
+                "total": 0,
+                "completed": 0,
+                "favorite": 0,
+                "completion_percent": 0,
+            }
+            library_recent = []
+            if user and course:
+                library_statistics_row = get_db().execute(
+                    """
+                    SELECT COUNT(materials.id) AS total,
+                        COALESCE(SUM(progress.is_completed), 0) AS completed,
+                        COALESCE(SUM(progress.is_favorite), 0) AS favorite
+                    FROM library_materials AS materials
+                    LEFT JOIN library_user_progress AS progress
+                        ON progress.material_id = materials.id
+                        AND progress.user_id = ?
+                    WHERE materials.course_id = ?
+                        AND materials.status = 'published'
+                    """,
+                    (user["id"], course["id"]),
+                ).fetchone()
+                library_statistics.update(dict(library_statistics_row))
+                if library_statistics["total"]:
+                    library_statistics["completion_percent"] = round(
+                        library_statistics["completed"]
+                        * 100
+                        / library_statistics["total"]
+                    )
+                library_recent = get_db().execute(
+                    """
+                    SELECT materials.slug, materials.title,
+                        progress.is_completed, progress.is_favorite,
+                        strftime(
+                            '%d.%m.%Y %H:%M',
+                            progress.last_opened_at,
+                            'localtime'
+                        ) AS opened_at
+                    FROM library_user_progress AS progress
+                    JOIN library_materials AS materials
+                        ON materials.id = progress.material_id
+                    WHERE progress.user_id = ?
+                        AND materials.course_id = ?
+                        AND materials.status = 'published'
+                        AND progress.last_opened_at IS NOT NULL
+                    ORDER BY progress.last_opened_at DESC, materials.id DESC
+                    LIMIT 5
+                    """,
+                    (user["id"], course["id"]),
+                ).fetchall()
             return render_template(
                 "section.html",
                 active_nav=active_nav,
@@ -928,6 +978,8 @@ def create_app(test_config=None):
                 ),
                 recent_activity=recent_activity,
                 completion_history=completion_history,
+                library_statistics=library_statistics,
+                library_recent=library_recent,
                 can_reset_course_progress=course is not None,
                 csrf_token=session["csrf_token"],
             )

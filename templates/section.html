@@ -81,6 +81,33 @@
                 </dl>
             </section>
             <a class="primary-link section-course-link" href="{{ url_for('home', _anchor='my-course') }}">Продолжить обучение <span aria-hidden="true">→</span></a>
+            <section class="profile-library" aria-labelledby="profile-library-title">
+                <div class="profile-history-heading">
+                    <p class="profile-label">БИБЛИОТЕКА</p>
+                    <h2 id="profile-library-title">Прогресс чтения</h2>
+                </div>
+                <dl class="profile-statistics-grid profile-library-statistics">
+                    <div><dt>Прочитано</dt><dd>{{ library_statistics.completed }} / {{ library_statistics.total }}</dd></div>
+                    <div><dt>Прогресс</dt><dd>{{ library_statistics.completion_percent }}%</dd></div>
+                    <div><dt>В избранном</dt><dd>{{ library_statistics.favorite }}</dd></div>
+                </dl>
+                {% if library_recent %}
+                    <ol class="profile-library-recent">
+                        {% for material in library_recent %}
+                            <li>
+                                <div>
+                                    <a href="{{ url_for('library_material', slug=material.slug) }}">{{ material.title }}</a>
+                                    <small>{{ material.opened_at }}</small>
+                                </div>
+                                <span>{% if material.is_completed %}Прочитано{% elif material.is_favorite %}Избранное{% else %}Открыто{% endif %}</span>
+                            </li>
+                        {% endfor %}
+                    </ol>
+                {% else %}
+                    <p class="profile-history-empty">Открытые материалы появятся здесь.</p>
+                {% endif %}
+                <a class="secondary-link" href="{{ url_for('library') }}">Перейти в библиотеку <span aria-hidden="true">→</span></a>
+            </section>
             {% if can_manage_content %}
                 <a class="secondary-link section-course-link" href="{{ url_for('content_management') }}">Управление контентом <span aria-hidden="true">→</span></a>
                 <a class="secondary-link section-course-link" href="{{ url_for('teacher_reports') }}">Отчёты учащихся <span aria-hidden="true">→</span></a>
