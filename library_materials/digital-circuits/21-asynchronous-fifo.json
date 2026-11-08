@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "asynchronous-fifo",
+  "chapter_position": 7,
+  "position": 21,
+  "title": "Асинхронный FIFO: безопасная очередь между тактами",
+  "description": "Архитектура двухпортовой очереди, указатели Грея, признаки full и empty и типичные ошибки CDC.",
+  "category": "sequential",
+  "difficulty": "advanced",
+  "material_type": "article",
+  "estimated_minutes": 17,
+  "content_file": "21-asynchronous-fifo.md"
+}
