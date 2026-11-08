@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "digital-signal-engineering",
+  "chapter_position": 1,
+  "position": 1,
+  "title": "Цифровой сигнал как физический процесс",
+  "description": "Инженерный справочник об уровнях напряжения, фронтах, запасе помехоустойчивости и чтении временных диаграмм.",
+  "category": "fundamentals",
+  "difficulty": "basic",
+  "material_type": "article",
+  "estimated_minutes": 12,
+  "content_file": "01-digital-signal-engineering.md"
+}
