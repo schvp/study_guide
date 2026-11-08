@@ -1056,6 +1056,7 @@ def create_app(test_config=None):
     @app.get("/library/<slug>")
     def library_material(slug):
         course = get_course()
+        user = current_user()
         material = (
             get_db()
             .execute(
@@ -1101,12 +1102,28 @@ def create_app(test_config=None):
             """,
             (course["id"], material["category"], material["id"]),
         ).fetchall()
+        progress = (
+            get_db().execute(
+                """
+                SELECT is_favorite, is_completed, completed_at
+                FROM library_user_progress
+                WHERE user_id = ? AND material_id = ?
+                """,
+                (user["id"], material["id"]),
+            ).fetchone()
+            if user is not None
+            else None
+        )
         return render_template(
             "library_material.html",
             active_nav="library",
-            current_user=current_user(),
+            current_user=user,
             material=material,
             related_materials=related_materials,
+            library_progress={
+                "favorite": bool(progress["is_favorite"]) if progress else False,
+                "completed": bool(progress["is_completed"]) if progress else False,
+            },
             library_material_types=LIBRARY_MATERIAL_TYPES,
             library_categories=LIBRARY_CATEGORIES,
             library_difficulties=LIBRARY_DIFFICULTIES,

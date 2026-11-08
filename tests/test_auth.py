@@ -1138,6 +1138,8 @@ class AuthenticationTests(unittest.TestCase):
         detail_page = self.client.get("/library/logic-reference")
         self.assertEqual(detail_page.status_code, 200)
         self.assertIn("Текст из библиотеки".encode(), detail_page.data)
+        self.assertIn("Войдите".encode(), detail_page.data)
+        self.assertNotIn(b"data-library-progress=", detail_page.data)
         self.assertEqual(self.client.get("/library/missing").status_code, 404)
 
     def test_library_search_filters_published_materials(self):
@@ -1259,6 +1261,13 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0][:3], ("test", 1, 1))
         self.assertIsNotNone(rows[0][3])
+
+        detail = self.client.get("/library/timing-guide")
+        self.assertEqual(detail.status_code, 200)
+        self.assertIn('data-library-progress="favorite"'.encode(), detail.data)
+        self.assertIn('data-library-progress="completion"'.encode(), detail.data)
+        self.assertIn("В избранном".encode(), detail.data)
+        self.assertIn("Прочитано".encode(), detail.data)
 
         missing = self._post_json(
             "/api/library/missing/completion",
