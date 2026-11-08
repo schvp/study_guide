@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "address-space-design",
+  "chapter_position": 8,
+  "position": 16,
+  "title": "Проектирование адресного пространства",
+  "description": "Размещение памяти и периферии, полное декодирование, зеркальные адреса и чтение карты адресов.",
+  "category": "memory",
+  "difficulty": "advanced",
+  "material_type": "article",
+  "estimated_minutes": 13,
+  "content_file": "16-address-space-design.md"
+}
