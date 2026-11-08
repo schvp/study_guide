@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "noise-and-grounding",
+  "chapter_position": 1,
+  "position": 9,
+  "title": "Помехи, земля и развязка питания",
+  "description": "Практическое руководство по путям возвратного тока, наводкам, дребезгу земли и размещению конденсаторов.",
+  "category": "fundamentals",
+  "difficulty": "intermediate",
+  "material_type": "article",
+  "estimated_minutes": 11,
+  "content_file": "09-noise-and-grounding.md"
+}
