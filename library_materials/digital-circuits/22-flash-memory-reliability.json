@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "flash-memory-reliability",
+  "chapter_position": 8,
+  "position": 22,
+  "title": "Flash-память: стирание, износ и надёжное обновление",
+  "description": "Страницы и блоки, ограничение циклов, wear leveling и защита данных при сбое питания.",
+  "category": "memory",
+  "difficulty": "advanced",
+  "material_type": "article",
+  "estimated_minutes": 15,
+  "content_file": "22-flash-memory-reliability.md"
+}
