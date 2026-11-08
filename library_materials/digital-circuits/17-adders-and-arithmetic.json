@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "adders-and-arithmetic",
+  "chapter_position": 5,
+  "position": 17,
+  "title": "Сумматоры и арифметические тракты",
+  "description": "Полусумматор, полный сумматор, цепной перенос, ускорение переноса и построение вычитателя.",
+  "category": "combinational",
+  "difficulty": "intermediate",
+  "material_type": "article",
+  "estimated_minutes": 14,
+  "content_file": "17-adders-and-arithmetic.md"
+}
