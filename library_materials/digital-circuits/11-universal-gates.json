@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "universal-gates",
+  "chapter_position": 3,
+  "position": 11,
+  "title": "Универсальные базисы И-НЕ и ИЛИ-НЕ",
+  "description": "Преобразование логических функций в однородную элементную базу с помощью законов де Моргана.",
+  "category": "boolean-algebra",
+  "difficulty": "basic",
+  "material_type": "article",
+  "estimated_minutes": 10,
+  "content_file": "11-universal-gates.md"
+}

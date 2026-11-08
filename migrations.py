@@ -457,6 +457,41 @@ def _add_laboratory_attempt_results(database):
     )
 
 
+def _add_library_catalog_metadata(database):
+    database.execute("ALTER TABLE library_materials ADD COLUMN slug TEXT")
+    database.execute(
+        "ALTER TABLE library_materials ADD COLUMN chapter_id INTEGER "
+        "REFERENCES chapters(id) ON DELETE SET NULL"
+    )
+    database.execute(
+        "ALTER TABLE library_materials ADD COLUMN category TEXT NOT NULL "
+        "DEFAULT 'general'"
+    )
+    database.execute(
+        "ALTER TABLE library_materials ADD COLUMN difficulty TEXT NOT NULL "
+        "DEFAULT 'basic' CHECK (difficulty IN ('basic', 'intermediate', 'advanced'))"
+    )
+    database.execute(
+        "ALTER TABLE library_materials ADD COLUMN estimated_minutes INTEGER NOT NULL "
+        "DEFAULT 5 CHECK (estimated_minutes BETWEEN 1 AND 240)"
+    )
+    database.execute(
+        "ALTER TABLE library_materials ADD COLUMN status TEXT NOT NULL "
+        "DEFAULT 'published' CHECK (status IN ('draft', 'published'))"
+    )
+    database.execute(
+        "UPDATE library_materials SET slug = 'legacy-' || id WHERE slug IS NULL"
+    )
+    database.execute(
+        "CREATE UNIQUE INDEX idx_library_materials_course_slug "
+        "ON library_materials(course_id, slug)"
+    )
+    database.execute(
+        "CREATE INDEX idx_library_materials_catalog "
+        "ON library_materials(course_id, status, category, difficulty, position)"
+    )
+
+
 MIGRATIONS = (
     (1, "create_user_tables", _create_user_tables),
     (2, "add_username", _add_username),
@@ -475,6 +510,7 @@ MIGRATIONS = (
     (15, "add_assessment_time_and_attempt_limits", _add_assessment_time_and_attempt_limits),
     (16, "create_laboratory_attempts", _create_laboratory_attempts),
     (17, "add_laboratory_attempt_results", _add_laboratory_attempt_results),
+    (18, "add_library_catalog_metadata", _add_library_catalog_metadata),
 )
 
 

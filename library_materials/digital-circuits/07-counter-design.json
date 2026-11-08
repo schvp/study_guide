@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "counter-design",
+  "chapter_position": 7,
+  "position": 7,
+  "title": "Проектирование синхронных счётчиков",
+  "description": "Модуль счёта, таблица переходов, выбор триггеров, декодирование состояний и безопасный сброс.",
+  "category": "sequential",
+  "difficulty": "intermediate",
+  "material_type": "article",
+  "estimated_minutes": 14,
+  "content_file": "07-counter-design.md"
+}

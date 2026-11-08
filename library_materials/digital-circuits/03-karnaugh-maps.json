@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "karnaugh-maps",
+  "chapter_position": 3,
+  "position": 3,
+  "title": "Карты Карно: минимизация без догадок",
+  "description": "Пошаговая методика группировки единиц и нулей, работа с безразличными состояниями и проверка результата.",
+  "category": "boolean-algebra",
+  "difficulty": "intermediate",
+  "material_type": "article",
+  "estimated_minutes": 16,
+  "content_file": "03-karnaugh-maps.md"
+}

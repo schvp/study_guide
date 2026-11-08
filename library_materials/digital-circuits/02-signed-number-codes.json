@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "signed-number-codes",
+  "chapter_position": 2,
+  "position": 2,
+  "title": "Знаковые числа и дополнительные коды",
+  "description": "Разбор прямого, обратного и дополнительного кодов, диапазонов, переполнения и расширения разрядности.",
+  "category": "number-systems",
+  "difficulty": "intermediate",
+  "material_type": "article",
+  "estimated_minutes": 14,
+  "content_file": "02-signed-number-codes.md"
+}

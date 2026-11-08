@@ -15,6 +15,7 @@ def check_commands(include_tests=True):
     commands = [
         [sys.executable, "-m", "compileall", "-q", "app.py", "tests"],
         [sys.executable, "validate_course.py"],
+        [sys.executable, "validate_library.py"],
     ]
     if include_tests:
         commands.append(

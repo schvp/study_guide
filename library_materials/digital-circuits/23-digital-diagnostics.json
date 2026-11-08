@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "digital-diagnostics",
+  "chapter_position": 1,
+  "position": 23,
+  "title": "Диагностика цифровой схемы по шагам",
+  "description": "Методика поиска неисправности от питания и сброса до такта, шин и редких временных ошибок.",
+  "category": "fundamentals",
+  "difficulty": "intermediate",
+  "material_type": "article",
+  "estimated_minutes": 13,
+  "content_file": "23-digital-diagnostics.md"
+}

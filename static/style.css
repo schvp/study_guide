@@ -4117,6 +4117,80 @@ a.chapter-link:hover {
     margin-top: 35px;
 }
 
+.library-filters {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 32px;
+    padding: clamp(20px, 3vw, 28px);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+}
+
+.library-filters label {
+    display: grid;
+    gap: 7px;
+    color: var(--muted);
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.library-filters input,
+.library-filters select {
+    min-width: 0;
+    width: 100%;
+    padding: 11px 12px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: white;
+    color: var(--ink);
+    font: 12px/1.4 Inter, Arial, sans-serif;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.library-search-field {
+    grid-column: span 2;
+}
+
+.library-filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    align-self: end;
+}
+
+.library-filter-actions a {
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.library-result-count {
+    margin: 16px 0 -18px;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.library-material-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    margin: 0 0 12px !important;
+    color: #6f7d73 !important;
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 9px !important;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.library-material-meta span::before {
+    content: "·";
+    margin-right: 14px;
+}
+
 .library-material-list {
     display: grid;
     gap: 14px;
@@ -4171,6 +4245,149 @@ a.chapter-link:hover {
 
 .library-empty-state {
     margin: 0;
+}
+
+.library-material .primary-link {
+    margin-top: 18px;
+}
+
+.library-reader {
+    max-width: 960px;
+}
+
+.library-back-link {
+    display: inline-block;
+    margin-bottom: 24px;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.library-article {
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fbfbf7;
+}
+
+.library-article-heading {
+    padding: clamp(28px, 6vw, 58px);
+    border-bottom: 1px solid var(--line);
+}
+
+.library-article-heading h1 {
+    max-width: 760px;
+    margin: 12px 0 16px;
+    font-size: clamp(30px, 6vw, 54px);
+    line-height: 1.02;
+    letter-spacing: -0.055em;
+}
+
+.library-article-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px 38px;
+    margin: 28px 0 0;
+}
+
+.library-article-facts div {
+    display: grid;
+    gap: 5px;
+}
+
+.library-article-facts dt {
+    color: var(--muted);
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 8px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.library-article-facts dd {
+    margin: 0;
+    font-size: 12px;
+}
+
+.library-article-content {
+    max-width: 760px;
+    padding: clamp(28px, 6vw, 58px);
+}
+
+.library-article-content h2 {
+    margin: 38px 0 12px;
+    font-size: 24px;
+    letter-spacing: -0.035em;
+}
+
+.library-article-content h2:first-child {
+    margin-top: 0;
+}
+
+.library-article-content h3 {
+    margin: 28px 0 10px;
+    font-size: 17px;
+}
+
+.library-article-content p {
+    margin: 0 0 18px;
+    color: #455047;
+    font-size: 14px;
+    line-height: 1.85;
+    white-space: pre-wrap;
+}
+
+.library-source-link {
+    margin: 0;
+    padding: 24px clamp(28px, 6vw, 58px);
+    border-top: 1px solid var(--line);
+}
+
+.library-related {
+    margin-top: 34px;
+}
+
+.library-related h2 {
+    margin: 8px 0 18px;
+}
+
+.library-related ul {
+    display: grid;
+    gap: 1px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    background: var(--line);
+    border: 1px solid var(--line);
+}
+
+.library-related li {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 17px 20px;
+    background: #fbfbf7;
+}
+
+.library-related li span {
+    flex: none;
+    color: var(--muted);
+    font-family: "DM Mono", Consolas, monospace;
+    font-size: 9px;
+}
+
+@media (max-width: 900px) {
+    .library-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .library-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .library-search-field {
+        grid-column: auto;
+    }
 }
 
 .course-catalog {

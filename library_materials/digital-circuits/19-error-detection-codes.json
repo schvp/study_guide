@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "error-detection-codes",
+  "chapter_position": 2,
+  "position": 19,
+  "title": "Контроль чётности и обнаружение ошибок",
+  "description": "Бит чётности, расстояние Хэмминга, контрольные суммы и принципы циклического избыточного кода.",
+  "category": "number-systems",
+  "difficulty": "advanced",
+  "material_type": "article",
+  "estimated_minutes": 14,
+  "content_file": "19-error-detection-codes.md"
+}

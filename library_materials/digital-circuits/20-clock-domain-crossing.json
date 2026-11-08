@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "clock-domain-crossing",
+  "chapter_position": 6,
+  "position": 20,
+  "title": "Передача данных между тактовыми доменами",
+  "description": "Синхронизаторы, импульсы, рукопожатие, многобитные шины и правила анализа CDC.",
+  "category": "sequential",
+  "difficulty": "advanced",
+  "material_type": "article",
+  "estimated_minutes": 16,
+  "content_file": "20-clock-domain-crossing.md"
+}

@@ -13,11 +13,14 @@ class AuthenticationTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         database_path = os.path.join(self.temp_dir.name, "test.sqlite3")
+        library_directory = os.path.join(self.temp_dir.name, "library")
+        os.makedirs(library_directory)
         self.app = create_app(
             {
                 "TESTING": True,
                 "SECRET_KEY": "test-secret-key",
                 "DATABASE": database_path,
+                "LIBRARY_MATERIALS_DIRECTORY": library_directory,
             }
         )
         self.client = self.app.test_client()
@@ -1090,10 +1093,10 @@ class AuthenticationTests(unittest.TestCase):
             database.execute(
                 """
                 INSERT INTO library_materials (
-                    course_id, title, description, material_type, resource_url,
+                    course_id, slug, title, description, material_type, resource_url,
                     content, position
                 )
-                SELECT id, ?, ?, ?, ?, ?, ?
+                SELECT id, 'logic-reference', ?, ?, ?, ?, ?, ?
                 FROM courses
                 WHERE slug = 'digital-circuits'
                 """,
@@ -1123,13 +1126,81 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("Справочник по логике".encode(), populated_page.data)
         self.assertIn("Дополнительное описание".encode(), populated_page.data)
         self.assertIn("Книга".encode(), populated_page.data)
-        self.assertIn("Текст из библиотеки".encode(), populated_page.data)
+        self.assertNotIn("Текст из библиотеки".encode(), populated_page.data)
+        self.assertIn(b'href="/library/logic-reference"', populated_page.data)
         self.assertIn(
             b'href="https://example.org/reference"',
             populated_page.data,
         )
         self.assertIn("javascript:alert(1)".encode(), populated_page.data)
         self.assertNotIn(b'href="javascript:alert(1)"', populated_page.data)
+
+        detail_page = self.client.get("/library/logic-reference")
+        self.assertEqual(detail_page.status_code, 200)
+        self.assertIn("Текст из библиотеки".encode(), detail_page.data)
+        self.assertEqual(self.client.get("/library/missing").status_code, 404)
+
+    def test_library_search_filters_published_materials(self):
+        with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
+            database.executemany(
+                """
+                INSERT INTO library_materials (
+                    course_id, title, description, material_type, content,
+                    position, category, difficulty, estimated_minutes, status,
+                    chapter_id
+                ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        "Карты Карно",
+                        "Минимизация функций",
+                        "article",
+                        "Группировка соседних единиц",
+                        1,
+                        "boolean-algebra",
+                        "intermediate",
+                        12,
+                        "published",
+                        3,
+                    ),
+                    (
+                        "Память SRAM",
+                        "Организация памяти",
+                        "book",
+                        "Адресные линии",
+                        2,
+                        "memory",
+                        "advanced",
+                        18,
+                        "published",
+                        8,
+                    ),
+                    (
+                        "Черновик преподавателя",
+                        "Не опубликовано",
+                        "article",
+                        "Скрытый материал",
+                        3,
+                        "memory",
+                        "advanced",
+                        5,
+                        "draft",
+                        8,
+                    ),
+                ],
+            )
+            database.commit()
+
+        filtered = self.client.get(
+            "/library?q=адресные&category=memory&difficulty=advanced"
+            "&type=book&chapter=8"
+        )
+
+        self.assertEqual(filtered.status_code, 200)
+        self.assertIn("Память SRAM".encode(), filtered.data)
+        self.assertNotIn("Карты Карно".encode(), filtered.data)
+        self.assertNotIn("Черновик преподавателя".encode(), filtered.data)
+        self.assertIn("Найдено материалов: <strong>1</strong>".encode(), filtered.data)
 
     def test_library_material_management_creates_edits_reorders_and_deletes(self):
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
@@ -2685,6 +2756,7 @@ class AuthenticationTests(unittest.TestCase):
                 (15,),
                 (16,),
                 (17,),
+                (18,),
             ],
         )
         with closing(sqlite3.connect(database_path)) as database:

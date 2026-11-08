@@ -13,6 +13,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from assessment_bank import seed_assessment_questions
 from course_content import load_course_materials
 from laboratory_catalog import build_laboratory_catalog, get_laboratory_definition
+from library_content import load_library_materials
 from migrations import migrate_database
 from student_statistics import build_chapter_statistics, build_student_statistics
 from teacher_reports import (
@@ -42,6 +43,10 @@ COURSE_DESCRIPTION = (
 COURSE_MATERIALS_DIRECTORY = os.path.join(
     os.path.dirname(__file__),
     "course_materials",
+)
+LIBRARY_MATERIALS_DIRECTORY = os.path.join(
+    os.path.dirname(__file__),
+    "library_materials",
 )
 INITIAL_CHAPTERS = [
     "Введение в цифровую схемотехнику",
@@ -87,6 +92,21 @@ LIBRARY_MATERIAL_TYPES = {
     "link": "Ссылка",
     "file": "Файл",
 }
+LIBRARY_CATEGORIES = {
+    "fundamentals": "Основы",
+    "number-systems": "Системы счисления",
+    "boolean-algebra": "Булева алгебра",
+    "logic-elements": "Логические элементы",
+    "combinational": "Комбинационные устройства",
+    "sequential": "Последовательностные устройства",
+    "memory": "Память",
+    "general": "Общие материалы",
+}
+LIBRARY_DIFFICULTIES = {
+    "basic": "Начальный",
+    "intermediate": "Средний",
+    "advanced": "Продвинутый",
+}
 
 
 def is_http_resource_url(value):
@@ -126,6 +146,7 @@ def create_app(test_config=None):
         not in {"0", "false", "no"},
         SEED_DEMO_ADMIN=os.environ.get("SEED_DEMO_ADMIN", "1").lower()
         not in {"0", "false", "no"},
+        LIBRARY_MATERIALS_DIRECTORY=LIBRARY_MATERIALS_DIRECTORY,
     )
     if test_config:
         app.config.update(test_config)
@@ -239,6 +260,64 @@ def create_app(test_config=None):
                 )
         database.commit()
         migrate_database(database)
+        for material in load_library_materials(
+            app.config["LIBRARY_MATERIALS_DIRECTORY"]
+        ):
+            library_context = database.execute(
+                """
+                SELECT courses.id AS course_id, chapters.id AS chapter_id
+                FROM courses
+                JOIN chapters ON chapters.course_id = courses.id
+                WHERE courses.slug = ? AND chapters.position = ?
+                """,
+                (material["course"], material["chapter_position"]),
+            ).fetchone()
+            if library_context is None:
+                app.logger.warning(
+                    "Skipping library material %s for missing course chapter %s:%s.",
+                    material["slug"],
+                    material["course"],
+                    material["chapter_position"],
+                )
+                continue
+            database.execute(
+                """
+                INSERT INTO library_materials (
+                    course_id, chapter_id, slug, title, description,
+                    material_type, resource_url, content, position,
+                    category, difficulty, estimated_minutes, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(course_id, slug) DO UPDATE SET
+                    chapter_id = excluded.chapter_id,
+                    title = excluded.title,
+                    description = excluded.description,
+                    material_type = excluded.material_type,
+                    resource_url = excluded.resource_url,
+                    content = excluded.content,
+                    position = excluded.position,
+                    category = excluded.category,
+                    difficulty = excluded.difficulty,
+                    estimated_minutes = excluded.estimated_minutes,
+                    status = excluded.status,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (
+                    library_context["course_id"],
+                    library_context["chapter_id"],
+                    material["slug"],
+                    material["title"],
+                    material["description"],
+                    material["material_type"],
+                    material["resource_url"] or None,
+                    material["content"],
+                    material["position"],
+                    material["category"],
+                    material["difficulty"],
+                    material["estimated_minutes"],
+                    material["status"],
+                ),
+            )
+        database.commit()
         seed_assessment_questions(database, course_id)
         database.commit()
         if app.config["SEED_DEMO_ADMIN"]:
@@ -853,15 +932,57 @@ def create_app(test_config=None):
                 csrf_token=session["csrf_token"],
             )
         if active_nav == "library":
-            library_materials = get_db().execute(
-                """
-                SELECT id, title, description, material_type, resource_url, content
-                FROM library_materials
-                WHERE course_id = ?
-                ORDER BY position, id
-                """,
-                (course["id"],),
-            ).fetchall() if course else []
+            search_query = request.args.get("q", "").strip()[:100]
+            category = request.args.get("category", "")
+            difficulty = request.args.get("difficulty", "")
+            material_type = request.args.get("type", "")
+            chapter_value = request.args.get("chapter", "")
+            category = category if category in LIBRARY_CATEGORIES else ""
+            difficulty = difficulty if difficulty in LIBRARY_DIFFICULTIES else ""
+            material_type = (
+                material_type if material_type in LIBRARY_MATERIAL_TYPES else ""
+            )
+            try:
+                chapter_position = int(chapter_value) if chapter_value else None
+            except ValueError:
+                chapter_position = None
+
+            conditions = ["materials.course_id = ?", "materials.status = 'published'"]
+            parameters = [course["id"]] if course else []
+            if category:
+                conditions.append("materials.category = ?")
+                parameters.append(category)
+            if difficulty:
+                conditions.append("materials.difficulty = ?")
+                parameters.append(difficulty)
+            if material_type:
+                conditions.append("materials.material_type = ?")
+                parameters.append(material_type)
+            if chapter_position is not None:
+                conditions.append("chapters.position = ?")
+                parameters.append(chapter_position)
+
+            library_materials = (
+                get_db()
+                .execute(
+                    f"""
+                    SELECT materials.id, materials.slug, materials.title,
+                        materials.description, materials.material_type,
+                        materials.resource_url, materials.content,
+                        materials.category, materials.difficulty,
+                        materials.estimated_minutes, chapters.position AS chapter_position,
+                        chapters.title AS chapter_title
+                    FROM library_materials AS materials
+                    LEFT JOIN chapters ON chapters.id = materials.chapter_id
+                    WHERE {' AND '.join(conditions)}
+                    ORDER BY materials.position, materials.id
+                    """,
+                    parameters,
+                )
+                .fetchall()
+                if course
+                else []
+            )
             library_materials = [
                 {
                     **dict(material),
@@ -873,6 +994,20 @@ def create_app(test_config=None):
                 }
                 for material in library_materials
             ]
+            if search_query:
+                normalized_query = search_query.casefold()
+                library_materials = [
+                    material
+                    for material in library_materials
+                    if normalized_query
+                    in " ".join(
+                        (
+                            material["title"],
+                            material["description"],
+                            material["content"],
+                        )
+                    ).casefold()
+                ]
             return render_template(
                 "section.html",
                 active_nav=active_nav,
@@ -880,6 +1015,18 @@ def create_app(test_config=None):
                 current_user=user,
                 library_materials=library_materials,
                 library_material_types=LIBRARY_MATERIAL_TYPES,
+                library_categories=LIBRARY_CATEGORIES,
+                library_difficulties=LIBRARY_DIFFICULTIES,
+                library_chapters=(
+                    get_course_chapters(course["id"]) if course else []
+                ),
+                library_filters={
+                    "q": search_query,
+                    "category": category,
+                    "difficulty": difficulty,
+                    "type": material_type,
+                    "chapter": chapter_position,
+                },
                 csrf_token=session["csrf_token"],
             )
         return render_template(
@@ -905,6 +1052,66 @@ def create_app(test_config=None):
     @app.get("/library")
     def library():
         return render_app_section("library")
+
+    @app.get("/library/<slug>")
+    def library_material(slug):
+        course = get_course()
+        material = (
+            get_db()
+            .execute(
+                """
+                SELECT materials.id, materials.slug, materials.title,
+                    materials.description, materials.material_type,
+                    materials.resource_url, materials.content,
+                    materials.category, materials.difficulty,
+                    materials.estimated_minutes, chapters.position AS chapter_position,
+                    chapters.title AS chapter_title
+                FROM library_materials AS materials
+                LEFT JOIN chapters ON chapters.id = materials.chapter_id
+                WHERE materials.course_id = ? AND materials.slug = ?
+                    AND materials.status = 'published'
+                """,
+                (course["id"], slug),
+            )
+            .fetchone()
+            if course
+            else None
+        )
+        if material is None:
+            return render_template(
+                "404.html",
+                current_user=current_user(),
+            ), 404
+        material = {
+            **dict(material),
+            "safe_resource_url": (
+                material["resource_url"]
+                if is_http_resource_url(material["resource_url"])
+                else None
+            ),
+        }
+        related_materials = get_db().execute(
+            """
+            SELECT slug, title, description, estimated_minutes
+            FROM library_materials
+            WHERE course_id = ? AND category = ? AND status = 'published'
+                AND id != ? AND slug IS NOT NULL
+            ORDER BY position, id
+            LIMIT 3
+            """,
+            (course["id"], material["category"], material["id"]),
+        ).fetchall()
+        return render_template(
+            "library_material.html",
+            active_nav="library",
+            current_user=current_user(),
+            material=material,
+            related_materials=related_materials,
+            library_material_types=LIBRARY_MATERIAL_TYPES,
+            library_categories=LIBRARY_CATEGORIES,
+            library_difficulties=LIBRARY_DIFFICULTIES,
+            csrf_token=session["csrf_token"],
+        )
 
     @app.get("/laboratory")
     def laboratory():

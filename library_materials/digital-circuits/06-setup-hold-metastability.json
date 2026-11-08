@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "setup-hold-metastability",
+  "chapter_position": 6,
+  "position": 6,
+  "title": "Setup, hold и метастабильность",
+  "description": "Временные ограничения триггеров, расчёт синхронного тракта и безопасный ввод асинхронных сигналов.",
+  "category": "sequential",
+  "difficulty": "advanced",
+  "material_type": "article",
+  "estimated_minutes": 15,
+  "content_file": "06-setup-hold-metastability.md"
+}

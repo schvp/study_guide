@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "shift-register-applications",
+  "chapter_position": 7,
+  "position": 14,
+  "title": "Сдвиговые регистры и преобразование потоков данных",
+  "description": "Режимы SISO, SIPO, PISO и PIPO, кольцевые структуры, задержки и расширение числа выводов.",
+  "category": "sequential",
+  "difficulty": "basic",
+  "material_type": "article",
+  "estimated_minutes": 11,
+  "content_file": "14-shift-register-applications.md"
+}

@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "bcd-gray-codes",
+  "chapter_position": 2,
+  "position": 10,
+  "title": "BCD и код Грея: когда двоичного кода недостаточно",
+  "description": "Назначение специальных кодов, алгоритмы преобразования и аппаратные области применения.",
+  "category": "number-systems",
+  "difficulty": "intermediate",
+  "material_type": "article",
+  "estimated_minutes": 12,
+  "content_file": "10-bcd-gray-codes.md"
+}

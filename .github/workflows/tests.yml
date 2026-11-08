@@ -32,5 +32,8 @@ jobs:
       - name: Validate course materials
         run: python validate_course.py
 
+      - name: Validate library materials
+        run: python validate_library.py
+
       - name: Run unit and integration tests
         run: python -m unittest discover -s tests -q

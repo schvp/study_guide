@@ -10,8 +10,9 @@ class ProjectCheckRunnerTests(unittest.TestCase):
 
         self.assertEqual(commands[0][:3], [sys.executable, "-m", "compileall"])
         self.assertEqual(commands[1], [sys.executable, "validate_course.py"])
+        self.assertEqual(commands[2], [sys.executable, "validate_library.py"])
         self.assertEqual(
-            commands[2],
+            commands[3],
             [
                 sys.executable,
                 "-m",
@@ -26,7 +27,7 @@ class ProjectCheckRunnerTests(unittest.TestCase):
     def test_quick_check_plan_skips_test_suite(self):
         commands = check_commands(include_tests=False)
 
-        self.assertEqual(len(commands), 2)
+        self.assertEqual(len(commands), 3)
         self.assertNotIn("unittest", [part for command in commands for part in command])
 
 

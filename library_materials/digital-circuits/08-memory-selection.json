@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "memory-selection",
+  "chapter_position": 8,
+  "position": 8,
+  "title": "Как выбрать и подключить память",
+  "description": "Сравнение ROM, SRAM, DRAM и Flash, расчёт организации микросхемы и анализ цикла чтения и записи.",
+  "category": "memory",
+  "difficulty": "intermediate",
+  "material_type": "article",
+  "estimated_minutes": 15,
+  "content_file": "08-memory-selection.md"
+}
