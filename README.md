@@ -167,6 +167,7 @@ python check_project.py
 ## Документация разработчика
 
 - [Архитектура приложения](docs/architecture.md)
+- [Библиотека учебных материалов](docs/library.md)
 - [Проверка проекта](docs/testing.md)
 - [Развёртывание приложения](docs/deployment.md)
 - [Работа с базой данных](docs/database.md)
