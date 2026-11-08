@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "combinational-design-workflow",
+  "chapter_position": 5,
+  "position": 5,
+  "title": "Проектирование комбинационного устройства",
+  "description": "Полный путь от словесного условия до проверенной схемы на сумматорах, дешифраторах и мультиплексорах.",
+  "category": "combinational",
+  "difficulty": "intermediate",
+  "material_type": "article",
+  "estimated_minutes": 15,
+  "content_file": "05-combinational-design-workflow.md"
+}
