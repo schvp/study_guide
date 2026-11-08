@@ -1,0 +1,13 @@
+{
+  "course": "digital-circuits",
+  "slug": "timing-constraints",
+  "chapter_position": 6,
+  "position": 24,
+  "title": "Временные ограничения синхронной схемы",
+  "description": "Как описывать такты, входные и выходные задержки, исключения и читать отчёт статического временного анализа.",
+  "category": "sequential",
+  "difficulty": "advanced",
+  "material_type": "article",
+  "estimated_minutes": 16,
+  "content_file": "24-timing-constraints.md"
+}
