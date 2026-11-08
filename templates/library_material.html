@@ -29,7 +29,7 @@
 
     <main class="section-main library-reader">
         <a class="library-back-link" href="{{ url_for('library') }}">← Вернуться в библиотеку</a>
-        <article class="library-article">
+        <article class="library-article"{% if current_user %} data-library-open-endpoint="{{ url_for('record_library_open', slug=material.slug) }}"{% endif %}>
             <header class="library-article-heading">
                 <p class="eyebrow">{{ library_material_types[material.material_type] }}{% if material.chapter_position %} <span aria-hidden="true">/</span> Глава {{ material.chapter_position }}{% endif %}</p>
                 <h1>{{ material.title }}</h1>

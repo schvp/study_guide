@@ -1243,16 +1243,23 @@ class AuthenticationTests(unittest.TestCase):
             "/api/library/timing-guide/completion",
             {"value": True},
         )
+        opened = self._post_json(
+            "/api/library/timing-guide/opened",
+            {},
+        )
         self.assertEqual(favorite.status_code, 200)
         self.assertEqual(favorite.get_json(), {"favorite": True})
         self.assertEqual(completed.status_code, 200)
         self.assertEqual(completed.get_json(), {"completed": True})
+        self.assertEqual(opened.status_code, 200)
+        self.assertEqual(opened.get_json(), {"recorded": True})
 
         with closing(sqlite3.connect(self.app.config["DATABASE"])) as database:
             rows = database.execute(
                 """
                 SELECT users.username, progress.is_favorite,
-                    progress.is_completed, progress.completed_at
+                    progress.is_completed, progress.completed_at,
+                    progress.last_opened_at
                 FROM library_user_progress AS progress
                 JOIN users ON users.id = progress.user_id
                 WHERE progress.material_id = 50
@@ -1261,6 +1268,7 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0][:3], ("test", 1, 1))
         self.assertIsNotNone(rows[0][3])
+        self.assertIsNotNone(rows[0][4])
 
         detail = self.client.get("/library/timing-guide")
         self.assertEqual(detail.status_code, 200)
@@ -1268,6 +1276,7 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn('data-library-progress="completion"'.encode(), detail.data)
         self.assertIn("В избранном".encode(), detail.data)
         self.assertIn("Прочитано".encode(), detail.data)
+        self.assertIn(b"data-library-open-endpoint=", detail.data)
 
         favorites = self.client.get("/library?state=favorite")
         self.assertEqual(favorites.status_code, 200)

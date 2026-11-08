@@ -1240,6 +1240,29 @@ def create_app(test_config=None):
         get_db().commit()
         return jsonify(completed=payload["value"])
 
+    @app.post("/api/library/<slug>/opened")
+    @csrf_protected
+    def record_library_open(slug):
+        user = current_user()
+        if user is None:
+            return jsonify(error="Войдите, чтобы сохранять историю чтения."), 401
+        material = get_published_library_material(slug)
+        if material is None:
+            return jsonify(error="Материал библиотеки не найден."), 404
+        get_db().execute(
+            """
+            INSERT INTO library_user_progress (
+                user_id, material_id, last_opened_at
+            ) VALUES (?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(user_id, material_id) DO UPDATE SET
+                last_opened_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (user["id"], material["id"]),
+        )
+        get_db().commit()
+        return jsonify(recorded=True)
+
     @app.get("/laboratory")
     def laboratory():
         return render_app_section("laboratory")
