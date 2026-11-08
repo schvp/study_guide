@@ -1209,8 +1209,8 @@ class AuthenticationTests(unittest.TestCase):
             database.execute(
                 """
                 INSERT INTO library_materials (
-                    id, course_id, slug, title, status, position
-                ) VALUES (50, 1, 'timing-guide', 'Временной анализ', 'published', 1)
+                    id, course_id, chapter_id, slug, title, status, position
+                ) VALUES (50, 1, 1, 'timing-guide', 'Временной анализ', 'published', 1)
                 """
             )
             database.commit()
@@ -1290,6 +1290,12 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("Прогресс чтения".encode(), profile.data)
         self.assertIn("Временной анализ".encode(), profile.data)
         self.assertIn("1 / 1".encode(), profile.data)
+
+        chapter = self.client.get("/course/1")
+        self.assertEqual(chapter.status_code, 200)
+        self.assertIn("ДОПОЛНИТЕЛЬНОЕ ЧТЕНИЕ".encode(), chapter.data)
+        self.assertIn("Временной анализ".encode(), chapter.data)
+        self.assertIn("Прочитано".encode(), chapter.data)
 
         missing = self._post_json(
             "/api/library/missing/completion",

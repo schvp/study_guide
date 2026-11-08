@@ -2516,6 +2516,23 @@ def create_app(test_config=None):
             ),
             None,
         )
+        chapter_library_materials = database.execute(
+            """
+            SELECT materials.slug, materials.title, materials.description,
+                materials.difficulty, materials.estimated_minutes,
+                COALESCE(progress.is_favorite, 0) AS is_favorite,
+                COALESCE(progress.is_completed, 0) AS is_completed
+            FROM library_materials AS materials
+            LEFT JOIN library_user_progress AS progress
+                ON progress.material_id = materials.id
+                AND progress.user_id = ?
+            WHERE materials.chapter_id = ? AND materials.status = 'published'
+                AND materials.slug IS NOT NULL
+            ORDER BY materials.position, materials.id
+            LIMIT 4
+            """,
+            (user["id"], chapter_id),
+        ).fetchall()
         return render_template(
             "chapter.html",
             chapter=chapter_by_id,
@@ -2598,6 +2615,8 @@ def create_app(test_config=None):
                 else None
             ),
             development_mode=app.debug,
+            chapter_library_materials=chapter_library_materials,
+            library_difficulties=LIBRARY_DIFFICULTIES,
             course=course,
             csrf_token=session["csrf_token"],
         )

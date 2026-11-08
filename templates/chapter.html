@@ -82,6 +82,27 @@
                     {% endif %}
                 </div>
 
+                {% if chapter_library_materials %}
+                    <section class="lesson-library" aria-labelledby="lesson-library-title">
+                        <p class="lesson-content-label">ДОПОЛНИТЕЛЬНОЕ ЧТЕНИЕ</p>
+                        <h2 id="lesson-library-title">Материалы по теме</h2>
+                        <ul>
+                            {% for material in chapter_library_materials %}
+                                <li>
+                                    <div>
+                                        <a href="{{ url_for('library_material', slug=material.slug) }}">{{ material.title }}</a>
+                                        <p>{{ material.description }}</p>
+                                    </div>
+                                    <span>
+                                        {% if material.is_completed %}Прочитано{% elif material.is_favorite %}Избранное{% else %}{{ library_difficulties[material.difficulty] }} · {{ material.estimated_minutes }} мин{% endif %}
+                                    </span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                        <a class="secondary-link" href="{{ url_for('library', chapter=chapter.position) }}">Все материалы главы <span aria-hidden="true">→</span></a>
+                    </section>
+                {% endif %}
+
                 {% if byte_exercise_target %}
                     <section
                         class="byte-exercise"
